@@ -124,7 +124,8 @@ top3_tbl %>%
     product_name = "Product",
     n = "Times ordered"
   ) %>% 
-  tab_header(title = "Top 3 Products in Selected Aisles")
+  tab_header(title = "Top 3 Products in Selected Aisles") %>%
+  as_raw_html()
 ```
 
 ### 4) Table: The mean purchase time
