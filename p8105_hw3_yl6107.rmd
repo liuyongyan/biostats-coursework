@@ -1,6 +1,149 @@
 ---
 title: "Homework 3 - P8105 Data Science I"
 Author: Yongyan Liu (yl6107)
-output: github_document
+date: "Oct 11, 2025"
+output:
+  github_document:
+    toc: true
+    toc_depth: 3
 ---
 
+```{r libraries, message=FALSE}
+library(tidyverse)
+library(janitor)
+library(lubridate)
+library(scales)
+library(knitr)
+library(gt)
+```
+
+## Problem 1 – Instacart Data
+
+Load from `p8105.datasets`; **do not** keep a local copy of the dataset.
+
+```{r load-instacart}
+library(p8105.datasets)
+data("instacart")
+
+# show the data
+instacart <- instacart %>% clean_names()
+instacart
+```
+
+### Quick description of the dataset
+
+```{r describe-instacart}
+# show data size and structure
+instacart %>% 
+  summarize(
+    n_rows = n(),
+    n_cols = ncol(.),
+    unique_users = n_distinct(instacart$user_id),
+    unique_orders = n_distinct(instacart$order_id)
+  ) %>% 
+  knitr::kable()
+```
+
+The dataset contains detailed records of Instacart orders at the product level (one row per product in an order), with variables for order timing, aisle, department, product name, etc. It contains `r n_distinct(instacart$user_id)` unique users and `r nrow(instacart)` rows, where each row in the dataset is a product from an order. There is a single order per user in this dataset.
+
+Key variables include:
+
+-   order_id – Unique identifier for an order. Each row corresponds to a single product within that order.
+-   product_id – Unique numeric identifier for a specific product.
+-   add_to_cart_order – The sequence number of this product within its order (e.g., 1 = first item added, 2 = second).
+-   reordered – Binary indicator showing whether the user has purchased this product before (1 = yes, 0 = no).
+-   user_id – Unique identifier for a customer or Instacart user.
+-   order_number – The running count of orders placed by this user (1 = the user’s first order).
+-   order_dow – Day of the week the order was placed, coded 0–6 (0 = Sunday, 1 = Monday, … 6 = Saturday).
+-   order_hour_of_day – Hour of the day (0–23) when the order was placed.
+-   days_since_prior_order – Number of days since the user’s previous order (NA for their first order).
+-   product_name – Descriptive name of the product.
+-   aisle_id – Numeric ID corresponding to the aisle in which the product is categorized.
+-   department_id – Numeric ID corresponding to the department containing the aisle.
+-   aisle – Human-readable name of the aisle (e.g., “packaged vegetables fruits”).
+-   department – Human-readable name of the department (e.g., “produce”).
+
+### 1) How many aisles are there, and which aisles have the most items ordered?
+
+```{r aisle-counts}
+aisle_counts <- instacart %>% 
+  count(aisle, sort = TRUE)
+
+# Show aisle count
+n_aisles <- aisle_counts %>% nrow()
+n_aisles
+
+# Show aisles with most products ordered
+head(aisle_counts, 10) %>% knitr::kable()
+```
+
+There are `r n_aisles` aisles. The most-ordered aisles include those shown in the table above (e.g., packaged vegetables/fruits, fresh fruits, etc.).
+
+### 2) Plot: Aisles with most items
+
+Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
+
+```{r aisle-plot, fig.height=7}
+aisle_counts %>% 
+  filter(n > 10000) %>% 
+  mutate(aisle = fct_reorder(aisle, n)) %>% 
+  ggplot(aes(x = aisle, y = n)) +
+  coord_flip() +
+  geom_col() +
+  labs(
+    x = NULL, y = "Items ordered",
+    title = "Items ordered by aisle (>10,000)"
+  ) +
+  scale_y_continuous(
+    trans = "sqrt",
+    labels = label_comma(),
+    limits = c(0, 160000)
+  )
+```
+
+### 3) Table: three most popular items in selected aisles
+
+Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
+
+```{r top-items-selected-aisles}
+selected_aisles <- c("baking ingredients", "dog food care", "packaged vegetables fruits")
+
+top3_tbl <- instacart %>% 
+  filter(aisle %in% selected_aisles) %>% 
+  count(aisle, product_name, sort = TRUE) %>% 
+  group_by(aisle) %>% 
+  slice_max(n, n = 3, with_ties = FALSE) %>% 
+  ungroup()
+
+top3_tbl %>% 
+  arrange(aisle, desc(n)) %>% 
+  gt() %>% 
+  cols_label(
+    aisle = "Aisle",
+    product_name = "Product",
+    n = "Times ordered"
+  ) %>% 
+  tab_header(title = "Top 3 Products in Selected Aisles")
+```
+
+### 4) The Mean Purchase Time
+
+Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
+
+```{r mean-hour-plo-icecream}
+items <- c("Pink Lady Apples", "Coffee Ice Cream")
+
+mean_hour_tbl <- instacart %>% 
+  filter(product_name %in% items) %>% 
+  mutate(order_dow = factor(order_dow, levels = 0:6,
+                            labels = c("Sun","Mon","Tue","Wed","Thu","Fri","Sat"))) %>%
+  group_by(product_name, order_dow) %>% 
+  summarize(mean_hour = mean(order_hour_of_day), .groups = "drop") %>% 
+  pivot_wider(names_from = order_dow, values_from = mean_hour)
+
+mean_hour_tbl %>% 
+  gt(rowname_col = "product_name") %>% 
+  fmt_number(everything(), decimals = 2) %>% 
+  tab_header(title = "Mean order hour by day-of-week") %>% 
+  cols_label(product_name = "")
+```
