@@ -96,6 +96,7 @@ aisle_counts %>%
     title = "Items ordered by aisle (>10,000)"
   ) +
   scale_y_continuous(
+    # use sqrt to make smaller value more visible
     trans = "sqrt",
     labels = label_comma(),
     limits = c(0, 160000)
@@ -118,7 +119,8 @@ top3_tbl <- instacart %>%
 
 top3_tbl %>% 
   arrange(aisle, desc(n)) %>% 
-  gt() %>% 
+  mutate(aisle = paste0("Aisle: ", aisle)) %>%
+  gt(rowname_col = "product_name", groupname_col = "aisle") %>% 
   cols_label(
     aisle = "Aisle",
     product_name = "Product",
@@ -153,7 +155,7 @@ mean_hour_tbl %>%
 
 ## Problem 2 – Zillow NYC Analysis
 
-### Import, clean, and tidy
+### Import, clean and tidy
 
 ```{r zillow-import}
 rent_raw <- read_csv("./zillow_data/zip_zori.csv", show_col_types = FALSE) %>% clean_names()
@@ -247,7 +249,7 @@ p_trend <- rent_df %>%
     expand = expansion(mult = c(0.01, 0.02))
   ) +
   labs(
-    title = "NYC Rental Prices by ZIP (No Smoothing)",
+    title = "NYC Rental Prices by ZIP",
     subtitle = "Each thin line is one Zip Code; Faceted by borough/county",
     x = NULL, y = "Monthly rent (USD)"
   ) +
