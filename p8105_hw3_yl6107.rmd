@@ -15,6 +15,7 @@ library(lubridate)
 library(scales)
 library(knitr)
 library(gt)
+library(patchwork)
 ```
 
 ## Problem 1 – Instacart Data
@@ -101,7 +102,7 @@ aisle_counts %>%
   )
 ```
 
-### 3) Table: three most popular items in selected aisles
+### 3) Table: Three most popular items in selected aisles
 
 Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
 
@@ -126,7 +127,7 @@ top3_tbl %>%
   tab_header(title = "Top 3 Products in Selected Aisles")
 ```
 
-### 4) The Mean Purchase Time
+### 4) Table: The mean purchase time
 
 Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
 
@@ -147,3 +148,189 @@ mean_hour_tbl %>%
   tab_header(title = "Mean order hour by day-of-week") %>% 
   cols_label(product_name = "")
 ```
+
+## Problem 2 – Zillow NYC Analysis
+
+### Import, clean, and tidy
+
+```{r zillow-import}
+rent_raw <- read_csv("./zillow_data/zip_zori.csv", show_col_types = FALSE) %>% clean_names()
+xwalk    <- read_csv("./zillow_data/zip_codes.csv", show_col_types = FALSE) %>% clean_names()
+
+# Tidy to long, parse year-month, remove rows with empty rent
+rent_long <- rent_raw %>% 
+  pivot_longer(
+    cols = matches("^x\\d{4}_\\d{2}_\\d{2}$"),
+    names_to = "date", values_to = "rent"
+  ) %>% 
+  mutate(
+    date = ymd(str_replace(date, "^x", "")), # in case column names start with x
+    year = year(date),
+    month = month(date)
+  ) %>%
+  filter(!is.na(rent))
+
+# merge neighbourhood information into rent
+xwalk <- xwalk %>%
+  mutate(zip = as.character(zip_code)) %>%
+  select(zip, neighborhood) %>%
+  distinct(zip, .keep_all = TRUE)
+
+rent_df <- rent_long %>%
+  mutate(zip = as.character(region_name)) %>%
+  select(-region_type, -region_name, -state_name) %>%
+  left_join(xwalk, by = "zip") %>% 
+  arrange(zip, date)
+
+rent_df
+```
+
+### Zip code analysis
+
+There are 116 months between January 2015 and August 2024. How many ZIP codes are observed 116 times? How many are observed fewer than 10 times? Why are some ZIP codes are observed rarely and others observed in each month?
+
+```{r zillow-zip-coverage}
+zip_counts <- rent_df %>% 
+  count(zip, name = "n_months")
+
+n_116 <- sum(zip_counts$n_months == 116, na.rm = TRUE)
+n_lt10 <- sum(zip_counts$n_months < 10, na.rm = TRUE)
+
+tibble(
+  exactly_116_months = n_116,
+  fewer_than_10_months = n_lt10
+) %>% knitr::kable()
+```
+
+Some ZIP codes might not be residential areas, so there might not be enough rent data for each month.
+
+### Table: average rental price by borough and year
+
+Create a reader-friendly table showing the average rental price in each borough and year (not month). Comment on trends in this table.
+
+```{r zillow-boro-year-table}
+boro_year_tbl <- rent_df %>% 
+  group_by(county_name, year) %>% 
+  summarize(avg_rent = mean(rent, na.rm = TRUE), .groups = "drop") %>% 
+  arrange(county_name, year)
+
+boro_year_tbl %>% 
+  mutate(year = as.character(year)) %>% 
+  pivot_wider(names_from = year, values_from = avg_rent) %>% 
+  gt() %>% 
+  fmt_currency(everything(), currency = "USD", decimals = 0) %>% 
+  cols_label(county_name = "") %>%
+  tab_header(title = "Average Rental Price by Borough and Year")
+```
+
+### Plot: Price change by boroughs
+
+Make a plot showing NYC Rental Prices within ZIP codes for all available years. Your plot should facilitate comparisons across boroughs. Comment on any significant elements of this plot.
+
+```{r fig.width=10, fig.height=8}
+p_trend <- rent_df %>% 
+  ggplot(aes(x = date, y = rent, group = zip)) +
+  geom_line(alpha = 0.5, linewidth = 0.25) +
+  facet_wrap(~ county_name, ncol = 2) +
+  scale_y_continuous(
+    limits = c(1000, 6000),
+    labels = label_dollar(accuracy = 1)
+    ) +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y",
+    expand = expansion(mult = c(0.01, 0.02))
+  ) +
+  labs(
+    title = "NYC Rental Prices by ZIP (No Smoothing)",
+    subtitle = "Each thin line is one Zip Code; Faceted by borough/county",
+    x = NULL, y = "Monthly rent (USD)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    strip.text = element_text(face = "bold", size = 12), 
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 9),
+    panel.grid.minor = element_blank()
+  )
+
+p_trend
+
+```
+
+Overall, rental prices across all New York City boroughs show a clear upward trend from 2015 to 2024.
+
+Both *New York County (Manhattan)* and *Kings County (Brooklyn)* experienced a noticeable dip during the COVID-19 pandemic, likely because many residents began working from home, reducing the demand for apartments near office areas.
+
+A few data points in *New York County* fall outside the plotted range due to their exceptionally high prices; these are ignored here since they do not affect the overall trend.
+
+Finally, *Richmond County (Staten Island)* only appears in the dataset after the pandemic period, which may indicate that residential coverage in this area was limited or that Zillow did not include it before.
+
+### Plot: Average rental price in 2023
+
+Compute the average rental price within each ZIP code over each month in 2023. Make a reader-friendly plot showing the distribution of ZIP-code-level rental prices across boroughs; put differently, your plot should facilitate the comparison of the distribution of average rental prices across boroughs. Comment on this plot.
+
+```{r zillow-2023-zip-dist}
+# Compute ZIP-level overall average in 2023 (so each ZIP appears once)
+rent_2023 <- rent_df %>% 
+  filter(year == 2023) %>%
+  group_by(county_name, zip) %>% 
+  summarize(avg_rent = mean(rent, na.rm = TRUE), .groups = "drop")
+
+# Violin + boxplot comparison across boroughs
+p_2023 <- rent_2023 %>% 
+  ggplot(aes(x = county_name, y = avg_rent)) +
+  geom_violin(trim = FALSE, fill = "skyblue", alpha = 0.5) +
+  scale_y_continuous(labels = label_dollar(accuracy = 1)) +
+  labs(
+    title = "Distribution of ZIP-level Average Rents in 2023",
+    subtitle = "Each point represents a ZIP's mean monthly rent (2023)",
+    x = NULL,
+    y = "ZIP average rent in 2023 (USD)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 0.5, size = 11),
+    panel.grid.minor = element_blank()
+  )
+
+p_2023
+```
+
+The 2023 distribution plot shows clear differences in rental price levels across boroughs.
+
+- **New York County** has the highest median and the widest range, indicating both high prices and large variation among ZIP codes.  
+- **Kings County** and **Queens County** follow, with moderately high rents and a more compact distribution.  
+- **Bronx** and **Richmond County* exhibit the lowest typical rents, reflecting more affordable housing markets. 
+
+Overall, the plot highlights New York County’s dominance in price levels and the pronounced inequality in housing costs across the city’s boroughs.
+
+### Export the plots
+
+Combine the two previous plots into a single graphic, and export this to a results folder in your repository.
+
+```{r}
+# Create results folder if it doesn't exist
+if (!dir.exists("results")) dir.create("results")
+
+# Combine the two plots vertically
+combined_plot <- p_trend / p_2023 + 
+  plot_layout(heights = c(2, 1)) + 
+  plot_annotation(
+    title = "NYC Rental Price Trends and 2023 ZIP-level Distributions",
+    theme = theme(
+      plot.title = element_text(size = 16, face = "bold", hjust = 0.5)
+    )
+  )
+
+# Export as high-quality PNG
+ggsave(
+  filename = "results/nyc_rental_combined.png",
+  plot = combined_plot,
+  width = 10, height = 12, dpi = 300
+)
+```
+
+# Problem 3
+
+
+
