@@ -266,11 +266,11 @@ p_trend
 
 Overall, rental prices across all New York City boroughs show a clear upward trend from 2015 to 2024.
 
-Both *New York County* and *Kings County* experienced a noticeable dip during the COVID-19 pandemic, likely because many residents began working from home, reducing the demand for apartments near office areas.
+Both **New York County** and **Kings County** experienced a noticeable dip during the COVID-19 pandemic, likely because many residents began working from home, reducing the demand for apartments near office areas.
 
-A few data points in *New York County* fall outside the plotted range due to their exceptionally high prices; these are ignored here since they do not affect the overall trend.
+A few data points in **New York County** fall outside the plotted range due to their exceptionally high prices; these are ignored here since they do not affect the overall trend.
 
-Finally, *Richmond County* only appears in the dataset after the pandemic period, which may indicate that residential coverage in this area was limited or that Zillow did not include it before.
+Finally, **Richmond County** only appears in the dataset after the pandemic period, which may indicate that residential coverage in this area was limited or that Zillow did not include it before.
 
 ### Plot: Average rental price in 2023
 
@@ -307,7 +307,7 @@ The 2023 distribution plot shows clear differences in rental price levels across
 
 - **New York County** has the highest median and the widest range, indicating both high prices and large variation among ZIP codes.  
 - **Kings County** and **Queens County** follow, with moderately high rents and a more compact distribution.  
-- **Bronx** and **Richmond County* exhibit the lowest typical rents, reflecting more affordable housing markets. 
+- **Bronx** and **Richmond County** exhibit the lowest typical rents, reflecting more affordable housing markets. 
 
 Overall, the plot highlights New York County’s dominance in price levels and the pronounced inequality in housing costs across the city’s boroughs.
 
@@ -381,6 +381,7 @@ nhanes <- nhanes_demo %>%
       "More than High School" = "3"
     )
   ) %>%
+  mutate(sex = factor(sex, levels = c("Female", "Male"))) %>%
   # filter out people who are younger than 21
   filter(age >= 21, !is.na(sex), !is.na(education)) %>% 
   arrange(seqn, minute)
@@ -401,6 +402,7 @@ edu_sex_tbl <- nhanes %>%
 edu_sex_tbl %>% 
   gt() %>% 
   tab_header(title = "Headcount by education and sex") %>%
+  cols_label(education = "") %>%
   as_raw_html()
 ```
 
@@ -408,12 +410,14 @@ edu_sex_tbl %>%
 age_df <- nhanes %>% distinct(seqn, age, sex, education)
 
 age_df <- age_df %>%
-  mutate(age_group = cut(
-    age,
-    breaks = seq(20, 90, by = 10),
-    right = FALSE,
-    labels = c("20–29", "30–39", "40–49", "50–59", "60–69", "70–79", "80+")
-  ))
+  mutate(
+    age_group = cut(
+      age,
+      breaks = seq(20, 90, by = 10),
+      right = FALSE,
+      labels = c("20–29", "30–39", "40–49", "50–59", "60–69", "70–79", "80+")
+    )
+  )
 
 age_df %>%
   ggplot(aes(x = age_group, fill = sex)) +
@@ -487,5 +491,5 @@ minute_course %>%
 
 Higher MIMS indicates greater overall physical activity. The 24-hour profiles show typical daily patterns: activity rises sharply in the morning, stays high during daytime, and decreases after evening.
 
-It's quite interesting that men and women with a lower education level generally have the same activity level during the day, but for people with a higher education level, men's day-time activity level is higher compared to women's.
+It's quite interesting that men and women with a lower education level generally have the same activity level during the day, but for people with a higher education level, women's day-time activity level is higher compared to men's.
 
