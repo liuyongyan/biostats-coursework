@@ -147,7 +147,8 @@ mean_hour_tbl %>%
   gt(rowname_col = "product_name") %>% 
   fmt_number(everything(), decimals = 2) %>% 
   tab_header(title = "Mean order hour by day-of-week") %>% 
-  cols_label(product_name = "")
+  cols_label(product_name = "") %>%
+  as_raw_html() 
 ```
 
 ## Problem 2 – Zillow NYC Analysis
@@ -221,7 +222,8 @@ boro_year_tbl %>%
   gt() %>% 
   fmt_currency(everything(), currency = "USD", decimals = 0) %>% 
   cols_label(county_name = "") %>%
-  tab_header(title = "Average Rental Price by Borough and Year")
+  tab_header(title = "Average Rental Price by Borough and Year") %>%
+  as_raw_html() 
 ```
 
 ### Plot: Price change by boroughs
