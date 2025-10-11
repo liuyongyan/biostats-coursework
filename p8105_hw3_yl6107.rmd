@@ -226,6 +226,8 @@ boro_year_tbl %>%
   as_raw_html() 
 ```
 
+The average rental price is generally increasing in all boroughs.
+
 ### Plot: Price change by boroughs
 
 Make a plot showing NYC Rental Prices within ZIP codes for all available years. Your plot should facilitate comparisons across boroughs. Comment on any significant elements of this plot.
@@ -311,7 +313,7 @@ Overall, the plot highlights New York County’s dominance in price levels and t
 
 Combine the two previous plots into a single graphic, and export this to a results folder in your repository.
 
-```{r}
+```{r fig.height=12}
 # Create results folder if it doesn't exist
 if (!dir.exists("results")) dir.create("results")
 
@@ -331,7 +333,11 @@ ggsave(
   plot = combined_plot,
   width = 10, height = 12, dpi = 300
 )
+
+# show combined plot
+combined_plot
 ```
+
 
 ## Problem 3 – NHANES Accelerometer + Demographics
 
@@ -402,9 +408,9 @@ age_df <- nhanes %>% distinct(seqn, age, sex, education)
 age_df <- age_df %>%
   mutate(age_group = cut(
     age,
-    breaks = seq(20, 80, by = 10),
+    breaks = seq(20, 90, by = 10),
     right = FALSE,
-    labels = c("20–29", "30–39", "40–49", "50–59", "60–69", "70–79")
+    labels = c("20–29", "30–39", "40–49", "50–59", "60–69", "70–79", "80+")
   ))
 
 age_df %>%
