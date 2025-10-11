@@ -42,7 +42,7 @@ instacart %>%
     unique_users = n_distinct(instacart$user_id),
     unique_orders = n_distinct(instacart$order_id)
   ) %>% 
-  knitr::kable()
+  knitr::kable(format = "markdown")
 ```
 
 The dataset contains detailed records of Instacart orders at the product level (one row per product in an order), with variables for order timing, aisle, department, product name, etc. It contains `r n_distinct(instacart$user_id)` unique users and `r nrow(instacart)` rows, where each row in the dataset is a product from an order. There is a single order per user in this dataset.
@@ -75,7 +75,7 @@ n_aisles <- aisle_counts %>% nrow()
 n_aisles
 
 # Show aisles with most products ordered
-head(aisle_counts, 10) %>% knitr::kable()
+head(aisle_counts, 10) %>% knitr::kable(format = "markdown")
 ```
 
 There are `r n_aisles` aisles. The most-ordered aisles include those shown in the table above (e.g., packaged vegetables/fruits, fresh fruits, etc.).
@@ -199,7 +199,7 @@ n_lt10 <- sum(zip_counts$n_months < 10, na.rm = TRUE)
 tibble(
   exactly_116_months = n_116,
   fewer_than_10_months = n_lt10
-) %>% knitr::kable()
+) %>% knitr::kable(format = "markdown")
 ```
 
 Some ZIP codes might not be residential areas, so there might not be enough rent data for each month.
@@ -259,11 +259,11 @@ p_trend
 
 Overall, rental prices across all New York City boroughs show a clear upward trend from 2015 to 2024.
 
-Both *New York County (Manhattan)* and *Kings County (Brooklyn)* experienced a noticeable dip during the COVID-19 pandemic, likely because many residents began working from home, reducing the demand for apartments near office areas.
+Both *New York County* and *Kings County* experienced a noticeable dip during the COVID-19 pandemic, likely because many residents began working from home, reducing the demand for apartments near office areas.
 
 A few data points in *New York County* fall outside the plotted range due to their exceptionally high prices; these are ignored here since they do not affect the overall trend.
 
-Finally, *Richmond County (Staten Island)* only appears in the dataset after the pandemic period, which may indicate that residential coverage in this area was limited or that Zillow did not include it before.
+Finally, *Richmond County* only appears in the dataset after the pandemic period, which may indicate that residential coverage in this area was limited or that Zillow did not include it before.
 
 ### Plot: Average rental price in 2023
 
