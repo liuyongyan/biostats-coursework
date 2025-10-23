@@ -226,13 +226,13 @@ over60_fhp_high <- dat %>%
   filter(age_group == "60+") %>%
   summarise(
     prop_fhp_high = mean(
-      (fhp_mm > 40) | (is.na(fhp_mm) & fhp_cat %in% c(4,5)),
+      (fhp_mm > 40) | (is.na(fhp_mm) & fhp_cat >= 4),
       na.rm = TRUE
     ) * 100
   )
 ```
 
-Among subjects ≥ 60 years, the proportion with high forward head posture (FHP > 40 mm or equivalent category 4–5) is `r round(over60_fhp_high$prop_fhp_high, 1)`%, similar to the reported 34.5%.
+Among subjects ≥ 60 years, the proportion with high forward head posture (FHP > 40 mm) is `r round(over60_fhp_high$prop_fhp_high, 1)`%, similar to the reported 34.5%.
 
 Overall, the data reproduce the main descriptive findings, but missing values weaken the analysis.
 
