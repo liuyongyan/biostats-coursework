@@ -23,7 +23,7 @@ library(patchwork)
 
 This project is about posture and a head bump called the **external occipital protuberance (EOP)**. We use a dataset that came with the authors’ correction. We will clean the data, make better plots and check the claims.
 
-## Problem 1 — Data (import, clean, describe)
+## Problem 1 — Import & clean data
 
 Read the Excel file from `data/`. The real data start on line 9 of sheet **“this one”**. Clean names. Make clear labels for **sex**, **age group**. 
 
@@ -136,7 +136,7 @@ dat <- dat |>
 
 ```
 
-## Problem 2 — Plots (better than the originals)
+## Problem 2 — Better plots
 
 The violin diagram below shows the distribution of FHP size in each age/sex group. And, the bar chart shows the EEOP rate in each age/sex group.
 
@@ -213,3 +213,28 @@ The range and distribution of forward head posture (FHP) values are generally si
 Across all panels, there is no obvious visual association between FHP size and EOP size — dots are scattered rather randomly, and no consistent trend appears.
 
 There is also some indication that EOP size variation may plateau in older age groups, but without a strong pattern linking posture to bony growth.
+
+## Problem 3 — Reproduce numbers + discuss
+
+The authors’ reported sample sizes for each age group are broadly consistent with our dataset.  However, many records lack either *EOP* or *FHP* values, so only about `r round(mean(!is.na(dat$eop_mm) & !is.na(dat$fhp_mm)) * 100, 1)`% of the total sample can be used for EOP/FHP correlation analyses.
+
+The reported mean and SD of FHP are similar to ours (mean =`r round(mean(dat$fhp_mm, na.rm=TRUE),1)` mm, SD =`r round(sd(dat$fhp_mm, na.rm=TRUE),1)` mm).
+
+EEOP is defined as *EOP category ≥ 2* or roughly *EOP ≥ 10 mm*. Using this definition, the EEOP prevalence in our data is `r round(mean(dat$eeop, na.rm=TRUE)*100,1)`%, close to the reported 33%.  
+
+```{r}
+over60_fhp_high <- dat %>%
+  filter(age_group == "60+") %>%
+  summarise(
+    prop_fhp_high = mean(
+      (fhp_mm > 40) | (is.na(fhp_mm) & fhp_cat %in% c(4,5)),
+      na.rm = TRUE
+    ) * 100
+  )
+```
+
+Among subjects ≥ 60 years, the proportion with high forward head posture (FHP > 40 mm or equivalent category 4–5) is `r round(over60_fhp_high$prop_fhp_high, 1)`%, similar to the reported 34.5%.
+
+Overall, the data reproduce the main descriptive findings, but missing values weaken the analysis.
+
+No clear link between FHP and EOP size is visible, so the dataset does not support a causal claim that cell-phone use causes “horn” growth. Future work should include measured phone-use exposure and longitudinal tracking.
