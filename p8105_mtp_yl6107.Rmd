@@ -19,7 +19,7 @@ library(scales)
 library(patchwork)
 ```
 
-## Intro
+## Introduction
 
 This project is about posture and a head bump called the **external occipital protuberance (EOP)**. This analysis refers to the [original paper](https://www.nature.com/articles/s41598-018-21625-1) and its [correction](https://www.nature.com/articles/s41598-019-49153-6).
 
@@ -29,9 +29,9 @@ We use a dataset that came with the authors’ correction. We will clean the dat
 
 Read the Excel file from `data/`.
 
-Missing **age_group** are filled, but we didn't fill the missing data for the column **EOP size** and **FHP size**.
+Missing **age_group** are filled, but we did **not** fill the missing data for the column **EOP size** and **FHP size**.
 
-**In these two *"size"* coloumns, most of the rows with a missing *"size"* value have a corresponding *'category'* value also as 0.** It's unclear whether such a participate is in the number 0 category or that 0 just means "N/A". We should just exclude those rows from the analysis.
+**In these two *"size"* coloumns, most of the rows with a missing *"size"* value have a corresponding *"category"* value as "0".** It is unclear whether this "0" indicates that the participant actually belongs to category "0" or if it represents a missing or “N/A” value. We should just exclude those rows from the analysis.
 
 ```{r load-clean}
 path_xlsx <- "data/p8105_mtp_data.xlsx"
@@ -113,8 +113,8 @@ knitr::kable(
 **Notes.**
 
 - Total participants = `r n_total`
-- Age groups are ordered from **18–30** up to **60+**.
-- We use **EEOP = TRUE** if **EOP category ≥ 2** from the definition in the article.
+- Age groups are ordered from **18–30** to **60+**.
+- We use **EEOP = TRUE** if **EOP category ≥ 2** from the article.
 - For EOP size, we tolerate the missing rows for now, but, if the value of **eop_mm** and **eop_cat** are contradictory to each other, we mark the row as **invalid**. FHP is also treated in the same way.
 
 Here is a summary about the invalid rows. They are directly removed from the data set.
