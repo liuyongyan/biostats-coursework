@@ -115,7 +115,7 @@ knitr::kable(
 - Total participants = `r n_total`
 - Age groups are ordered from **18–30** to **60+**.
 - We use **EEOP = TRUE** if **EOP category ≥ 2** from the article.
-- For EOP size, we tolerate the missing rows for now, but, if the value of **eop_mm** and **eop_cat** are contradictory to each other, we mark the row as **invalid**. FHP is also treated in the same way.
+- For EOP size, we tolerate the missing rows, but, if value of **eop_mm** and **eop_cat** contradict to each other, we mark the row as **invalid**. FHP is also treated in the same way.
 
 Here is a summary about the invalid rows. They are directly removed from the data set.
 
@@ -206,11 +206,11 @@ p_scatter <- ggplot(
 p_scatter
 ```
 
-Overall, males show a clearly higher rate of enlarged external occipital protuberance (EEOP) than females across all age groups.
+Overall, males show a clearly higher rate of EEOP than females across all age groups.
 
-The range and distribution of forward head posture (FHP) values are generally similar between men and women, although males tend to have slightly wider variability.
+The range and distribution of FHP values are similar between men and women, although males tend to have slightly wider variability.
 
-Across all panels, there is no obvious visual association between FHP size and EOP size — dots are scattered rather randomly, and no consistent trend appears.
+Across panels, there is no clear visual association between FHP and EOP — dots are scattered rather randomly without a consistent trend.
 
 ## Problem 3 — Discussion
 
@@ -220,7 +220,7 @@ The reported mean and SD of FHP are similar to ours (mean =`r round(mean(dat$fhp
 
 EEOP is defined as *EOP category ≥ 2* or roughly *EOP ≥ 10 mm*. Using this definition, the EEOP prevalence in our data is `r round(mean(dat$eeop, na.rm=TRUE)*100,1)`%, close to the reported 33%. But, if we exclude all the participants with missing **EOP Size** value, the EEOP prevalence becomes `r round(mean(dat$eeop[!is.na(dat$eop_mm)], na.rm = TRUE) * 100, 1)`%.
 
-Among subjects ≥ 60 years, the proportion with high forward head posture (FHP > 40 mm) is `r round(mean(dat$fhp_cat[dat$age_group == "60+" & !is.na(dat$fhp_mm)] >= 4) * 100, 1)`%, similar to the reported 34.5%.
+Among subjects ≥ 60 years, the proportion with high forward head posture (FHP > 40 mm) is `r round(mean(dat$fhp_cat[dat$age_group == "60+" & !is.na(dat$fhp_mm)] >= 4) * 100, 1)`%, similar to the reported 34.5%. There are no clear evidence to show that high FHP is more common in older subjects
 
 Overall, the data reproduce the main descriptive findings, but missing values weaken the analysis.
 
