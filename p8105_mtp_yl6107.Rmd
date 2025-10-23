@@ -16,6 +16,7 @@ library(readxl)
 library(janitor)
 library(broom)
 library(scales)
+library(patchwork)
 ```
 
 ## Intro
@@ -26,7 +27,7 @@ This project is about posture and a head bump called the **external occipital pr
 
 Read the Excel file from `data/`. The real data start on line 9 of sheet **“this one”**. Clean names. Make clear labels for **sex**, **age group**. 
 
-We didn't fill the missing data in **eop_mm** and **fhp_mm** column even if we can *guess* a value from the corresponding category. If we do so, a lot of statistics, like the mean size, will be polluted.
+Missing **age_group** are filled, but we didn't fill the missing data in **eop_mm** and **fhp_mm** column even if we can *guess* a value from the corresponding category. If we do so, a lot of statistics, like the mean size, will be polluted.
 
 ```{r load-clean}
 path_xlsx <- "data/p8105_mtp_data.xlsx"
@@ -40,7 +41,6 @@ dat <- raw |>
   rename(
     sex_num      = sex,
     age_years    = age,
-    age_group_id = age_group,
     eop_mm       = eop_size_mm,
     eop_cat_raw  = eop_size,
     eop_vis      = eop_visibility_classification,
@@ -54,12 +54,20 @@ dat <- raw |>
                     TRUE ~ as.character(sex_num)),
     sex = factor(sex, levels = c("Male","Female")),
     age_group = case_when(
-      age_group_id == 2 ~ "18–30",
-      age_group_id == 3 ~ "31–40",
-      age_group_id == 4 ~ "41–50",
-      age_group_id == 5 ~ "51–60",
-      age_group_id %in% c(6,7,8) ~ "60+",
-      TRUE ~ NA_character_
+      age_group == 2 ~ "18–30",
+      age_group == 3 ~ "31–40",
+      age_group == 4 ~ "41–50",
+      age_group == 5 ~ "51–60",
+      age_group %in% c(6, 7, 8) ~ "60+",
+      # if missing, compute from age_years
+      TRUE ~ case_when(
+        age_years <= 30 ~ "18–30",
+        age_years <= 40 ~ "31–40",
+        age_years <= 50 ~ "41–50",
+        age_years <= 60 ~ "51–60",
+        age_years > 60  ~ "60+",
+        TRUE ~ NA_character_
+      )
     ) |> factor(levels = c("18–30","31–40","41–50","51–60","60+"), ordered = TRUE),
     eop_cat = as.integer(eop_cat_raw),
     fhp_cat = as.integer(fhp_cat),
@@ -115,8 +123,93 @@ mismatch_summary <- dat %>%
   )
 
 print(mismatch_summary)
+```
 
-# remove the 2 mismatch flags and only keep the 'invalid' flag
-dat <- dat |> select(-eop_mismatch, -fhp_mismatch)
+Inconsistent data are excluded from the data set.
+
+```{r}
+# remove the invlid rows
+dat <- dat |> 
+  filter(!invalid) |>
+  filter(!is.na(age_years)) |>
+  select(-eop_mismatch, -fhp_mismatch, -invalid)
 
 ```
+
+## Problem 2 — Plots (better than the originals)
+
+The violin diagram below shows the distribution of FHP size in each age/sex group. And, the bar chart shows the EEOP rate in each age/sex group.
+
+```{r fig-fhp, fig.height=10}
+# FHP distribution (violin + box), by age and sex
+p_fhp <- dat |>
+  filter(!is.na(fhp_mm)) |>
+  ggplot(aes(x = age_group, y = fhp_mm, fill = sex)) +
+  geom_violin(trim = FALSE, alpha = 0.5) +
+  geom_boxplot(width = 0.18, outlier.alpha = 0.4,
+               position = position_dodge2(width = 0.9)) +
+  labs(x = "Age group", y = "FHP (mm)",
+       title = "FHP distribution by age group and sex") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
+
+# Calculate EEOP rate by eage and sex
+eeop_by <- dat |>
+  group_by(sex, age_group) |>
+  summarise(n = dplyr::n(),
+            rate_eeop = mean(eeop, na.rm = TRUE), .groups = "drop")
+
+p_rate <- eeop_by |>
+  ggplot(aes(x = age_group, y = rate_eeop, fill = sex)) +
+  geom_col(position = position_dodge(width = 0.9)) +
+  geom_text(aes(label = percent(rate_eeop, accuracy = 0.1)),
+            position = position_dodge(width = 0.9),
+            vjust = -0.25, size = 3) +
+  scale_y_continuous(labels = percent_format(accuracy = 1), limits = c(0, 1)) +
+  labs(x = "Age group", y = "EEOP rate",
+       title = "Enlarged EOP (EEOP) rate by age group and sex") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
+
+p_fhp / p_rate + plot_annotation(title = "Two-panel figure: FHP distribution and EEOP rate")
+```
+
+The plot below shows the correlation between EOP size and FHP by age and sex.
+
+```{r fig-grid, fig.height=6, fig.width=12, warning=FALSE, message=FALSE}
+# 2 × 5 grid: FHP vs EOP size (category), split by age × sex
+eop_mid_map <- c("0" = 2.5, "1" = 7.5, "2" = 12.5, "3" = 17.5, "4" = 22.5, "5" = 27.5)
+
+# filter out rows without eop_mm and fhp_mm data
+dat_scatter <- dat |> filter(!is.na(eop_mm) & !is.na(fhp_mm))
+
+# dot plot (scatter), optional faint linear trend to show association
+p_scatter <- ggplot(
+  dat_scatter,
+  aes(x = fhp_mm, y = eop_mm)
+) +
+  geom_point(alpha = 0.45, size = 1.6) +
+  # comment next line if you want strictly "dots only"
+  geom_smooth(method = "lm", se = FALSE, linewidth = 0.6, linetype = "22", color = "grey40") +
+  facet_grid(rows = vars(sex), cols = vars(age_group)) +
+  labs(
+    x = "FHP size (mm)",
+    y = "EOP size (mm)",
+    title = "Association between FHP size and EOP size across age × sex (2 × 5 panels)"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    strip.text = element_text(face = "bold"),
+    panel.grid.minor = element_blank()
+  )
+
+p_scatter
+```
+
+Overall, males show a clearly higher rate of enlarged external occipital protuberance (EEOP) than females across all age groups.
+
+The range and distribution of forward head posture (FHP) values are generally similar between men and women, although males tend to have slightly wider variability.
+
+Across all panels, there is no obvious visual association between FHP size and EOP size — dots are scattered rather randomly, and no consistent trend appears.
+
+There is also some indication that EOP size variation may plateau in older age groups, but without a strong pattern linking posture to bony growth.
