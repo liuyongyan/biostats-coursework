@@ -21,13 +21,15 @@ library(patchwork)
 
 ## Intro
 
-This project is about posture and a head bump called the **external occipital protuberance (EOP)**. We use a dataset that came with the authors’ correction. We will clean the data, make better plots and check the claims.
+This project is about posture and a head bump called the **external occipital protuberance (EOP)**. This analysis refers to the [original paper](https://www.nature.com/articles/s41598-018-21625-1) and its [correction](https://www.nature.com/articles/s41598-019-49153-6).
+
+We use a dataset that came with the authors’ correction. We will clean the data, make some better plots and check the claims by the original author.
 
 ## Problem 1 — Import & clean data
 
-Read the Excel file from `data/`. The real data start on line 9 of sheet **“this one”**. Clean names. Make clear labels for **sex**, **age group**. 
+Read the Excel file from `data/`. 
 
-Missing **age_group** are filled, but we didn't fill the missing data in **eop_mm** and **fhp_mm** column even if we can *guess* a value from the corresponding category. If we do so, a lot of statistics, like the mean size, will be polluted.
+Missing **age_group** are filled, but we didn't fill the missing data in **eop_mm** and **fhp_mm** column. We can *guess* a value from the corresponding category, but, if we do so, a lot of statistics, like the mean size, will be polluted.
 
 ```{r load-clean}
 path_xlsx <- "data/p8105_mtp_data.xlsx"
@@ -52,7 +54,7 @@ dat <- raw |>
     sex = case_when(sex_num == 1 ~ "Male",
                     sex_num == 0 ~ "Female",
                     TRUE ~ as.character(sex_num)),
-    sex = factor(sex, levels = c("Male","Female")),
+    sex = factor(sex, levels = c("Female", "Male")),
     age_group = case_when(
       age_group == 2 ~ "18–30",
       age_group == 3 ~ "31–40",
@@ -90,27 +92,30 @@ dat <- raw |>
 
 ```
 
-Total number of participants and the sex distribution are shown as below, as well as a summary of EOP and FHP size.
+Total # participants / age and gender distribution:
 
 ```{r}
 # Quick sanity checks
 n_total <- nrow(dat)
-n_by_sex <- dat |>
-  count(sex, name = "n") |>
+n_by_sex_age <- dat |>
+  count(sex, age_group, name = "n") |>
   mutate(p = n / sum(n))
 
-n_total
-n_by_sex
-summary(dat[,c("age_years","fhp_mm","eop_mm")])
+knitr::kable(
+  n_by_sex_age,
+  digits = 3,
+  caption = paste0("**Table**: Participants by sex and age group")
+)
 ```
 
 **Notes.**
 
+- Total participants = `n_total`
 - Age groups are ordered from **18–30** up to **60+**.
 - We use **EEOP = TRUE** if **EOP category ≥ 2** from the definition in the article.
-- Since a lot of rows have **eop_mm** missing, we tolerate the missing rows. But, if the value of **eop_mm** and **eop_cat** are contradictory to each other, we mark the row as **invalid**. We also treat FHP in the same way.
+- For EOP size, we tolerate the missing rows, but, if the value of **eop_mm** and **eop_cat** are contradictory to each other, we mark the row as **invalid**. FHP is also treated in the same way.
 
-Here is a summary about the missing rows.
+Here is a summary about the invalid rows, which are also removed.
 
 ```{r mismatch}
 # Summaries required in step 2
@@ -123,11 +128,7 @@ mismatch_summary <- dat %>%
   )
 
 print(mismatch_summary)
-```
 
-Inconsistent data are excluded from the data set.
-
-```{r}
 # remove the invlid rows
 dat <- dat |> 
   filter(!invalid) |>
@@ -138,7 +139,7 @@ dat <- dat |>
 
 ## Problem 2 — Better plots
 
-The violin diagram below shows the distribution of FHP size in each age/sex group. And, the bar chart shows the EEOP rate in each age/sex group.
+Optimize the data plots in the original paper.
 
 ```{r fig-fhp, fig.height=10}
 # FHP distribution (violin + box), by age and sex
@@ -211,8 +212,6 @@ Overall, males show a clearly higher rate of enlarged external occipital protube
 The range and distribution of forward head posture (FHP) values are generally similar between men and women, although males tend to have slightly wider variability.
 
 Across all panels, there is no obvious visual association between FHP size and EOP size — dots are scattered rather randomly, and no consistent trend appears.
-
-There is also some indication that EOP size variation may plateau in older age groups, but without a strong pattern linking posture to bony growth.
 
 ## Problem 3 — Reproduce numbers + discuss
 
