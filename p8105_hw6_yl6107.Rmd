@@ -29,8 +29,8 @@ Load the Washington Post homicide data, filter to valid numeric ages and White/B
 
 ```{r load_homicide_data}
 homicide_df =
-  # Load data from GitHub
-  read_csv("https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv", show_col_types = FALSE) |>
+  # Load data from local file
+  read_csv("data/homicide-data.csv", show_col_types = FALSE) |>
   # Keep only rows where victim_age contains only digits (filters out "Unknown", etc.)
   filter(str_detect(victim_age, "^[0-9]+$")) |>
   mutate(
