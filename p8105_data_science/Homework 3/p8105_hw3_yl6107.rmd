@@ -1,0 +1,495 @@
+---
+title: "Homework 3 - P8105 Data Science I"
+author: "Yongyan Liu (yl6107)"
+date: "Oct 11, 2025"
+output:
+  github_document:
+    toc: true
+    toc_depth: 3
+---
+
+```{r libraries, message=FALSE}
+library(tidyverse)
+library(janitor)
+library(lubridate)
+library(scales)
+library(knitr)
+library(gt)
+library(patchwork)
+```
+
+## Problem 1 – Instacart Data
+
+Load from `p8105.datasets`; **do not** keep a local copy of the dataset.
+
+```{r load-instacart}
+library(p8105.datasets)
+data("instacart")
+
+# show the data
+instacart <- instacart %>% clean_names()
+instacart
+```
+
+### Quick description of the dataset
+
+```{r describe-instacart}
+# show data size and structure
+instacart %>% 
+  summarize(
+    n_rows = n(),
+    n_cols = ncol(.),
+    unique_users = n_distinct(instacart$user_id),
+    unique_orders = n_distinct(instacart$order_id)
+  ) %>% 
+  knitr::kable(format = "markdown")
+```
+
+The dataset contains detailed records of Instacart orders at the product level (one row per product in an order), with variables for order timing, aisle, department, product name, etc. It contains `r n_distinct(instacart$user_id)` unique users and `r nrow(instacart)` rows, where each row in the dataset is a product from an order. There is a single order per user in this dataset.
+
+Key variables include:
+
+-   order_id – Unique identifier for an order. Each row corresponds to a single product within that order.
+-   product_id – Unique numeric identifier for a specific product.
+-   add_to_cart_order – The sequence number of this product within its order (e.g., 1 = first item added, 2 = second).
+-   reordered – Binary indicator showing whether the user has purchased this product before (1 = yes, 0 = no).
+-   user_id – Unique identifier for a customer or Instacart user.
+-   order_number – The running count of orders placed by this user (1 = the user’s first order).
+-   order_dow – Day of the week the order was placed, coded 0–6 (0 = Sunday, 1 = Monday, … 6 = Saturday).
+-   order_hour_of_day – Hour of the day (0–23) when the order was placed.
+-   days_since_prior_order – Number of days since the user’s previous order (NA for their first order).
+-   product_name – Descriptive name of the product.
+-   aisle_id – Numeric ID corresponding to the aisle in which the product is categorized.
+-   department_id – Numeric ID corresponding to the department containing the aisle.
+-   aisle – Human-readable name of the aisle (e.g., “packaged vegetables fruits”).
+-   department – Human-readable name of the department (e.g., “produce”).
+
+### 1) How many aisles are there, and which aisles have the most items ordered?
+
+```{r aisle-counts}
+aisle_counts <- instacart %>% 
+  count(aisle, sort = TRUE)
+
+# Show aisle count
+n_aisles <- aisle_counts %>% nrow()
+n_aisles
+
+# Show aisles with most products ordered
+head(aisle_counts, 10) %>% knitr::kable(format = "markdown")
+```
+
+There are `r n_aisles` aisles. The most-ordered aisles include those shown in the table above (e.g., packaged vegetables/fruits, fresh fruits, etc.).
+
+### 2) Plot: Aisles with most items
+
+Make a plot that shows the number of items ordered in each aisle, limiting this to aisles with more than 10000 items ordered. Arrange aisles sensibly, and organize your plot so others can read it.
+
+```{r aisle-plot, fig.height=7}
+aisle_counts %>% 
+  filter(n > 10000) %>% 
+  mutate(aisle = fct_reorder(aisle, n)) %>% 
+  ggplot(aes(x = aisle, y = n)) +
+  coord_flip() +
+  geom_col() +
+  labs(
+    x = NULL, y = "Items ordered",
+    title = "Items ordered by aisle (>10,000)"
+  ) +
+  scale_y_continuous(
+    # use sqrt to make smaller value more visible
+    trans = "sqrt",
+    labels = label_comma(),
+    limits = c(0, 160000)
+  )
+```
+
+### 3) Table: Three most popular items in selected aisles
+
+Make a table showing the three most popular items in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”. Include the number of times each item is ordered in your table.
+
+```{r top-items-selected-aisles}
+selected_aisles <- c("baking ingredients", "dog food care", "packaged vegetables fruits")
+
+top3_tbl <- instacart %>% 
+  filter(aisle %in% selected_aisles) %>% 
+  count(aisle, product_name, sort = TRUE) %>% 
+  group_by(aisle) %>% 
+  slice_max(n, n = 3, with_ties = FALSE) %>% 
+  ungroup()
+
+top3_tbl %>% 
+  arrange(aisle, desc(n)) %>% 
+  mutate(aisle = paste0("Aisle: ", aisle)) %>%
+  gt(rowname_col = "product_name", groupname_col = "aisle") %>% 
+  cols_label(
+    aisle = "Aisle",
+    product_name = "Product",
+    n = "Times ordered"
+  ) %>% 
+  tab_header(title = "Top 3 Products in Selected Aisles") %>%
+  as_raw_html()
+```
+
+### 4) Table: The mean purchase time
+
+Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
+
+```{r mean-hour-plo-icecream}
+items <- c("Pink Lady Apples", "Coffee Ice Cream")
+
+mean_hour_tbl <- instacart %>% 
+  filter(product_name %in% items) %>% 
+  mutate(order_dow = factor(order_dow, levels = 0:6,
+                            labels = c("Sun","Mon","Tue","Wed","Thu","Fri","Sat"))) %>%
+  group_by(product_name, order_dow) %>% 
+  summarize(mean_hour = mean(order_hour_of_day), .groups = "drop") %>% 
+  pivot_wider(names_from = order_dow, values_from = mean_hour)
+
+mean_hour_tbl %>% 
+  gt(rowname_col = "product_name") %>% 
+  fmt_number(everything(), decimals = 2) %>% 
+  tab_header(title = "Mean order hour by day-of-week") %>% 
+  cols_label(product_name = "") %>%
+  as_raw_html() 
+```
+
+## Problem 2 – Zillow NYC Analysis
+
+### Import, clean and tidy
+
+```{r zillow-import}
+rent_raw <- read_csv("./zillow_data/zip_zori.csv", show_col_types = FALSE) %>% clean_names()
+xwalk    <- read_csv("./zillow_data/zip_codes.csv", show_col_types = FALSE) %>% clean_names()
+
+# Tidy to long, parse year-month, remove rows with empty rent
+rent_long <- rent_raw %>% 
+  pivot_longer(
+    cols = matches("^x\\d{4}_\\d{2}_\\d{2}$"),
+    names_to = "date", values_to = "rent"
+  ) %>% 
+  mutate(
+    date = ymd(str_replace(date, "^x", "")), # in case column names start with x
+    year = year(date),
+    month = month(date)
+  ) %>%
+  filter(!is.na(rent))
+
+# merge neighbourhood information into rent
+xwalk <- xwalk %>%
+  mutate(zip = as.character(zip_code)) %>%
+  select(zip, neighborhood) %>%
+  distinct(zip, .keep_all = TRUE)
+
+rent_df <- rent_long %>%
+  mutate(zip = as.character(region_name)) %>%
+  select(-region_type, -region_name, -state_name) %>%
+  left_join(xwalk, by = "zip") %>% 
+  arrange(zip, date)
+
+rent_df
+```
+
+### Zip code analysis
+
+There are 116 months between January 2015 and August 2024. How many ZIP codes are observed 116 times? How many are observed fewer than 10 times? Why are some ZIP codes are observed rarely and others observed in each month?
+
+```{r zillow-zip-coverage}
+zip_counts <- rent_df %>% 
+  count(zip, name = "n_months")
+
+n_116 <- sum(zip_counts$n_months == 116, na.rm = TRUE)
+n_lt10 <- sum(zip_counts$n_months < 10, na.rm = TRUE)
+
+tibble(
+  exactly_116_months = n_116,
+  fewer_than_10_months = n_lt10
+) %>% knitr::kable(format = "markdown")
+```
+
+Some ZIP codes might not be residential areas, so there might not be enough rent data for each month.
+
+### Table: average rental price by borough and year
+
+Create a reader-friendly table showing the average rental price in each borough and year (not month). Comment on trends in this table.
+
+```{r zillow-boro-year-table}
+boro_year_tbl <- rent_df %>% 
+  group_by(county_name, year) %>% 
+  summarize(avg_rent = mean(rent, na.rm = TRUE), .groups = "drop") %>% 
+  arrange(county_name, year)
+
+boro_year_tbl %>% 
+  mutate(year = as.character(year)) %>% 
+  pivot_wider(names_from = year, values_from = avg_rent) %>% 
+  gt() %>% 
+  fmt_currency(everything(), currency = "USD", decimals = 0) %>% 
+  cols_label(county_name = "") %>%
+  tab_header(title = "Average Rental Price by Borough and Year") %>%
+  as_raw_html() 
+```
+
+The average rental price is generally increasing in all boroughs.
+
+### Plot: Price change by boroughs
+
+Make a plot showing NYC Rental Prices within ZIP codes for all available years. Your plot should facilitate comparisons across boroughs. Comment on any significant elements of this plot.
+
+```{r fig.width=10, fig.height=8}
+p_trend <- rent_df %>% 
+  ggplot(aes(x = date, y = rent, group = zip)) +
+  geom_line(alpha = 0.5, linewidth = 0.25) +
+  facet_wrap(~ county_name, ncol = 2) +
+  scale_y_continuous(
+    limits = c(1000, 6000),
+    labels = label_dollar(accuracy = 1)
+    ) +
+  scale_x_date(
+    date_breaks = "1 year",
+    date_labels = "%Y",
+    expand = expansion(mult = c(0.01, 0.02))
+  ) +
+  labs(
+    title = "NYC Rental Prices by ZIP",
+    subtitle = "Each thin line is one Zip Code; Faceted by borough/county",
+    x = NULL, y = "Monthly rent (USD)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    strip.text = element_text(face = "bold", size = 12), 
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 9),
+    panel.grid.minor = element_blank()
+  )
+
+p_trend
+
+```
+
+Overall, rental prices across all New York City boroughs show a clear upward trend from 2015 to 2024.
+
+Both **New York County** and **Kings County** experienced a noticeable dip during the COVID-19 pandemic, likely because many residents began working from home, reducing the demand for apartments near office areas.
+
+A few data points in **New York County** fall outside the plotted range due to their exceptionally high prices; these are ignored here since they do not affect the overall trend.
+
+Finally, **Richmond County** only appears in the dataset after the pandemic period, which may indicate that residential coverage in this area was limited or that Zillow did not include it before.
+
+### Plot: Average rental price in 2023
+
+Compute the average rental price within each ZIP code over each month in 2023. Make a reader-friendly plot showing the distribution of ZIP-code-level rental prices across boroughs; put differently, your plot should facilitate the comparison of the distribution of average rental prices across boroughs. Comment on this plot.
+
+```{r zillow-2023-zip-dist}
+# Compute ZIP-level overall average in 2023 (so each ZIP appears once)
+rent_2023 <- rent_df %>% 
+  filter(year == 2023) %>%
+  group_by(county_name, zip) %>% 
+  summarize(avg_rent = mean(rent, na.rm = TRUE), .groups = "drop")
+
+# Violin + boxplot comparison across boroughs
+p_2023 <- rent_2023 %>% 
+  ggplot(aes(x = county_name, y = avg_rent)) +
+  geom_violin(trim = FALSE, fill = "skyblue", alpha = 0.5) +
+  scale_y_continuous(labels = label_dollar(accuracy = 1)) +
+  labs(
+    title = "Distribution of ZIP-level Average Rents in 2023",
+    subtitle = "Each point represents a ZIP's mean monthly rent (2023)",
+    x = NULL,
+    y = "ZIP average rent in 2023 (USD)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    axis.text.x = element_text(angle = 0, hjust = 0.5, size = 11),
+    panel.grid.minor = element_blank()
+  )
+
+p_2023
+```
+
+The 2023 distribution plot shows clear differences in rental price levels across boroughs.
+
+- **New York County** has the highest median and the widest range, indicating both high prices and large variation among ZIP codes.  
+- **Kings County** and **Queens County** follow, with moderately high rents and a more compact distribution.  
+- **Bronx** and **Richmond County** exhibit the lowest typical rents, reflecting more affordable housing markets. 
+
+Overall, the plot highlights New York County’s dominance in price levels and the pronounced inequality in housing costs across the city’s boroughs.
+
+### Export the plots
+
+Combine the two previous plots into a single graphic, and export this to a results folder in your repository.
+
+```{r fig.height=12}
+# Create results folder if it doesn't exist
+if (!dir.exists("results")) dir.create("results")
+
+# Combine the two plots vertically
+combined_plot <- p_trend / p_2023 + 
+  plot_layout(heights = c(2, 1)) + 
+  plot_annotation(
+    title = "NYC Rental Price Trends and 2023 ZIP-level Distributions",
+    theme = theme(
+      plot.title = element_text(size = 16, face = "bold", hjust = 0.5)
+    )
+  )
+
+# Export as high-quality PNG
+ggsave(
+  filename = "results/nyc_rental_combined.png",
+  plot = combined_plot,
+  width = 10, height = 12, dpi = 300
+)
+
+# show combined plot
+combined_plot
+```
+
+
+## Problem 3 – NHANES Accelerometer + Demographics
+
+### Import + tidy + merge NHANES data
+
+Load, tidy, merge, and otherwise organize the data sets. Your final dataset should include all originally observed variables; exclude participants less than 21 years of age, and those with missing demographic data; and encode data with reasonable variable classes (i.e. not numeric, and using factors with the ordering of tables and plots in mind).
+
+```{r nhanes-import}
+demo_path <- "./acce_data/nhanes_covar.csv"
+acc_path  <- "./acce_data/nhanes_accel.csv"
+
+nhanes_demo <- read_csv(demo_path, show_col_types = FALSE, skip = 4) |> clean_names()
+nhanes_acc  <- read_csv(acc_path, show_col_types = FALSE) |> clean_names()
+```
+
+```{r nhanes-tidy-merge}
+# Pivot accelerometer minutes to long
+acc_long <- nhanes_acc %>% 
+  pivot_longer(
+    cols = matches("^min\\d{1,2}"),
+    names_to = "minute_label", values_to = "mims"
+  )
+
+# Standardize minute column to minute index 0..1439
+acc_long <- acc_long %>% 
+  mutate(minute = parse_number(minute_label)) %>% 
+  select(-minute_label)
+
+# Merge
+nhanes <- nhanes_demo %>% 
+  inner_join(acc_long, by = "seqn") %>% 
+  mutate(
+    # Those are definitions from the CSV header
+    sex = fct_recode(as.factor(sex), "Male" = "1", "Female" = "2"),
+    education = fct_recode(
+      as.factor(education),
+      "Less than High School" = "1",
+      "High School Equivalent" = "2",
+      "More than High School" = "3"
+    )
+  ) %>%
+  mutate(sex = factor(sex, levels = c("Female", "Male"))) %>%
+  # filter out people who are younger than 21
+  filter(age >= 21, !is.na(sex), !is.na(education)) %>% 
+  arrange(seqn, minute)
+
+glimpse(nhanes)
+```
+
+### Table + Plot: Headcount by education and the age distributions
+
+Produce a reader-friendly table for the number of men and women in each education category, and create a visualization of the age distributions for men and women in each education category. Comment on these items.
+
+```{r nhanes-edu-sex-table}
+edu_sex_tbl <- nhanes %>% 
+  distinct(seqn, sex, education) %>% 
+  count(education, sex, name = "n") %>% 
+  pivot_wider(names_from = sex, values_from = n, values_fill = 0L)
+
+edu_sex_tbl %>% 
+  gt() %>% 
+  tab_header(title = "Headcount by education and sex") %>%
+  cols_label(education = "") %>%
+  as_raw_html()
+```
+
+```{r nhanes-age-dists, fig.height=6}
+age_df <- nhanes %>% distinct(seqn, age, sex, education)
+
+age_df <- age_df %>%
+  mutate(
+    age_group = cut(
+      age,
+      breaks = seq(20, 90, by = 10),
+      right = FALSE,
+      labels = c("20–29", "30–39", "40–49", "50–59", "60–69", "70–79", "80+")
+    )
+  )
+
+age_df %>%
+  ggplot(aes(x = age_group, fill = sex)) +
+  geom_bar(position = "dodge", alpha = 0.7) +
+  facet_wrap(~ education, ncol = 1) +
+  labs(
+    title = "Age distributions by sex within education categories",
+    x = "Age group (years)",
+    y = "Headcount"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(
+    strip.text = element_text(face = "bold"),
+    axis.text.x = element_text(size = 11),
+    panel.grid.minor = element_blank()
+  )
+```
+
+This plot shows the age distribution by education level, grouped in 10-year intervals.
+
+Participants with less than high school education tend to be older, while those with more than high school are concentrated in younger and middle-age groups.
+
+The overall overlap between males and females indicates similar age patterns across sexes, though small differences may exist within each category.
+
+### Total daily activity per participant
+
+Traditional analyses of accelerometer data focus on the total activity over the day. Using your tidied dataset, aggregate across minutes to create a total activity variable for each participant. Plot these total activities (y-axis) against age (x-axis); your plot should compare men to women and have separate panels for each education level. Include a trend line or a smooth to illustrate differences. Comment on your plot.
+
+```{r nhanes-total-activity, fig.height=6}
+total_activity <- nhanes %>% 
+  group_by(seqn, age, sex, education) %>% 
+  summarize(total_mims = sum(mims, na.rm = TRUE), .groups = "drop")
+
+total_activity %>% 
+  ggplot(aes(x = age, y = total_mims, color = sex)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(se = FALSE, method = "loess") +
+  facet_wrap(~ education) +
+  scale_y_continuous(labels = label_comma()) +
+  labs(
+    x = "Age", y = "Total daily activity (MIMS)",
+    title = "Total activity vs age by sex and education"
+  )
+```
+
+Total activity tends to decline with age. The patterns may vary by sex and education level, but the trend is the same.
+
+### 24-hour activity time courses
+
+Accelerometer data allows the inspection activity over the course of the day. Make a three-panel plot that shows the 24-hour activity time courses for each education level and use color to indicate sex. Describe in words any patterns or conclusions you can make based on this graph; including smooth trends may help identify differences.
+
+```{r nhanes-24h-timecourse, fig.height=6}
+# Average minute-by-minute course by (education, sex)
+minute_course <- nhanes %>% 
+  group_by(education, sex, minute) %>% 
+  summarize(mims_mean = mean(mims, na.rm = TRUE), .groups = "drop")
+
+minute_course %>% 
+  ggplot(aes(x = minute, y = mims_mean, color = sex)) +
+  geom_line() +
+  facet_wrap(~ education, ncol = 1, scales = "free_y") +
+  scale_x_continuous(
+    breaks = seq(0, 1440, by = 180),
+    labels = function(b) sprintf("%02d:%02d", floor(b/60), b %% 60)
+  ) +
+  labs(
+    x = "Clock time (HH:MM)", y = "Mean MIMS",
+    title = "Average 24-hour activity profile by education and sex"
+  )
+```
+
+Higher MIMS indicates greater overall physical activity. The 24-hour profiles show typical daily patterns: activity rises sharply in the morning, stays high during daytime, and decreases after evening.
+
+It's quite interesting that men and women with a lower education level generally have the same activity level during the day, but for people with a higher education level, women's day-time activity level is higher compared to men's.
+
