@@ -7,7 +7,7 @@ Homework assignments and cheat sheets from my M.S. in Biostatistics program (202
 | Course Code | Course Name | Contents |
 |-------------|-------------|----------|
 | P8104 | Probability | Homework 1–11, Cheatsheets (Midterm, Final) |
-| P8105 | Data Science I | — |
+| P8105 | Data Science I | Homework 1–3, 5–6 |
 | P8130 | Biostatistical Methods I | Homework 1–5, Cheatsheets (Midterm, Final) |
 | P8149 | Human Population Genetics | Homework 1–4, Cheatsheets (Midterm, Final) |
 
