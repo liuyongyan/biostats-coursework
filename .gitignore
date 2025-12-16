@@ -1,0 +1,15 @@
+# R
+.Rhistory
+.RData
+.Rproj.user/
+
+# macOS
+.DS_Store
+
+# AI tools
+.aider*
+.claude/
+
+# Temporary files
+*.log
+*~

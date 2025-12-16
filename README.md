@@ -32,4 +32,6 @@ Homework assignments and cheat sheets from my M.S. in Biostatistics program (202
 | Assignment | `P[code]_HW[N].pdf` | `P8104_HW1.pdf` |
 | Submission | `P[code]_HW[N]_yl6107.pdf/.Rmd` | `P8104_HW1_yl6107.Rmd` |
 | Cheatsheet | `P[code]_CheatSheet_[Exam].pdf/.Rmd` | `P8104_CheatSheet_Final.pdf` |
-| Solution | `P[code]_[N]_sol.pdf` | `P8149_1_sol.pdf` |
+| Solution | `P[code]_HW[N]_sol.pdf` | `P8149_HW1_sol.pdf` |
+
+**Note:** P8105 Data Science I uses lowercase naming (`p8105_hw1_yl6107.Rmd`) following the course's GitHub-based workflow.
