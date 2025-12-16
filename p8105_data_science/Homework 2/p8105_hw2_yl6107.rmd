@@ -1,0 +1,358 @@
+---
+title: "Homework 2 - P8105 Data Science I"
+author: "Yongyan Liu (yl6107)"
+date: "2025-09-30"
+
+output:
+  github_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r message=FALSE}
+library(tidyverse)
+library(readxl)
+library(janitor)
+```
+
+# Problem 1
+
+## Read & Clean: pols-month.csv
+
+First, clean the data in pols-month.csv. 
+
+- Use separate() to break up the variable mon into integer variables year, month, and day; 
+- Replace month number with month name; 
+- Create a president variable taking values gop and dem, and remove prez_dem and prez_gop;
+- Remove the day variable.
+
+```{r}
+pols <- read_csv(file.path("./data/fivethirtyeight", "pols-month.csv"), show_col_types = FALSE) |>
+  janitor::clean_names() |>
+  separate(mon, into = c("year", "month", "day"), convert = TRUE) |>
+  mutate(
+    month = month.name[month],
+    president = if_else(prez_gop == 1, "gop", "dem")
+  ) |>
+  select(-prez_gop, -prez_dem, -day) |>
+  # Arrange by year and calendar order of month
+  mutate(month = factor(month, levels = month.name, ordered = TRUE)) |>
+  arrange(year, month)
+  
+list(
+  head_rows = head(pols, 10),
+  tail_rows = tail(pols, 10)
+)
+```
+
+## Read & Clean: snp.csv
+
+Second, clean the data in snp.csv using a similar process to the above. For consistency across datasets, arrange according to year and month, and organize so that year and month are the leading columns.
+
+```{r}
+snp <- read_csv(file.path("./data/fivethirtyeight", "snp.csv"), show_col_types = FALSE) |>
+  janitor::clean_names() |>
+  mutate(date = mdy(date)) |>
+  transmute(
+    year = year(date),
+    month = month.name[month(date)],
+    close
+  ) |>
+  mutate(month = factor(month, levels = month.name, ordered = TRUE)) |>
+  arrange(year, month)
+
+list(
+  head_rows = head(snp, 10),
+  tail_rows = tail(snp, 10)
+)
+```
+
+## Read & Clean: unemployment.csv
+
+Third, tidy the unemployment data so that it can be merged with the previous datasets.
+
+- Switching from “wide” to “long” format; 
+- Ensuring that key variables have the same name;
+- Ensuring that key variables take the same values.
+
+```{r}
+unemp <- read_csv(file.path("./data/fivethirtyeight", "unemployment.csv"), show_col_types = FALSE) |>
+  pivot_longer(
+    cols = Jan:Dec,
+    names_to = "month",
+    values_to = "unemployment"
+  ) |>
+  janitor::clean_names() |>
+  mutate(
+    month = month.name[match(month, month.abb)],
+    month = factor(month, levels = month.name, ordered = TRUE)
+  ) |>
+  arrange(year, month)
+
+list(
+  head_rows = head(unemp, 10),
+  tail_rows = tail(unemp, 10)
+)
+```
+
+## Join the datasets
+
+- Left-join `snp` into `pols` by `year` + `month`.
+- Then left-join `unemp`.
+
+```{r}
+merged_df <- left_join(pols, snp, by = c("year", "month")) |>
+  mutate(snp_close = close) |>
+  left_join(unemp, by = c("year", "month"))
+
+# Since the date range of the three tables is different, some of the column 
+# is NA. Let's show the rows without NA columns.
+merged_df |> filter(!is.na(close) & !is.na(unemployment)) |>
+  glimpse()
+```
+
+```{r echo=FALSE}
+dim_merged <- dim(merged_df)
+year_range <- range(merged_df$year, na.rm = TRUE)
+```
+
+The **FiveThirtyEight datasets** describe U.S. political and economic conditions over time. 
+
+- The **`pols-month`** data include monthly counts of national politicians by party across branches of government and an indicator of the president's party;
+- The **`snp`** data provide monthly closing values of the S&P 500 index;
+- The **`unemployment`** data contain national unemployment rates by month and year.
+
+After cleaning and merging on `year` and `month`, the resulting data frame has **`r dim_merged[1]` rows** and **`r dim_merged[2]` columns**, spans **`r year_range[1]`–`r year_range[2]`**, and contains key variables such as `year`, `month`, `president`, `close` (S&P 500 close), and `unemployment` (percent). This merged dataset enables exploration of relationships between political control, stock market performance, and labor-market conditions over time.
+
+# Problem 2
+
+Mr. Trash Wheel is “a water-wheel vessel that removes trash from the Inner Harbor in Baltimore, Maryland.” It (or he) sits at an intake into the Inner Harbor and intercepts litter and debris carried by the Jones Falls River toward the harbor. It has removed over a million pounds of litter since May 2014!
+
+## Read & clean: Mr. Trash Wheel sheet
+
+- specify the sheet in the Excel file and to omit non-data entries (rows with notes / figures; columns containing notes) using arguments in read_excel
+- use reasonable variable names
+- omit rows that do not include dumpster-specific data
+- round the number of sports balls to the nearest integer and converts the result to an integer variable (using as.integer)
+
+```{r}
+excel_path <- "./data/trashwheel/202509_trashwheel.xlsx"   # place this .Rmd in the same folder as the Excel
+
+mr <- read_excel(excel_path, sheet = "Mr. Trash Wheel", skip = 1) |>
+  clean_names() |>
+  # drop columns that are entirely NA
+  select(where(~ !all(is.na(.x)))) |>
+  # keep only rows with dumpster-specific data
+  filter(!is.na(dumpster)) |>
+  # standardize data types and names
+  mutate(
+    month = as.character(month),
+    year = as.integer(year),
+    date = as.Date(date),
+    .after = date
+  ) |>
+  mutate(
+    sports_balls = as.integer(round(sports_balls))
+  ) |>
+  mutate(wheel = "Mr")
+
+glimpse(mr)
+```
+
+## Read & clean: Professor Trash Wheel
+
+```{r}
+prof <- read_excel(excel_path, sheet = "Professor Trash Wheel", skip = 1) |>
+  clean_names() |>
+  select(where(~ !all(is.na(.x)))) |>
+  filter(!is.na(dumpster)) |>
+  mutate(
+    month = as.character(month),
+    year = as.integer(year),
+    date = as.Date(date),
+    .after = date
+  ) |>
+  mutate(wheel = "Professor")
+
+glimpse(prof)
+```
+
+## Read & clean: Gwynns Falls Trash Wheel
+
+```{r}
+gwyn <- read_excel(excel_path, sheet = "Gwynns Falls Trash Wheel", skip = 1) |>
+  clean_names() |>
+  select(where(~ !all(is.na(.x)))) |>
+  filter(!is.na(dumpster)) |>
+  mutate(
+    month = as.character(month),
+    year = as.integer(year),
+    date = as.Date(date),
+    .after = date
+  ) |>
+  mutate(wheel = "Gwynnda")
+
+glimpse(gwyn)
+```
+
+## Combine into one dataset
+
+```{r}
+trash <- bind_rows(mr, prof, gwyn) |>
+  relocate(wheel, dumpster, month, year, date)
+
+list(
+  head = slice_head(trash, n = 10),
+  tail = slice_tail(trash, n = 10)
+)
+```
+
+This Excel contains data for three trash wheels operating in Baltimore's waterways. After importing & cleaning the data, I combined the datasets by adding a `wheel` identifier (`"Mr."`, `"Professor"`, and `"Gwynnda"`). The resulting tidy dataset has **`r nrow(trash)` observations** and **`r ncol(trash)` variables**, spanning **`r min(trash$year, na.rm = TRUE)`–`r max(trash$year, na.rm = TRUE)`**. Key variables include
+
+- `dumpster`: load index
+- `date`/`month`/`year`: collection time
+- `weight_tons` and `volume_cubic_yards`: load size
+-  `plastic_bottles`, `polystyrene`, `cigarette_butts`, `plastic_bags`, `wrappers`, `sports_balls`: material counts. 
+
+These data allow quick comparisons across wheels and over time. For example:
+
+- Total weight collected by **Professor Trash Wheel**: **`r trash |> filter(wheel == "Professor") |> summarize(total = sum(weight_tons, na.rm = TRUE)) |> pull(total) |> round(1)` tons**.
+- Total number of **cigarette butts** collected by **Gwynnda** in **June 2022**: **`r trash |> filter(wheel == "Gwynnda", year == 2022, month == "June") |> summarize(total = sum(cigarette_butts, na.rm = TRUE)) |> pull(total) |> as.integer()`**.
+
+
+# Problem 3
+
+Home and rental prices have generally increased over the last decade. Zillow, a popular website used to search for homes for sale or rent, is uniquely positioned to provide insights into trends in the real estate market. In response to broad interest, the company releases data for research. In this project, we’ll look at the Zillow Observed Rent Index (ZORI) in New York City between January 2015 and August 2024.
+
+NYC is divided into five boroughs. Each of these boroughs is it’s own county, and in some cases the borough name and county name differ; for example, Manhattan is New York County. Moreover, boroughs are divided into neighborhoods. Rental price data provided by Zillow does not include information neighborhoods within boroughs, but can be accessed separately.
+
+## Import and show the raw data
+
+```{r}
+zip_path  <- "./data/zillow/zip_code.csv"
+zori_path <- "./data/zillow/nyc_zori.csv"
+
+# ZIP / Neighborhood reference
+zip_ref <- read_csv(zip_path, show_col_types = FALSE) %>%
+  clean_names()
+
+# Zillow ZORI by ZIP (wide by month)
+zori_raw <- read_csv(zori_path, show_col_types = FALSE) %>%
+  clean_names()
+
+zip_ref
+zori_raw
+```
+
+## Clean the data
+
+Try to accomodate the differences between the two csv files and merge them.
+
+```{r}
+# Unify County name by removing the tailing ' County' and map county to borough
+county_to_borough <- function(x) {
+  x <- as.character(x)
+  x <- str_replace(x, "\\s*County$", "") # strip ' County'
+  dplyr::case_when(
+    x == "Bronx" ~ "Bronx",
+    x == "Kings" ~ "Brooklyn",
+    x == "New York" ~ "Manhattan",
+    x == "Queens" ~ "Queens",
+    x == "Richmond" ~ "Richmond",
+    TRUE ~ x
+  )
+}
+
+# Select only necessary data from the Zip Code reference
+zip_ref_clean <- zip_ref %>%
+  transmute(
+    county = county,
+    zip = as.character(zip_code),
+    neighborhood = neighborhood,
+    borough = county_to_borough(county)
+  ) %>%
+  distinct()
+
+# take a look
+zip_ref_clean
+
+# find all the dates from the column names
+date_cols <- names(zori_raw) %>% keep(~ str_detect(.x, "^x\\d{4}_\\d{2}_\\d{2}$"))
+
+# clean zori data
+zori_tidy <- zori_raw %>%
+  rename(
+    zip = region_name,
+  ) %>%
+  select(-region_type) %>%
+  mutate(
+    zip = as.character(zip),
+  ) %>%
+  pivot_longer(
+    cols = all_of(date_cols),
+    names_to = "date",
+    values_to = "zori"
+  ) %>%
+  mutate(
+    date = as.Date(str_remove(date, "^x") %>% str_replace_all("_", "-")),
+    year = lubridate::year(date),
+    month = lubridate::month(date)
+  ) %>%
+  arrange(zip, date)
+
+# take a look
+zori_tidy
+```
+
+## Merge to the final dataset
+
+```{r}
+# merge with zip_ref
+nyc_final <- zori_tidy %>%
+  left_join(zip_ref_clean, by = "zip") %>%
+  relocate(county, borough, zip, neighborhood, .before = region_id) %>%
+  select(-county_name, -state_name)
+
+# take a look
+nyc_final
+```
+
+The final dataset contains
+
+- **`r nrow(nyc_final)` observations** across **`r ncol(nyc_final)` variables**.  
+- **`r length(unique(nyc_final$zip))` unique ZIP codes**
+- **`r length(unique(na.omit(nyc_final$neighborhood)))` unique neighborhoods**
+
+Key variables include: `borough`, `zip`, `neighborhood`, `date` and `zori`.
+
+## Missing ZIP Codes in Zori
+
+```{r}
+zips_in_ref_not_in_zori <- setdiff(zip_ref_clean$zip, unique(zori_tidy$zip))
+
+zips_missing_tbl <- tibble(zip = zips_in_ref_not_in_zori) %>%
+  left_join(zip_ref_clean, by = "zip") %>%
+  arrange(borough, zip)
+
+zips_missing_tbl %>% slice_head(n = 30)
+```
+
+Some ZIP Codes are missing from Zori data because the corresponding area are not residential area, so there are limited rental housing.
+
+## Show price drops during Covid-19
+
+```{r}
+# It's easier to do it from raw table because the price for two dates are in the same row
+zori_diff <- zori_raw %>%
+  mutate(diff_2020_2021 = `x2021_01_31` - `x2020_01_31`) %>%
+  arrange(diff_2020_2021) %>%
+  mutate(borough = county_to_borough(county_name)) %>%
+  select(zip = region_name, city, borough,
+    `x2020_01_31`, `x2021_01_31`, diff_2020_2021) %>%
+  slice_head(n = 10)
+
+zori_diff
+```
+
+From the result, we can see that all of the top 10 price drop happens in Manhattan. It's because during the pandemic, most people could work from home, so the rental prices for residential housing near workplaces have dropped significantly.
+
