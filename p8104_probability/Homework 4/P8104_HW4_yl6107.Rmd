@@ -1,0 +1,242 @@
+---
+title: "Homework 4 - P8104 Probability"
+author: "Yongyan Liu (yl6107)"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output: pdf_document
+geometry: margin=1in
+---
+
+# Problem 1
+
+Let $X \sim \text{Laplace}(0,1)$ with pdf
+
+$$
+f_X(x) = \tfrac{1}{2} e^{-|x|},\qquad x\in\mathbb{R}.
+$$
+
+**(a) Validity of the pdf.**
+
+A function is a valid pdf if $f_X(x)\ge 0$ for all $x$, and $\int_{-\infty}^{\infty} f_X(x)\,dx = 1$.
+
+Clearly $f_X(x)\ge 0$. And, We can split the pdf function at 0 and use that $|x|=-x$ for $x<0$ and $|x|=x$ for $x\ge 0$:
+
+$$
+\int_{-\infty}^{\infty} \frac{1}{2} e^{-|x|} dx
+= \frac{1}{2}\!\left(\int_{-\infty}^{0}e^{x}\,dx + \int_{0}^{\infty}e^{-x}\,dx\right)
+= \frac{1}{2}\,(1+1)=1.
+$$
+
+**(b) The cdf** $F_X(x)$.
+
+For $x \le 0$: 
+
+$$
+F_X(x)=\int_{-\infty}^{x}\tfrac{1}{2}e^{t}\,dt=\tfrac{1}{2}e^{x}
+$$
+
+For $x > 0$: 
+
+$$
+F_X(x)=F_X(0)+\int_{0}^{x}\tfrac{1}{2}e^{-t}\,dt = \tfrac{1}{2} + \tfrac{1}{2}\,(1-e^{-x})=1-\tfrac{1}{2}e^{-x}
+$$
+
+$$
+F_X(x)=
+\begin{cases}
+\tfrac{1}{2} e^{x}, & x \le 0,\\[4pt]
+1-\tfrac{1}{2}e^{-x}, & x > 0.
+\end{cases}
+$$
+
+**(c) The mean** $E[X]$ by symmetry.
+
+The pdf is even: $f_X(x)=f_X(-x)$. Therefore the distribution is symmetric about 0 and $E[X]=0$.
+
+**(d) The variance** $\mathrm{Var}(X)$.
+
+Since $E[X]=0$, 
+
+$$
+\mathrm{Var}(X)=E[X^2]=2\int_{0}^{\infty} x^2 \tfrac{1}{2}e^{-x}dx=\int_{0}^{\infty} x^2 e^{-x}dx
+$$
+
+```{r}
+fx <- function(x) 0.5*exp(-abs(x))
+integrate(function(x) x^2*fx(x), -Inf, Inf)
+```
+
+Thus $\mathrm{Var}(X)=2$.
+
+# Problem 2
+
+Let $X$ be a continuous random variable with pdf
+
+$$
+f_X(x) = x^2\!\left(2x + \tfrac{3}{2}\right),\qquad 0<x\le 1.
+$$ Let $Y = \dfrac{2}{X} + 3$.
+
+**(a) Express** $\mathrm{Var}(Y)$ in terms of the variance of a function of $X$.
+
+$$
+\mathrm{Var}(Y) = \mathrm{Var}\!\left(\frac{2}{X}+3\right)
+= 4\,\mathrm{Var}\!\left(\frac{1}{X}\right).
+$$
+
+**(b) Compute** $E[1/X]$ and $E[1/X^2]$.
+
+$$
+E\!\left[\frac{1}{X}\right] = \int_0^1 \frac{1}{x}\,f_X(x)\,dx
+= \int_0^1 \left(2x^2+\tfrac{3}{2}x\right)dx
+= \frac{2}{3} + \frac{3}{4} = \frac{17}{12}.
+$$
+
+$$
+E\!\left[\frac{1}{X^2}\right] = \int_0^1 \frac{1}{x^2}\,f_X(x)\,dx
+= \int_0^1 \left(2x + \tfrac{3}{2}\right)dx
+= 1 + \frac{3}{2} = \frac{5}{2}.
+$$
+
+**(c) Compute** $\mathrm{Var}(Y)$.
+
+$$
+\mathrm{Var}(Y) = 4\Big(E\!\left[\frac{1}{X^2}\right]-E\!\left[\frac{1}{X}\right]^2\Big)
+= 4\left(\frac{5}{2}-\left(\frac{17}{12}\right)^2\right)
+= \frac{71}{36}\approx 1.9722.
+$$
+
+# Problem 3
+
+Let $X$ have 
+
+$$
+f_X(x)=\lambda^2\,x\,e^{-\lambda x},\qquad x\ge 0\quad(\text{and }0\text{ otherwise}),
+$$ 
+
+with $\lambda>0$. (This is $\mathrm{Gamma}(k=2,\ \text{rate}=\lambda)$.)
+
+**(a) Mean** $E[X]$.
+
+Using gamma integrals, 
+
+$$
+E[X]=\int_0^\infty x\,\lambda^2 x e^{-\lambda x}dx
+= \lambda^2\int_0^\infty x^2 e^{-\lambda x}dx
+= \lambda^2\cdot \frac{2!}{\lambda^{3}}
+= \frac{2}{\lambda}.
+$$
+
+**(b) Variance** $\mathrm{Var}(X)$. First
+
+$$
+E[X^2]=\lambda^2\int_0^\infty x^3 e^{-\lambda x}dx
+= \lambda^2\cdot \frac{3!}{\lambda^{4}}=\frac{6}{\lambda^2}
+$$
+
+Hence
+
+$$
+\mathrm{Var}(X)=E[X^2]-E[X]^2=\frac{6}{\lambda^2}-\left(\frac{2}{\lambda}\right)^2=\frac{2}{\lambda^2}.
+$$
+
+# Problem 4
+
+Let $X$ be the outcome of rolling a fair 4-sided die, so $P(X=k)=1/4$ for $k=1,2,3,4$.
+
+**(a) mgf** $M_X(t)$.
+
+$$
+M_X(t)=E[e^{tX}] = \frac{1}{4}\big(e^{t}+e^{2t}+e^{3t}+e^{4t}\big).
+$$
+
+**(b) Use** $M_X(t)$ to compute $E[X]$ and $\mathrm{Var}(X)$.
+
+From $M_X(t)$, we have 
+
+$$M_X'(t)=\frac{1}{4}\big(e^{t}+2e^{2t}+3e^{3t}+4e^{4t}\big)$$ 
+
+$$M_X''(t)=\frac{1}{4}\big(e^{t}+4e^{2t}+9e^{3t}+16e^{4t}\big)$$
+
+Hence $E[X]=M_X'(0)=\frac{1+2+3+4}{4}=2.5$ and $E[X^2]=M_X''(0)=\frac{1+4+9+16}{4}=7.5$.
+
+So $$\mathrm{Var}(X)=E[X^2]-E[X]^2=7.5-2.5^2=1.25$$
+
+**(c) Direct calculation from the pmf.**\
+Directly from the pmf
+
+$$E[X]=\sum_{k=1}^4 k\cdot \tfrac14 = 2.5$$
+
+$$E[X^2]=\sum_{k=1}^4 k^2\cdot \tfrac14 = 7.5$$
+
+$$\mathrm{Var}(X) = E[X^2] - E[X]^2 = 1.25$$
+
+So the results are the same.
+
+# Problem 5
+
+Let $X_1,\dots,X_n \overset{\text{iid}}{\sim}\text{Exp}(\lambda)$ with rate $\lambda>0$.
+
+**(a) Show that if** $X$ and $Y$ are independent, then $M_{X+Y}(t)=M_X(t)M_Y(t)$.
+
+$$
+M_{X+Y}(t)=E\big[e^{t(X+Y)}\big]=E\big[e^{tX}e^{tY}\big]
+$$
+
+Since X and Y are independent random variables, $E[g(X)h(Y)] = E[g(X)]E[h(Y)]$. Thus
+
+$$
+M_{X+Y}(t)=E\big[e^{tX}e^{tY}\big]=E[e^{tX}]\,E[e^{tY}] \quad\text=M_X(t)M_Y(t).
+$$
+
+**(b) For** $S_n=\sum_{j=1}^n X_j$, find $M_{S_n}(t)$.
+
+The mgf of $X_i \sim Exp(\lambda)$ is
+
+$$
+\begin{aligned}
+M_{X_i}(t) = E[e^{tx}] 
+    &= \int_0^\infty e^{tx} * \lambda e^{-\lambda x} dx \\
+    &= \lambda \int_0^\infty e^{(t - \lambda)x} dx
+\end{aligned}
+$$
+Assuming $t < \lambda$, we have
+
+$$
+M_{X_i}(t) = \dfrac{\lambda}{\lambda - t}
+$$
+
+From 5(a), independence gives
+$$
+M_{S_n}(t)=\prod_{j=1}^n M_{X_j}(t)=\left(\frac{\lambda}{\lambda-t}\right)^{\!n},\quad t<\lambda
+$$
+
+**(c) If** $Y=aX+b$, then $M_Y(t)=e^{bt}M_X(at)$.
+
+$$
+M_Y(t)=E\big[e^{t(aX+b)}\big]=e^{bt}\,E\big[e^{(at)X}\big]=e^{bt}\,M_X(at).
+$$
+
+**(d) Let** $Y_n$ be the standardized version of $S_n$, and find $M_{Y_n}(t)$.
+
+$$
+M_{S_n}’(t) = \lambda^n \cdot n(\lambda - t)^{-n-1}
+$$
+$$
+M_{S_n}''(t) = \lambda^n \cdot n(n+1)(\lambda - t)^{-n-2}
+$$
+
+Thus $E[S_n]=M_{S_n}’(0) = \lambda^n \cdot n\lambda^{-n-1} = n/\lambda$ and $\mathrm{Var}(S_n)=E[S_n^2] - (E[S_n])^2 = n/\lambda^2$. 
+
+Define
+
+$$
+Y_n=\frac{S_n-E[S_n]}{\sqrt{\mathrm{Var}(S_n)}}
+= \frac{\lambda}{\sqrt{n}}\,S_n - \sqrt{n}.
+$$
+
+Using part (c) with $a=\lambda/\sqrt{n}$ and $b=-\sqrt{n}$: 
+
+$$
+M_{Y_n}(t)=e^{-\sqrt{n}\,t}\,M_{S_n}\!\left(\frac{\lambda t}{\sqrt{n}}\right)
+= e^{-\sqrt{n}\,t}\left(\frac{\lambda}{\lambda-\frac{\lambda t}{\sqrt{n}}}\right)^{\!n}
+= e^{-\sqrt{n}\,t}\left(\frac{1}{1-\frac{t}{\sqrt{n}}}\right)^{\!n}.
+$$

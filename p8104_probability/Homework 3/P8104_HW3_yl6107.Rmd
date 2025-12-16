@@ -1,0 +1,195 @@
+---
+title: "Homework 3 - P8104 Probability"
+author: "Yongyan Liu (yl6107)"
+date: "Wed, Oct 1, 2025"
+output: pdf_document
+fontsize: 11pt
+geometry: margin=1in
+---
+
+# Problem 1
+
+Let a point be chosen uniformly at random from the interior of a circular annulus with inner radius $r_0 = \dfrac{1}{2}$ and outer radius $r_1 = 1$. Let $X$ be the distance from the origin to the selected point.
+
+(a) What is the support of $X$?
+
+$$
+\mathrm{support}(X)=\{x | \dfrac12 < x <1\}.
+$$
+
+(b) Determine the cumulative distribution function (cdf) $F_X(x)$ of the distance $X$.
+
+Let $A_x$ be the area of the annulus with inner radius $r_0 = \dfrac{1}{2}$ and outer radius $r_x = x$.
+
+Uniformity over area implies $P(X\le x) = A_x / A_1$.
+
+$$
+F_X(x)=
+\begin{cases}
+  0, & x < \tfrac12,  \\[6pt]
+  \dfrac{\pi x^2-\pi(\tfrac12)^2}{\pi-\pi(\tfrac12)^2} = \dfrac{4}{3}x^2-\dfrac13, & \tfrac12\le x\le 1,  \\[10pt]
+  1, & x>1~.
+\end{cases}
+$$
+
+(c) Derive the probability density function (pdf) $f_X(x)$.
+
+$$
+f_X(x)=\frac{d}{dx}F_X(x)=\frac{8}{3}x,\qquad \tfrac12 \le x \le 1.
+$$
+
+(d) Compute the probability that the point lies between distances $0.6$ and $0.8$ from the origin.
+
+$$
+F_X(0.8)-F_X(0.6)=\frac{4}{3}(0.8^2-0.6^2)=\frac{4 * 0.28}{3}
+$$
+
+# Problem 2
+
+A median of a distribution of a random variable $X$ is a value of $x$ such that
+
+$$
+P(X < x) \le \tfrac{1}{2}\quad\text{and}\quad P(X \le x) \ge \tfrac{1}{2}.
+$$
+If there is only one such $x$, it is called the *median* of the distribution. For the following functions, first verify that it is a pmf or pdf, then find the median:
+
+(a) Discrete case: $p_X(x) = \dfrac{4!}{x!(4-x)!}(0.8)^x(0.2)^{4-x}, \; x = 0,1,2,3,4$
+
+Hint: This is a Binomial distribution with $n=4, p=0.8$.
+
+```{r}
+for (i in 0:4) {
+  print(sprintf("p(%d) = %.3f", i, pbinom(i, 4, 0.8)))
+}
+```
+
+From the result, we can see $p_X(2) < \tfrac12$ and $p_X(3) > \tfrac12$. So the median is 3.
+
+(b) Continuous case: $f_X(x) = 4x^3,\; 0 < x < 1$
+
+This is a valid cdf because $\int_0^1 4x^3\,dx=1$.
+
+The CDF is $F(x)=\int_0^x 4t^3\,dt=x^4$. 
+
+The median $m$ solves $m^4=\tfrac12$, so $m=2^{-1/4} \approx 0.84$.
+
+# Problem 3
+
+Let $X \sim \text{Uniform}(0,1)$, and define $Y = \sqrt{X}$.
+
+(a) Find the cdf $F_Y(y)$.
+
+$$
+F_Y(y)=P(\sqrt{X}\le y)=P(X\le y^2)=
+\begin{cases}
+  0,& y\le 0,\\
+  y^2,& 0<y<1,\\
+  1,& y\ge 1~.
+\end{cases}
+$$
+
+(b) Find pdf $f_Y(y)$.
+
+$$
+f_Y(y)=\dfrac{d}{dy}F_Y(y)=2y, \qquad 0<y<1
+$$
+
+(c) Verify that your pdf is valid.
+
+$$
+\int_0^1 2y\,dy = F_Y(1) - F_Y(0) = 1
+$$
+
+(d) Compute $E(Y)$.
+
+$$
+E(Y) = \int_0^1 y * f_Y(y) \,dy = \int_0^1 2y^2 \,dy = \dfrac23
+$$
+
+
+# Problem 4
+
+Find the pdf of $Y$ in the following situations:
+
+(a) $Y = \ln(X)$. The pdf for $X$ is 
+$$
+f(x) = \frac{2}{\pi(1 + x^2)}, \quad x \ge 0.
+$$
+
+Use $x=e^y$ (so $y\in(-\infty,\infty)$) and $dx/dy=e^y$:
+$$
+f_Y(y)=f_X(e^y)\,\frac{dx}{dy}
+=\frac{2}{\pi\big(1+e^{2y}\big)}\,e^y
+$$
+
+(b) $Y = \sin(X)$. The pdf for $X$ is 
+$$
+f(x) = \frac{c\,x}{\pi^2}, \quad x \in (0,\pi),
+$$
+where $c$ is a normalizing constant. Determine the value of $c$, and then find the pdf of $Y$.
+
+\emph{Hint:} The transformation $g(x)=\sin(x)$ is not one-to-one on $(0,\pi)$. For a given $y \in (0,1)$, there are two values of $x$ such that $\sin(x)=y$. You may need to consider both parts of the domain when deriving the distribution of $Y$.
+
+Since
+$$
+\int_0^\pi \frac{c\,x}{\pi^2}\,dx=\frac{c}{\pi^2}\cdot\frac{\pi^2}{2} = 1
+$$
+We have $c=2$.
+
+For $y\in(0,1)$, there are two $x$ mapping to each $y$, $x_1=\arcsin y$ and $x_2=\pi-\arcsin y$.
+$$
+\begin{aligned}
+f_Y(y) &= \big[f_X(x_1)+f_X(x_2)\big]\left|\frac{dx}{dy}\right| \\
+       &= \left[\frac{2}{\pi^2}\big(\arcsin y+\pi-\arcsin y\big)\right]\frac{1}{\sqrt{1-y^2}} \\
+       & =\frac{2}{\pi}\frac{1}{\sqrt{1-y^2}},\quad 0<y<1,
+\end{aligned}
+$$
+and $f_Y(y)=0$ otherwise.
+
+# Problem 5
+
+Let $X$ be a continuous random variable with pdf:
+$$
+f_X(x) =
+\begin{cases}
+  \dfrac{3}{2}x^2, & 0 < x < 1, \\[6pt]
+  \dfrac{3}{2}(1-x)^2, & 1 \le x < 2, \\[6pt]
+  0, & \text{otherwise.}
+\end{cases}
+$$
+
+(a) Verify that it is a valid pdf.
+
+Since $\int_0^1 \tfrac{3}{2}x^2\,dx=\tfrac{1}{2}$ and $\int_1^2 \tfrac{3}{2}(1-x)^2\,dx=\tfrac{1}{2}$, verified the total is 1 and $f_X(x) is a valid pdf.
+
+(b) Sketch the pdf.
+
+Please see the plot below.
+
+```{r}
+xs1 <- seq(0, 1, length.out = 201)
+xs2 <- seq(1, 2, length.out = 201)
+fx1 <- 1.5 * xs1^2
+fx2 <- 1.5 * (1 - xs2)^2
+
+plot(xs1, fx1, type = "l", lwd = 2, xlab = "x", ylab = "f_X(x)", xlim = c(0, 2), ylim = c(0, 1.6))
+lines(xs2, fx2, lwd = 2)
+abline(v = 1, lty = 2)
+```
+
+(c) Compute $E(X)$.
+
+$$
+E(X)=\int_0^1 x\cdot \tfrac{3}{2}x^2\,dx+\int_1^2 x\cdot \tfrac{3}{2}(1-x)^2\,dx
+=\tfrac{3}{2}\Big(\tfrac{1}{4}\Big)+\tfrac{7}{8}=\tfrac{5}{4}.
+$$
+
+(d) Compute $E(X^2)$, and then compute $\mathrm{Var}(X)$.
+
+$$
+E(X^2)=\int_0^1 x^2\cdot \tfrac{3}{2}x^2\,dx+\int_1^2 x^2\cdot \tfrac{3}{2}(1-x)^2\,dx=\frac{37}{20}.
+$$
+
+$$
+\operatorname{Var}(X)=E(X^2)-\{E(X)\}^2=\frac{37}{20}-\Big(\frac{5}{4}\Big)^2=\frac{23}{80}.
+$$

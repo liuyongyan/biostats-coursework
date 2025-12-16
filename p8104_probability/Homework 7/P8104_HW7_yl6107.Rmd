@@ -1,0 +1,316 @@
+---
+title: "Homework 7 - P8104 Probability"
+author: "Yongyan Liu (yl6107)"
+date: "Due Wed 11/5, 11:59pm"
+output: pdf_document
+header-includes:
+  - \usepackage{amsmath}
+  - \usepackage{amssymb}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+```
+
+# Problem 1
+
+Suppose we toss a pair of fair, four-sided dice, in which one of the dice is RED and the other is BLACK. Let
+
+- $X$: the outcome on the RED die = $\{1, 2, 3, 4\}$
+- $Y$: the outcome on the BLACK die = $\{1, 2, 3, 4\}$
+
+(a) What is the probability that $X$ takes on a particular value $x$, and $Y$ takes on a particular value $y$, i.e., what is $P(X = x, Y = y)$?
+
+(b) What is the expectation of $X$?
+
+## Solution
+
+### Part (a)
+
+By independence:
+$$P(X = x, Y = y) = P(X = x) \cdot P(Y = y) = \frac{1}{4} \cdot \frac{1}{4} = \frac{1}{16}$$
+
+Therefore, $P(X = x, Y = y) = \frac{1}{16}$ for any $(x, y) \in \{1, 2, 3, 4\} \times \{1, 2, 3, 4\}$.
+
+### Part (b)
+
+The expectation of $X$ is:
+$$E(X) = \sum_{x=1}^{4} x \cdot P(X = x) = \sum_{x=1}^{4} x \cdot \frac{1}{4} = \frac{1}{4}(1 + 2 + 3 + 4) = \frac{10}{4} = \frac{5}{2}$$
+
+# Problem 2
+
+A pdf is defined by
+$$f(x) = \begin{cases}
+c(x + 2y), & 0 < x < 2 \text{ and } 0 < y < 1 \\
+0, & \text{otherwise.}
+\end{cases}$$
+
+(a) Calculate $c$.
+
+(b) Find the marginal distribution of $X$.
+
+(c) Find the joint cdf of $X$ and $Y$.
+
+## Solution
+
+### Part (a)
+
+For $f(x, y)$ to be a valid pdf, we need:
+$$\int_{-\infty}^{\infty} \int_{-\infty}^{\infty} f(x, y) \, dx \, dy = 1$$
+
+$$\int_{0}^{1} \int_{0}^{2} c(x + 2y) \, dx \, dy = 1$$
+
+First, integrate with respect to $x$:
+$$\int_{0}^{2} (x + 2y) \, dx = \left[\frac{x^2}{2} + 2xy\right]_{0}^{2} = \frac{4}{2} + 4y = 2 + 4y$$
+
+Then, integrate with respect to $y$:
+$$\int_{0}^{1} (2 + 4y) \, dy = \left[2y + 2y^2\right]_{0}^{1} = 2 + 2 = 4$$
+
+Therefore:
+$$
+c \cdot 4 = 1 \implies c = \frac{1}{4}
+$$
+
+### Part (b)
+
+The marginal distribution of $X$ is:
+$$f_X(x) = \int_{-\infty}^{\infty} f(x, y) \, dy = \int_{0}^{1} \frac{1}{4}(x + 2y) \, dy$$
+
+for $0 < x < 2$:
+$$f_X(x) = \frac{1}{4} \int_{0}^{1} (x + 2y) \, dy = \frac{1}{4} \left[xy + y^2\right]_{0}^{1} = \frac{1}{4}(x + 1)$$
+
+Therefore:
+$$
+f_X(x) = \begin{cases}
+\frac{1}{4}(x + 1), & 0 < x < 2 \\
+0, & \text{otherwise}
+\end{cases}
+$$
+
+### Part (c)
+
+The joint cdf is:
+$$F_{X,Y}(x, y) = P(X \leq x, Y \leq y) = \int_{0}^{y} \int_{0}^{x} \frac{1}{4}(s + 2t) \, ds \, dt$$
+
+for $0 < x < 2$ and $0 < y < 1$:
+
+First, integrate with respect to $s$:
+$$\int_{0}^{x} (s + 2t) \, ds = \left[\frac{s^2}{2} + 2st\right]_{0}^{x} = \frac{x^2}{2} + 2xt$$
+
+Then, integrate with respect to $t$:
+$$\int_{0}^{y} \left(\frac{x^2}{2} + 2xt\right) \, dt = \left[\frac{x^2t}{2} + xt^2\right]_{0}^{y} = \frac{x^2y}{2} + xy^2$$
+
+Therefore:
+$$
+F_{X,Y}(x, y) = \begin{cases}
+0, & x \leq 0 \text{ or } y \leq 0 \\
+\frac{1}{4}\left(\frac{x^2y}{2} + xy^2\right), & 0 < x < 2, \, 0 < y < 1 \\
+\frac{1}{4}\left(\frac{x^2}{2} + x\right), & 0 < x < 2, \, y \geq 1 \\
+\frac{1}{4}\left(2y + 2y^2\right), & x \geq 2, \, 0 < y < 1 \\
+1, & x \geq 2, \, y \geq 1
+\end{cases}
+$$
+
+# Problem 3
+
+Let the joint pdf of $X, Y$ be given by
+$$f(x, y) = \begin{cases}
+\frac{2}{81}x^2y, & 0 \leq x \leq c, \, 0 \leq y \leq c \\
+0, & \text{otherwise.}
+\end{cases}$$
+
+(a) What value of $c$ makes $f_{XY}(x, y)$ a valid joint pdf?
+
+(b) Find $P(X > 3Y)$.
+
+## Solution
+
+### Part (a)
+
+For a valid pdf:
+$$\int_{0}^{c} \int_{0}^{c} \frac{2}{81}x^2y \, dx \, dy = 1$$
+
+First, integrate with respect to $x$:
+$$\int_{0}^{c} x^2 \, dx = \left[\frac{x^3}{3}\right]_{0}^{c} = \frac{c^3}{3}$$
+
+Then, integrate with respect to $y$:
+$$\int_{0}^{c} y \, dy = \left[\frac{y^2}{2}\right]_{0}^{c} = \frac{c^2}{2}$$
+
+Therefore:
+$$\frac{2}{81} \cdot \frac{c^3}{3} \cdot \frac{c^2}{2} = (\frac{c}{3})^5 = 1 \implies c = 3$$
+
+### Part (b)
+
+Now with $c = 3$:
+$$P(X > 3Y) = \int \int_{X > 3Y} \frac{2}{81}x^2y \, dx \, dy$$
+
+The region where $X > 3Y$ with $0 \leq x \leq 3$ and $0 \leq y \leq 3$ is bounded by:
+- $x > 3y$
+- $0 \leq y \leq 1$ (since when $y > 1$, $3y > 3$ which exceeds the domain)
+
+$$P(X > 3Y) = \int_{0}^{1} \int_{3y}^{3} \frac{2}{81}x^2y \, dx \, dy$$
+
+First, integrate with respect to $x$:
+$$\int_{3y}^{3} x^2 \, dx = \left[\frac{x^3}{3}\right]_{3y}^{3} = \frac{27}{3} - \frac{(3y)^3}{3} = 9 - 9y^3$$
+
+Then, integrate with respect to $y$:
+$$\frac{2}{81} \int_{0}^{1} y(9 - 9y^3) \, dy = \frac{2}{81} \int_{0}^{1} (9y - 9y^4) \, dy$$
+$$= \frac{2}{81} \left[\frac{9y^2}{2} - \frac{9y^5}{5}\right]_{0}^{1} = \frac{2}{81} \left(\frac{9}{2} - \frac{9}{5}\right) = \frac{1}{15}$$
+Therefore, $P(X > 3Y) = \frac{1}{15}$.
+
+
+# Problem 4
+
+Let the joint pdf of $X, Y$ be given by
+$$f(x, y) = \begin{cases}
+6x_1x_2, & 0 \leq x_1 \leq x_2 \leq 1 \\
+0, & \text{otherwise.}
+\end{cases}$$
+
+(a) Let $Y_1 = 2X_1^2X_2^3 + 3X_2$. Find $E(Y_1)$.
+
+(b) Let $Y_2 = X_1/X_2^2$. Find $E(Y_2)$.
+
+## Solution
+
+### Part (a)
+
+$$E(Y_1) = E(2X_1^2X_2^3 + 3X_2) = 2E(X_1^2X_2^3) + 3E(X_2)$$
+
+For the region $0 \leq x_1 \leq x_2 \leq 1$:
+
+$$E(X_1^2X_2^3) = \int_{0}^{1} \int_{0}^{x_2} x_1^2x_2^3 \cdot 6x_1x_2 \, dx_1 \, dx_2 = \int_{0}^{1} \int_{0}^{x_2} 6x_1^3x_2^4 \, dx_1 \, dx_2$$
+
+Integrate with respect to $x_1$:
+$$\int_{0}^{x_2} 6x_1^3x_2^4 \, dx_1 = 6x_2^4 \left[\frac{x_1^4}{4}\right]_{0}^{x_2} = 6x_2^4 \cdot \frac{x_2^4}{4} = \frac{3x_2^8}{2}$$
+
+Integrate with respect to $x_2$:
+$$\int_{0}^{1} \frac{3x_2^8}{2} \, dx_2 = \frac{3}{2} \left[\frac{x_2^9}{9}\right]_{0}^{1} = \frac{3}{2} \cdot \frac{1}{9} = \frac{1}{6}$$
+
+Now for $E(X_2)$:
+$$E(X_2) = \int_{0}^{1} \int_{0}^{x_2} x_2 \cdot 6x_1x_2 \, dx_1 \, dx_2 = \int_{0}^{1} \int_{0}^{x_2} 6x_1x_2^2 \, dx_1 \, dx_2$$
+
+Integrate with respect to $x_1$:
+$$\int_{0}^{x_2} 6x_1x_2^2 \, dx_1 = 6x_2^2 \left[\frac{x_1^2}{2}\right]_{0}^{x_2} = 6x_2^2 \cdot \frac{x_2^2}{2} = 3x_2^4$$
+
+Integrate with respect to $x_2$:
+$$\int_{0}^{1} 3x_2^4 \, dx_2 = 3 \left[\frac{x_2^5}{5}\right]_{0}^{1} = \frac{3}{5}$$
+
+Therefore:
+$$E(Y_1) = 2 \cdot \frac{1}{6} + 3 \cdot \frac{3}{5} = \frac{1}{3} + \frac{9}{5} = \frac{5 + 27}{15} = \frac{32}{15}$$
+
+### Part (b)
+
+$$E(Y_2) = E\left(\frac{X_1}{X_2^2}\right) = \int_{0}^{1} \int_{0}^{x_2} \frac{x_1}{x_2^2} \cdot 6x_1x_2 \, dx_1 \, dx_2$$
+$$= \int_{0}^{1} \int_{0}^{x_2} 6\frac{x_1^2}{x_2} \, dx_1 \, dx_2$$
+
+Integrate with respect to $x_1$:
+$$\int_{0}^{x_2} 6\frac{x_1^2}{x_2} \, dx_1 = \frac{6}{x_2} \left[\frac{x_1^3}{3}\right]_{0}^{x_2} = \frac{6}{x_2} \cdot \frac{x_2^3}{3} = 2x_2^2$$
+
+Integrate with respect to $x_2$:
+$$\int_{0}^{1} 2x_2^2 \, dx_2 = 2 \left[\frac{x_2^3}{3}\right]_{0}^{1} = \frac{2}{3}$$
+
+Therefore, $E(Y_2) = \frac{2}{3}$.
+
+
+# Problem 5
+
+Let the joint pdf of $X, Y$ be given by
+$$f(x, y) = \begin{cases}
+cxy, & 0 \leq x \leq 1, \, 0 \leq y \leq 1, \, 0 \leq x + y \leq 1 \\
+0, & \text{otherwise.}
+\end{cases}$$
+
+(a) Calculate $c$.
+
+(b) Obtain the conditional pdf of $X$ given $Y = y$.
+
+(c) Calculate $E(XY)$.
+
+(d) Find the joint cdf $F_{X,Y}(x, y)$.
+
+## Solution
+
+### Part (a)
+
+For a given $y \in [0, 1]$, we have $x \in [0, 1-y]$.
+
+$$\int_{0}^{1} \int_{0}^{1-y} cxy \, dx \, dy = 1$$
+
+Integrate with respect to $x$:
+$$\int_{0}^{1-y} xy \, dx = y \left[\frac{x^2}{2}\right]_{0}^{1-y} = y \cdot \frac{(1-y)^2}{2} = \frac{y(1-y)^2}{2}$$
+
+Integrate with respect to $y$:
+$$c \int_{0}^{1} \frac{y(1-y)^2}{2} \, dy = c \int_{0}^{1} \frac{y(1 - 2y + y^2)}{2} \, dy$$
+$$= \frac{c}{2} \int_{0}^{1} (y - 2y^2 + y^3) \, dy = \frac{c}{2} \left[\frac{y^2}{2} - \frac{2y^3}{3} + \frac{y^4}{4}\right]_{0}^{1}$$
+$$= \frac{c}{2} \left(\frac{1}{2} - \frac{2}{3} + \frac{1}{4}\right) = \frac{c}{24}$$
+
+Therefore: $\frac{c}{24} = 1 \implies c = 24$
+
+
+### Part (b)
+
+First, find the marginal pdf of $Y$:
+$$f_Y(y) = \int_{0}^{1-y} 24xy \, dx = 24y \left[\frac{x^2}{2}\right]_{0}^{1-y} = 12y(1-y)^2$$
+
+for $0 \leq y \leq 1$.
+
+The conditional pdf is:
+$$f_{X|Y}(x|y) = \frac{f(x,y)}{f_Y(y)} = \frac{24xy}{12y(1-y)^2} = \frac{2x}{(1-y)^2}$$
+
+for $0 \leq x \leq 1-y$.
+
+Therefore:
+$$f_{X|Y}(x|y) = \begin{cases}
+\frac{2x}{(1-y)^2}, & 0 \leq x \leq 1-y \\
+0, & \text{otherwise}
+\end{cases}$$
+
+### Part (c)
+
+$$E(XY) = \int_{0}^{1} \int_{0}^{1-y} xy \cdot 24xy \, dx \, dy = 24 \int_{0}^{1} \int_{0}^{1-y} x^2y^2 \, dx \, dy$$
+
+Integrate with respect to $x$:
+$$\int_{0}^{1-y} x^2 \, dx = \left[\frac{x^3}{3}\right]_{0}^{1-y} = \frac{(1-y)^3}{3}$$
+
+Integrate with respect to $y$:
+$$24 \int_{0}^{1} y^2 \cdot \frac{(1-y)^3}{3} \, dy = 8 \int_{0}^{1} y^2(1-y)^3 \, dy$$
+
+Expanding $(1-y)^3 = 1 - 3y + 3y^2 - y^3$:
+$$8 \int_{0}^{1} y^2(1 - 3y + 3y^2 - y^3) \, dy = 8 \int_{0}^{1} (y^2 - 3y^3 + 3y^4 - y^5) \, dy$$
+$$= 8 \left[\frac{y^3}{3} - \frac{3y^4}{4} + \frac{3y^5}{5} - \frac{y^6}{6}\right]_{0}^{1}$$
+$$= 8 \left(\frac{1}{3} - \frac{3}{4} + \frac{3}{5} - \frac{1}{6}\right) = \frac{2}{15}$$
+
+Therefore, $E(XY) = \frac{2}{15}$.
+
+### Part (d)
+
+The joint cdf is:
+$$F_{X,Y}(x, y) = P(X \leq x, Y \leq y) = \int_{0}^{y} \int_{0}^{\min(x, 1-t)} 24st \, ds \, dt$$
+
+This requires considering different regions:
+
+**Case 1:** $x + y \leq 1$ (inside the triangular region)
+
+$$F_{X,Y}(x, y) = \int_{0}^{y} \int_{0}^{x} 24st \, ds \, dt = \int_{0}^{y} 24t \left[\frac{s^2}{2}\right]_{0}^{x} \, dt$$
+$$= \int_{0}^{y} 12tx^2 \, dt = 12x^2 \left[\frac{t^2}{2}\right]_{0}^{y} = 6x^2y^2$$
+
+**Case 2:** $x + y > 1$, $x < 1$, $y < 1$
+
+$$F_{X,Y}(x, y) = \int_{0}^{1-x} \int_{0}^{x} 24st \, ds \, dt + \int_{1-x}^{y} \int_{0}^{1-t} 24st \, ds \, dt$$
+
+The first integral: $6x^2(1-x)^2$
+
+The second integral:
+$$\int_{1-x}^{y} 24t \cdot \frac{(1-t)^2}{2} \, dt = 12 \int_{1-x}^{y} t(1-t)^2 \, dt$$
+$$= 12 \int_{1-x}^{y} (t - 2t^2 + t^3) \, dt = 12 \left[\frac{t^2}{2} - \frac{2t^3}{3} + \frac{t^4}{4}\right]_{1-x}^{y}$$
+
+Therefore:
+$$F_{X,Y}(x, y) = \begin{cases}
+0, & x \leq 0 \text{ or } y \leq 0 \\
+6x^2y^2, & 0 < x, y, \, x + y \leq 1 \\
+6x^2(1-x)^2 + 12\left[\frac{t^2}{2} - \frac{2t^3}{3} + \frac{t^4}{4}\right]_{1-x}^{y}, & 0 < x < 1, \, 0 < y < 1, \, x + y > 1 \\
+1, & x \geq 1, \, y \geq 1
+\end{cases}$$
+

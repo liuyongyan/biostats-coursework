@@ -1,0 +1,436 @@
+---
+title: "Homework 4 - P8130 Biostatistics Method I"
+author: "Yongyan Liu (yl6107)"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(readxl)
+```
+
+# Problem 1 (10 points)
+
+A new device has been developed which allows patients to evaluate their blood sugar levels. The most widely device currently on the market yields widely variable results. The new device is evaluated by 25 patients having nearly the same distribution of blood sugar levels yielding the following data:
+
+125, 123, 117, 123, 115, 112, 128, 118, 124, 111, 116, 109, 125, 120, 113, 123, 112, 118, 121, 118, 122, 115, 105, 118, 131
+
+## Part (a)
+
+ Is there significant ($\alpha = 0.05$) evidence that median blood sugar readings was less than 120 in the population from which the 25 patients were selected? Use the sign test and report the test statistic and p-value.
+
+**Solution:**
+
+**Hypotheses:**
+
+- $H_0: M = 120$ (median blood sugar = 120)
+- $H_a: M < 120$ (median blood sugar < 120)
+
+**Summary:**
+
+- Number above 120 ($n_+$): 10
+- Number below 120 ($n_-$): 14
+- Number equal to 120 (ties): 1
+- Sample size excluding ties: $n = 10 + 14 = 24$
+
+Under $H_0$, the number of positive signs follows $B \sim \text{Binomial}(n=24, p=0.5)$.
+
+For a one-sided test ($H_a: M < 120$), we calculate:
+
+$$p\text{-value} = P(B \leq 10) = \sum_{k=0}^{10} \binom{24}{k} (0.5)^{24}$$
+
+```{r}
+blood_sugar <- c(125, 123, 117, 123, 115, 112, 128, 118, 124, 111, 116, 109, 125,
+                 120, 113, 123, 112, 118, 121, 118, 122, 115, 105, 118, 131)
+
+n_plus <- sum(blood_sugar > 120)
+n_minus <- sum(blood_sugar < 120)
+n <- n_plus + n_minus
+
+p_value_sign <- pbinom(n_plus, size = n, prob = 0.5)
+p_value_sign
+```
+
+**Test Statistic:** $B = 10$ (number of positive signs)
+
+**P-value:** $P(B \leq 10) = `r round(p_value_sign, 4)`$
+
+Since p-value = `r round(p_value_sign, 4)` > 0.05, we fail to reject $H_0$. There is insufficient evidence that the median blood sugar reading is less than 120.
+
+## Part (b)
+
+ Is there significant ($\alpha = 0.05$) evidence that median blood sugar readings was less than 120 in the population from which the 25 patients were selected? Use the Wilcoxon signed-rank test and report the test statistic and p-value.
+
+**Solution:**
+
+**Hypotheses:**
+
+- $H_0: M = 120$
+- $H_a: M < 120$
+
+```{r}
+wilcox_result <- wilcox.test(blood_sugar, mu = 120, alternative = "less", exact = FALSE)
+wilcox_result
+```
+
+**Test Statistic:** $T^+ = V = `r wilcox_result$statistic`$
+
+**P-value:** `r round(wilcox_result$p.value, 4)`
+
+Since p-value = `r round(wilcox_result$p.value, 4)` > 0.05, we fail to reject $H_0$. There is insufficient evidence that the median blood sugar reading is less than 120.
+
+
+# Problem 2 (10 points)
+
+Human brains have a large frontal cortex with excessive metabolic demands compared with the brains of other primates. However, the human brain is also three or more times the size of the brains of other primates. Is it possible that the metabolic demands of the human frontal cortex are just an expected consequence of greater brain size? For this problem, use the provided data file entitled "Brain data".
+
+```{r}
+brain_data <- read_excel("Brain data.xlsx")
+brain_data$`Brain mass (g)` <- as.numeric(brain_data$`Brain mass (g)`)
+nonhuman <- brain_data[brain_data$Species != "Homo sapiens", ]
+human <- brain_data[brain_data$Species == "Homo sapiens", ]
+```
+
+## Part (a)
+
+Using only the non-human data, make a scatterplot of (natural) log of brain mass on the X-axis and glia-neuron ratio as outcome. Then fit the corresponding regression model and write an expression for the fitted regression line.
+
+**Solution:**
+
+```{r, fig.height=4, fig.width=6}
+nonhuman$log_mass <- log(nonhuman$`Brain mass (g)`)
+
+plot(nonhuman$log_mass, nonhuman$`Glia-neuron ratio`,
+     xlab = "ln(Brain Mass in grams)", ylab = "Glia-Neuron Ratio",
+     main = "Non-Human Primates: ln(Brain Mass) vs Glia-Neuron Ratio",
+     pch = 19, col = "blue")
+
+model <- lm(`Glia-neuron ratio` ~ log_mass, data = nonhuman)
+abline(model, col = "red", lwd = 2)
+```
+
+Regression Coefficient Formulas:
+
+$$\hat{\beta}_1 = \frac{S_{XY}}{S_{XX}} = \frac{\sum(X_i - \bar{X})(Y_i - \bar{Y})}{\sum(X_i - \bar{X})^2}, \quad \hat{\beta}_0 = \bar{Y} - \hat{\beta}_1 \bar{X}$$
+
+```{r}
+coef_model <- coef(model)
+coef_model
+```
+
+Fitted Regression Equation:
+
+$$\widehat{\text{Glia-Neuron Ratio}} = `r round(coef_model[1], 4)` + `r round(coef_model[2], 4)` \times \ln(\text{Brain Mass})$$
+
+## Part (b)
+
+ Using the nonhuman primate relationship, what is the predicted glia-neuron ratio for humans, given their brain mass?
+
+**Solution:**
+
+Human brain mass: `r human$"Brain mass (g)"` grams
+
+$$\ln(\text{Human Brain Mass}) = \ln(`r human$"Brain mass (g)"`) = `r round(log(human$"Brain mass (g)"), 4)`$$
+
+Predicted Glia-Neuron Ratio:
+$$\hat{Y} = `r round(coef_model[1], 4)` + `r round(coef_model[2], 4)` \times `r round(log(human$"Brain mass (g)"), 4)` = `r round(coef_model[1] + coef_model[2] * log(human$"Brain mass (g)"), 4)`$$
+
+```{r}
+human_log_mass <- log(human$`Brain mass (g)`)
+predicted <- predict(model, newdata = data.frame(log_mass = human_log_mass))
+actual <- human$`Glia-neuron ratio`
+```
+
+- **Predicted:** `r round(predicted, 4)`
+- **Actual:** `r actual`
+- **Difference (Actual - Predicted):** `r round(actual - predicted, 4)`
+
+## Part (c)
+
+ Construct a 95% prediction interval corresponding to the prediction made in part (b). Based on this, does the human brain have an excessive glia-neuron ratio for its mass compared with other primates?
+
+**Solution:**
+
+The 95% prediction interval formula:
+$$\hat{Y}_0 \pm t_{n-2, 0.975} \times s_e \sqrt{1 + \frac{1}{n} + \frac{(X_0 - \bar{X})^2}{S_{XX}}}$$
+
+```{r}
+pred_int <- predict(model, newdata = data.frame(log_mass = human_log_mass),
+                    interval = "prediction", level = 0.95)
+pred_int
+```
+
+**95% Prediction Interval:** [`r round(pred_int[2], 4)`, `r round(pred_int[3], 4)`]
+
+**Conclusion:** The actual human glia-neuron ratio (`r actual`) falls **within** the 95% prediction interval [`r round(pred_int[2], 4)`, `r round(pred_int[3], 4)`]. Based on this interval, there is **not enough evidence** to conclude that the human brain has an excessive glia-neuron ratio for its mass compared to other primates.
+
+## Part (d)
+
+ Is there anything to be cautious about when using the non-human data to make predictions for humans? Explain your answer.
+
+**Solution:**
+
+```{r}
+range_mass <- range(nonhuman$`Brain mass (g)`)
+range_mass
+```
+
+**Cautions:**
+
+1. The human brain mass (`r human$"Brain mass (g)"` g) is far outside the range of non-human primate brain masses (`r round(range_mass[1], 1)` to `r round(range_mass[2], 1)` g). Predictions outside the observed data range are less reliable.
+
+2. We assume the linear relationship between log(brain mass) and glia-neuron ratio continues beyond the observed range, which may not hold.
+
+3. With only `r nrow(nonhuman)` non-human observations, there is considerable uncertainty in the regression estimates.
+
+
+# Problem 3 (20 points)
+
+For this problem, you will be using data HeartDisease.csv. The investigator is mainly interested if there is an association between total cost (in dollars) of patients diagnosed with heart disease and the number of emergency room (ER) visits. The model may need to be adjusted for other factors, including age, gender, number of complications that arose during treatment, and duration of treatment condition.
+
+```{r}
+heart <- read.csv("HeartDisease.csv")
+```
+
+## Part (a)
+
+ Generate appropriate descriptive statistics for all variables of interest (continuous and categorical).
+
+**Solution:**
+
+**1. Continuous Variables:** totalcost, age, duration
+
+```{r}
+summary(heart[, c("totalcost", "age", "duration")])
+```
+
+- **totalcost:** Ranges from \$0 to \$52,664.90 with median \$`r round(median(heart$totalcost), 1)` and mean \$`r round(mean(heart$totalcost), 1)`. The large difference between mean and median suggests right-skewness.
+- **age:** Patients range from `r min(heart$age)` to `r max(heart$age)` years old, with mean age `r round(mean(heart$age), 1)` years.
+- **duration:** Treatment duration ranges from `r min(heart$duration)` to `r max(heart$duration)` days, with mean `r round(mean(heart$duration), 1)` days.
+
+**2. Discrete Variables (>10 unique values):** ERvisits, interventions, comorbidities
+
+```{r}
+# ERvisits (17 unique values)
+cat("ERvisits - Range:", range(heart$ERvisits), " Mean:", round(mean(heart$ERvisits), 2), "\n")
+
+# Interventions (32 unique values)
+cat("Interventions - Range:", range(heart$interventions), " Mean:", round(mean(heart$interventions), 2), "\n")
+
+# Comorbidities (32 unique values)
+cat("Comorbidities - Range:", range(heart$comorbidities), " Mean:", round(mean(heart$comorbidities), 2), "\n")
+```
+
+- **ERvisits:** Patients had between `r min(heart$ERvisits)` and `r max(heart$ERvisits)` ER visits, with an average of `r round(mean(heart$ERvisits), 2)` visits.
+- **interventions:** Number of interventions ranged from `r min(heart$interventions)` to `r max(heart$interventions)`, averaging `r round(mean(heart$interventions), 2)`.
+- **comorbidities:** Comorbid conditions ranged from `r min(heart$comorbidities)` to `r max(heart$comorbidities)`, with mean `r round(mean(heart$comorbidities), 2)`.
+
+**3. Discrete Variables (<10 unique values):** drugs, complications
+
+```{r}
+# Drugs (9 unique values)
+table(heart$drugs)
+
+# Complications (3 unique values)
+table(heart$complications)
+```
+
+- **drugs:** Most patients received 0 drugs (`r sum(heart$drugs == 0)` patients, `r round(mean(heart$drugs == 0)*100, 1)`%), with a maximum of `r max(heart$drugs)` drugs.
+- **complications:** The majority had no complications (`r sum(heart$complications == 0)` patients, `r round(mean(heart$complications == 0)*100, 1)`%). Only `r sum(heart$complications >= 1)` patients had 1 or more complications.
+
+**4. Binary Variable:** gender
+
+```{r}
+table(heart$gender)
+```
+
+- **gender:** `r sum(heart$gender == 0)` patients (`r round(mean(heart$gender == 0)*100, 1)`%) are coded as 0, and `r sum(heart$gender == 1)` patients (`r round(mean(heart$gender == 1)*100, 1)`%) are coded as 1.
+
+## Part (b)
+
+ Investigate the shape of the distribution for variable totalcost and try different transformations, if necessary.
+
+**Solution:**
+
+```{r, fig.height=3, fig.width=9}
+par(mfrow = c(1, 3))
+hist(heart$totalcost, main = "Original", xlab = "Total Cost", col = "lightblue")
+hist(log(heart$totalcost), main = "Log Transformed",
+     xlab = "log(Total Cost)", col = "lightgreen")
+hist(sqrt(heart$totalcost), main = "Square Root", xlab = "sqrt(Total Cost)", col = "lightcoral")
+```
+
+We should use **log transformation** because:
+
+1. The original distribution is highly right-skewed
+2. Log transformation produces a more symmetric, approximately normal distribution
+
+```{r}
+heart$log_cost <- ifelse(heart$totalcost > 0, log(heart$totalcost), NA)
+```
+
+## Part (c)
+
+ Create a new variable called comp_bin by dichotomizing the complications variable: 0 if no complications, and 1 otherwise.
+
+**Solution:**
+
+$$\text{comp\_bin} = \begin{cases} 0 & \text{if complications} = 0 \\ 1 & \text{if complications} \geq 1 \end{cases}$$
+
+```{r}
+heart$comp_bin <- ifelse(heart$complications == 0, 0, 1)
+table(heart$comp_bin)
+```
+
+## Part (d)
+
+ Fit a simple linear regression (SLR) model with totalcost (original or transformed, based on your decision in part (b)) as the outcome variable and ERvisits as predictor. This should include a scatterplot and results of the regression analysis, with appropriate comments on significance and interpretation of the slope estimate.
+
+**Solution:**
+
+```{r, fig.height=4, fig.width=6}
+plot(heart$ERvisits, heart$log_cost,
+     xlab = "Number of ER Visits", ylab = "log(Total Cost)",
+     main = "ER Visits vs log(Total Cost)", pch = 19, col = rgb(0,0,1,0.3))
+
+slr <- lm(log_cost ~ ERvisits, data = heart)
+abline(slr, col = "red", lwd = 2)
+summary(slr)
+```
+
+**Fitted Regression Equation:**
+
+$$\log(\text{Total Cost}) = `r round(coef(slr)[1], 4)` + `r round(coef(slr)[2], 4)` \times \text{ERvisits}$$
+
+
+
+- **Intercept** ($\hat{\beta}_0 = `r round(coef(slr)[1], 4)`$): Expected log(total cost) when ERvisits = 0
+- **Slope** ($\hat{\beta}_1 = `r round(coef(slr)[2], 4)`$): For each additional ER visit, log(total cost) increases by `r round(coef(slr)[2], 4)` on average
+
+**Significance:** ERvisits is highly significant (p < 0.001). The positive slope indicates more ER visits are associated with higher costs.
+
+## Part (e)
+
+ Fit a multiple linear regression (MLR) with comp_bin and ERvisits as predictors.
+
+### (I) Test for Interaction
+
+ Test for an interaction between comp_bin and ERvisits. Give your conclusions and interpret the results.
+
+**Solution:**
+
+```{r}
+model_int <- lm(log_cost ~ ERvisits * comp_bin, data = heart)
+
+model_int
+
+summary(model_int)$coefficients
+```
+
+**Interaction term:** $\hat{\beta}_3 = `r round(coef(model_int)[4], 4)`$, p-value = `r round(summary(model_int)$coefficients[4, 4], 4)`
+
+The interaction is **not significant** (p > 0.05). The effect of ER visits on log(total cost) does not differ between patients with and without complications.
+
+### (II) Test for Confounding
+
+ Test whether comp_bin is a confounder of the relationship between totalcost and ERvisits. Give your conclusions and interpret the results.
+
+**Solution:**
+
+A variable is a confounder if adjusting for it changes the coefficient by more than 10%.
+
+```{r}
+model_adj <- lm(log_cost ~ ERvisits + comp_bin, data = heart)
+beta_crude <- coef(slr)["ERvisits"]
+beta_adj <- coef(model_adj)["ERvisits"]
+pct_change <- abs((beta_adj - beta_crude) / beta_crude) * 100
+```
+
+- Crude $\hat{\beta}_{\text{ERvisits}}$: `r round(beta_crude, 4)`
+- Adjusted $\hat{\beta}_{\text{ERvisits}}$: `r round(beta_adj, 4)`
+- Percent change: $\frac{|`r round(beta_adj, 4)` - `r round(beta_crude, 4)`|}{|`r round(beta_crude, 4)`|} \times 100\% = `r round(pct_change, 2)`\%$
+
+comp_bin is **not a confounder** (change = `r round(pct_change, 2)`% < 10%).
+
+### (III) Should comp_bin Be Included?
+
+ Should comp_bin be included as a covariate in the model (along with ERvisits)? Explain your reasoning.
+
+**Solution:**
+
+```{r}
+summary(model_adj)$coefficients["comp_bin", ]
+```
+
+**Reasoning:**
+
+1. Interaction: Not significant
+2. Confounding: < 10% change - not a confounder
+3. Statistical significance: comp_bin is significant (p < 0.05)
+4. Clinical relevance: Complications are clinically meaningful
+
+comp_bin should be included because it is statistically significant and clinically important.
+
+## Part (f)
+
+ Use your choice of model in part (e) and add additional covariates (age, gender, and duration of treatment).
+
+### (I) Fit MLR with All Covariates
+
+ Fit a MLR, provide the fitted regression equation, and give the interpretation of each estimated parameter. Which variables seem to be significant?
+
+**Solution:**
+
+```{r}
+mlr <- lm(log_cost ~ ERvisits + comp_bin + age + gender + duration, data = heart)
+summary(mlr)
+```
+
+**Fitted Regression Equation:**
+
+$$\log(\text{Cost}) = `r round(coef(mlr)[1], 2)` + (`r round(coef(mlr)[2], 4)`*\text{ERvisits}) + (`r round(coef(mlr)[3], 4)`*\text{comp\_bin}) + (`r round(coef(mlr)[4], 4)`*\text{age}) + (`r round(coef(mlr)[5], 4)`*\text{gender}) + (`r round(coef(mlr)[6], 4)`*\text{duration})$$
+
+
+
+| Variable | Estimate | Interpretation (holding others constant) |
+|----------|----------|------------------------------------------|
+| ERvisits | `r round(coef(mlr)[2], 4)` | Each ER visit increases log(cost) by `r round(coef(mlr)[2], 4)` |
+| comp_bin | `r round(coef(mlr)[3], 4)` | Having complications increases log(cost) by `r round(coef(mlr)[3], 4)` |
+| age | `r round(coef(mlr)[4], 4)` | Each year of age changes log(cost) by `r round(coef(mlr)[4], 4)` |
+| gender | `r round(coef(mlr)[5], 4)` | Gender effect on log(cost) |
+| duration | `r round(coef(mlr)[6], 4)` | Each unit of duration increases log(cost) by `r round(coef(mlr)[6], 4)` |
+
+Significant Variables (p < 0.05): ERvisits, comp_bin, duration, age
+
+### (II) Compare SLR and MLR Models
+
+ Compare the SLR and MLR models using the appropriate testing procedure. Which model would you use to address the investigator's objective and why?
+
+**Solution:**
+
+Partial F-test formula:
+$$F = \frac{(SSE_{\text{reduced}} - SSE_{\text{full}}) / (df_{\text{reduced}} - df_{\text{full}})}{SSE_{\text{full}} / df_{\text{full}}}$$
+
+```{r}
+anova_result <- anova(slr, mlr)
+anova_result
+```
+
+**Model Comparison:**
+
+| Model | $R^2$ | Adjusted $R^2$ |
+|-------|-------|----------------|
+| SLR | `r round(summary(slr)$r.squared, 4)` | `r round(summary(slr)$adj.r.squared, 4)` |
+| MLR | `r round(summary(mlr)$r.squared, 4)` | `r round(summary(mlr)$adj.r.squared, 4)` |
+
+**F-statistic:** `r round(anova_result$F[2], 2)`, **P-value:** < 0.001
+
+We should use the **MLR model** because:
+
+1. Partial F-test is significant (p < 0.001) - additional covariates improve fit
+2. Higher $R^2$ (`r round(summary(mlr)$r.squared, 4)` vs `r round(summary(slr)$r.squared, 4)`)
+3. Controls for confounders (age, gender, duration, complications)
+4. Provides more accurate estimate of ERvisits effect on total cost

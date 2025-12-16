@@ -1,0 +1,176 @@
+---
+title: "Homework 2"
+subtitle: "P8130 Biostatistics Method I - Fall 2025"
+author: "Yongyan Liu (yl6107)"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output: pdf_document
+geometry: margin=1in
+fontsize: 11pt
+---
+
+**Due:** September 30, 2025 at 11:59pm
+
+# Problem 1 (10 points)
+
+Suppose the probability that a randomly selected adult receives at least one flu shot during a single flu season is **68%**. A sample of **30 adults** is observed.
+
+-   For part (a), work **by hand** and show all intermediate steps.
+-   For parts (b)–(e), you may use tables or software.
+
+**a)** What is the probability that exactly 18 of these 30 adults receive at least one flu shot?
+
+$$
+\begin{aligned}
+P(X = 18) &= \binom{30}{18} * 68\%^{18} * (1 - 68\%)^{30-18}  \\
+          &= \dfrac{30!}{12!18!} * 68\%^{18} * 32\%^{12}
+\end{aligned}
+$$ And the result is
+
+```{r}
+p = factorial(30) / factorial(18) / factorial(12) * (0.68 ** 18) * (0.32 ** 12)
+p # show the probablity
+
+p - dbinom(18, 30, 0.68) < 1e-8 # check whether the result is correct
+```
+
+**b)** What is the probability that at least 18 of these adults receive at least one flu shot (exact calculation)?
+
+```{r}
+1 - pbinom(17, 30, 0.68)  #  1 - (at most 17 people receive at least one flu shot)
+```
+
+**c)** For part (b), is it appropriate to use an approximation method? If yes, compute the probabilities using an approximation (with continuity correction) and compare to the exact values.
+
+```{r}
+mu = 30 * 0.68                  # mean
+sigma = sqrt(30 * 0.68 * 0.32)  # standard deviation
+1 - pnorm(17.5, mu, sigma)      # show approximation results using normal distribution
+
+# show the differences
+pbinom(17, 30, 0.68) - pnorm(17.5, mu, sigma)
+```
+
+**d)** What is the expected number of adults who receive at least one flu shot?
+
+```{r}
+mu      # as calcualted in (c)
+```
+
+**e)** What is the standard deviation of the number who receive at least one flu shot?
+
+```{r}
+sigma  # as calcualted in (c)
+```
+
+------------------------------------------------------------------------
+
+# Problem 2 (10 points)
+
+During peak flu season, a city health department records an average of **15 new laboratory-confirmed influenza cases per day**.
+Assume the daily number of new cases follows a **Poisson(**$\lambda$ = 15) distribution.
+
+-   For part (a), work **by hand** and show all intermediate steps.
+-   For parts (b)–(d), you may use tables or software.
+
+**a)** What is the probability that the city records exactly 15 new cases tomorrow?
+
+$$
+P(X = 15) = \dfrac{15^{15} * e^{-15}}{15!}
+$$
+The result is
+
+```{r}
+p = 15 ** 15 * exp(-15) / factorial(15) # calculate 'by hand'
+p                                       # show result
+
+p - dpois(15, 15) < 1e-8                # Verify the result is correct
+```
+
+**b)** What is the probability that the city records fewer than 3 new influenza cases tomorrow?
+
+```{r}
+ppois(2, 15)
+```
+
+**c)** What is the probability that the city records more than 20 new cases tomorrow?
+
+```{r}
+1 - ppois(20, 15)
+```
+
+**d)** The Poisson distribution can sometimes be approximated by a normal distribution.
+Calculate approximations based on a **N(**$\lambda$, $\lambda$) distribution for (a)–(c) (with continuity correction).
+Does the approximation seem good?
+
+```{r}
+mu = 15           # mean
+sigma = sqrt(15)  # standard deviation
+
+# (a) approx
+pnorm(15.5, mu, sigma) - pnorm(14.5, mu, sigma)
+
+# (b) approx
+pnorm(2.5, mu, sigma)
+
+# (c) approx
+1 - pnorm(20.5, mu, sigma)
+```
+
+The approximation looks better when X is close to $\lambda$, but not so good when X is a few standard deviations away from $\lambda$.
+
+------------------------------------------------------------------------
+
+# Problem 3 (10 points)
+
+Assume the **systolic blood pressure (SBP)** of 20–29 year-old American males is normally distributed with:
+- Population mean: $\mu$ = 128
+- Population standard deviation: $\sigma$ = 10.2
+
+**a)** What is the probability that a randomly selected American male between 20 and 29 years old has a systolic blood pressure above 137?
+
+```{r}
+1 - pnorm(137, 128, 10.2)
+```
+
+**b)** What is the probability that the sample mean blood pressure of 50 males between 20 and 29 years old is less than 125?
+
+```{r}
+sigma = 10.2 / sqrt(50)   # calculate the standard deviation for the sample mean
+pnorm(125, 128, sigma)    # show the result
+```
+
+**c)** What is the 90th percentile of the sampling distribution of the sample mean with a sample size of 40?
+
+```{r}
+sigma = 10.2 / sqrt(40)   # calculate the standard deviation for the sample mean
+qnorm(0.9, 128, sigma)    # show the result
+```
+
+------------------------------------------------------------------------
+
+# Problem 4 (10 points)
+
+Researchers studied the **mean pulse rate** of young women suffering from **fibromyalgia**.
+A random sample of **40 women** gave:
+- Sample mean = 80
+- Sample standard deviation = 10
+
+**a)** Compute the 95% confidence interval for the population mean pulse rate of young females with fibromyalgia and provide the correct interpretation.
+
+```{r}
+# calculate the standard deviation for sample mean
+sigma = 10 / sqrt(40)
+
+# 95% CI is roughly 2 times standard deviation around population mean
+c(80 - 2 * sigma, 80 + 2 * sigma)
+```
+
+**b)** Test the null hypothesis that the mean pulse of young women with fibromyalgia equals 70 (two-sided), at $\alpha$ = 0.01. Conduct this hypothesis test and interpret the result.
+
+```{r}
+se = 10 / sqrt(40)
+p_value = 2 * (1 - pt((80 - 70) / se, df = 39))
+p_value     # show the p value
+```
+
+From the very small p-value, we can see the null hypothesis $H_0$ is rejected.

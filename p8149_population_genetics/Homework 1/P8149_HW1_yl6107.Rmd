@@ -1,0 +1,119 @@
+---
+title: "P8149 — Human Population Genetics: Homework 1"
+author: "Yongyan Liu (yl6107)"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output: pdf_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Question 1
+
+Three allelic variants A, B, and C of the red cell acid phosphatase
+enzyme were found in a sample of 178 people. All genotypes were
+distinguishable by electrophoresis, and the frequencies in the sample
+were:
+
+| Genotype      | AA  |  AB  |  BB  | AC  | BC  | CC  |
+|---------------|:---:|:----:|:----:|:---:|:---:|:---:|
+| Frequency (%) | 9.6 | 48.3 | 34.3 | 2.8 | 5.0 | 0.0 |
+
+What are the *gene (allele)* frequencies in the sample?
+
+-   P(A) = P(AA) + P(AB) / 2 + P(AC) / 2 = `r (9.6 * 2 + 48.3 + 2.8)/2`%
+-   P(B) = P(BB) + P(AB) / 2 + P(BC) / 2 =
+    `r (34.3 * 2 + 48.3 + 5.0)/2`%
+-   P(C) = P(CC) + P(AC) / 2 + P(BC) / 2 = `r (2.8 + 5.0)/2`%
+
+# Question 2
+
+What will be the genotypic composition of the next generation under
+random mating if the initial genotypic composition is
+$P_{11}=0.2,\; P_{12}=0.4,\; P_{22}=0.4$?
+
+From the genotype frequency, we can calculate the allele frequency:
+
+-   $P(1) = P_{11} + \dfrac{1}{2}P_{12} = 0.4$
+-   $P(2) = P_{22} + \dfrac{1}{2}P_{12} = 0.6$
+
+Since it's random mating, the genotype frequency of the next generation
+$P'$ is only decided by allele frequency:
+
+-   $P'_{11} = P(1)^2 = 0.16$
+-   $P'_{22} = P(2)^2 = 0.36$
+-   $P'_{12} = 2 * P(1) * P(2) = 0.48$
+
+# Question 3
+
+About 30% of people do not recognize the bitter taste of
+phenyl-thiocarbamate (PTC). Inability to taste is due to a single
+autosomal recessive gene. Assuming HWE, what is the frequency of the
+non-tasting gene?
+
+Let A/a be the tasting/non-tasting gene. From the question, we know
+$P(aa) = 30\%$.
+
+Assuming HWE, $P(a) = \sqrt{30\%} = 54.8\%$ and
+$P(A) = 1 - P(a) = 45.2\%$.
+
+# Question 4
+
+Albinism occurs with a frequency of about 1 in 20,000 in European
+populations. Assuming it is due to a single autosomal recessive gene and
+HWE, what is the approximate proportion of carriers?
+
+Let A/a be the corresponding dominant/recessive gene.
+
+From the question, we know the genotype frequency
+$P(aa) = \dfrac{1}{20000}$. So the allele frequency
+$P(a) = \sqrt{P(aa)} = 0.7\%$.
+
+Since $P(a)$ is very small, the approximate proportion of carriers is
+$2P(a) = 1.4%$.
+
+# Question 5
+
+Observed counts:
+
+| Genotype | M    | MN   | N    |
+|----------|------|------|------|
+| Count    | 1787 | 3039 | 1303 |
+
+(a) What genotype frequencies are observed?\
+
+The total observed count is 6129.
+
+-   $P(MM) = 1787 / 6129 = 29.16\%$
+-   $P(MN) = 3039 / 6129 = 49.58\%$
+-   $P(NN) = 1303 / 6129 = 21.26\%$
+
+(b) What are the gene (allele) frequencies (M and N)?\
+
+-   $P(M) = P(MM) + P(MN) / 2 = 53.9\%$
+-   $P(N) = P(NN) + P(MN) / 2 = 46.0\%$
+
+(c) Test whether the genotypes are in HWE.
+
+From the calculation above, we can see that
+
+-   $P(N) + P(M) \approx 1$
+-   $2 * P(N) * P(M) = 2 * 53.9\% * 46.0\% = 59.59\% \approx P(MN)$
+
+So the genotypes are in HWE.
+
+# Question 6
+
+A certain population is *triploid*. A locus has two alleles $A_1$ and
+$A_2$ with frequencies $p$ and $q=1-p$. Calculate the genotypic
+composition after one generation of random mating (assume HWE
+conditions).
+
+From the binomial expansion
+$(pA_1 + qA_2)^3 = p^3A_1^3 + 3pq^2A_1A_2^2 + 3p^2qA_1^2A_2 + q^3A_2^3$,
+we have:
+
+-   $P(A_1A_1A_1) = p^3$
+-   $P(A_1A_1A_2) = 3p^2q$
+-   $P(A_1A_2A_2) = 3pq^2$
+-   $P(A_2A_2A_2) = q^3$

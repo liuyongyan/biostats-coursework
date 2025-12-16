@@ -1,0 +1,266 @@
+---
+title: "Homework 6 - P8104 Probability"
+author: "Yongyan Liu (yl6107)"
+output: pdf_document
+header-includes:
+  - \usepackage{amsmath}
+  - \usepackage{amssymb}
+  - \usepackage{amsthm}
+---
+
+# Problem 1
+
+Verify that the following probability density functions (pdfs) have the indicated hazard function. The hazard function of a random variable $T$ is defined as
+
+$$h_T(t) = \lim_{\delta \to 0} \frac{P(t \leq T < t + \delta \mid T \geq t)}{\delta} = \frac{f_T(t)}{1 - F_T(t)}$$
+
+Compute $h_T(t)$ in each case and verify that it matches the stated form:
+
+(a) $T \sim \text{Exponential}(\beta)$: $h_T(t) = \frac{1}{\beta}$.
+
+For $T \sim \text{Exponential}(\beta)$:
+
+$$h_T(t) = \frac{f_T(t)}{1 - F_T(t)} = \frac{\frac{1}{\beta}e^{-t/\beta}}{1 - (1 - e^{-t/\beta})} = \frac{1}{\beta}$$
+
+Proved.
+
+
+(b) $T \sim \text{Weibull}(r, \beta)$: $h_T(t) = \frac{r}{\beta}t^{r-1}$.
+
+For $T \sim \text{Weibull}(r, \beta)$ with $f_T(t) = \frac{r}{\beta}t^{r-1}e^{-(t/\beta)^r}$ and $F_T(t) = 1 - e^{-(t/\beta)^r}$:
+
+$$
+h_T(t) = \frac{f_T(t)}{1 - F_T(t)} = \frac{\frac{r}{\beta}t^{r-1}e^{-(t/\beta)^r}}{1 - (1 - e^{-(t/\beta)^r})} = \frac{r}{\beta}t^{r-1}
+$$
+
+Proved.
+
+
+(c) $T \sim \text{Logistic}(\mu, \beta)$, where $F_T(t) = \frac{1}{1 + e^{-(t-\mu)/\beta}}$: $h_T(t) = \frac{1}{\beta}F_T(t)$.
+
+For $T \sim \text{Logistic}(\mu, \beta)$, we have $f_T(t) = \frac{1}{\beta} \cdot \frac{e^{-(t-\mu)/\beta}}{(1 + e^{-(t-\mu)/\beta})^2}$ and $F_T(t) = \frac{1}{1 + e^{-(t-\mu)/\beta}}$:
+
+$$
+h_T(t) = \frac{f_T(t)}{1 - F_T(t)}= \frac{\frac{1}{\beta} \cdot \frac{e^{-(t-\mu)/\beta}}{(1 + e^{-(t-\mu)/\beta})^2}}{1 - \frac{1}{1 + e^{-(t-\mu)/\beta}}} = \frac{\frac{1}{\beta} \cdot \frac{e^{-(t-\mu)/\beta}}{(1 + e^{-(t-\mu)/\beta})^2}}{\frac{e^{-(t-\mu)/\beta}}{1 + e^{-(t-\mu)/\beta}}} = \frac{1}{\beta} \cdot \frac{1}{1 + e^{-(t-\mu)/\beta}} = \frac{1}{\beta}F_T(t)
+$$
+
+Proved.
+
+\newpage
+
+# Problem 2
+
+Let $X \sim \text{DoubleExponential}(\mu, \sigma)$ with pdf
+
+$$f(x|\mu, \sigma) = \frac{1}{2\sigma}e^{-|x-\mu|/\sigma}, \quad -\infty < x < \infty$$
+
+Compute
+
+(a) $E(X)$ using its definition.
+
+$$
+\begin{aligned}
+E(X) &= \int_{-\infty}^{\infty} x \cdot \frac{1}{2\sigma}e^{-|x-\mu|/\sigma} \, dx \\
+&= \frac{1}{2\sigma}\int_{-\infty}^{\mu} x \cdot e^{(x-\mu)/\sigma} \, dx + \frac{1}{2\sigma}\int_{\mu}^{\infty} x \cdot e^{-(x-\mu)/\sigma} \, dx
+\end{aligned}
+$$
+
+Let $u = x - \mu$, so $x = u + \mu$ and $dx = du$:
+
+$$
+\begin{aligned}
+E(X) &= \frac{1}{2\sigma}\int_{-\infty}^{0} (u + \mu) e^{u/\sigma} \, du + \frac{1}{2\sigma}\int_{0}^{\infty} (u + \mu) e^{-u/\sigma} \, du \\
+&= \frac{1}{2\sigma}\left[\int_{-\infty}^{0} u \cdot e^{u/\sigma} \, du + \mu\int_{-\infty}^{0} e^{u/\sigma} \, du + \int_{0}^{\infty} u \cdot e^{-u/\sigma} \, du + \mu\int_{0}^{\infty} e^{-u/\sigma} \, du\right]
+\end{aligned}
+$$
+
+By symmetry, $\int_{-\infty}^{0} u \cdot e^{u/\sigma} \, du + \int_{0}^{\infty} u \cdot e^{-u/\sigma} \, du = 0$. Also, $\int_{-\infty}^{0} e^{u/\sigma} \, du = \sigma$ and $\int_{0}^{\infty} e^{-u/\sigma} \, du = \sigma$.
+
+$$E(X) = \frac{1}{2\sigma}[\mu \cdot \sigma + \mu \cdot \sigma] = \mu$$
+
+
+(b) $\text{Var}(X)$ using its definition.
+
+Use $\text{Var}(X) = E(X^2) - [E(X)]^2$ with $E(X) = \mu$. First find $E(X^2)$:
+
+$$
+\begin{aligned}
+E(X^2) &= \int_{-\infty}^{\infty} x^2 \cdot \frac{1}{2\sigma}e^{-|x-\mu|/\sigma} \, dx \\
+&= \frac{1}{2\sigma}\int_{-\infty}^{\mu} x^2 e^{(x-\mu)/\sigma} \, dx + \frac{1}{2\sigma}\int_{\mu}^{\infty} x^2 e^{-(x-\mu)/\sigma} \, dx
+\end{aligned}
+$$
+
+Let $u = x - \mu$, then $(u + \mu)^2 = u^2 + 2\mu u + \mu^2$:
+
+$$E(X^2) = \frac{1}{2\sigma}\left[\int_{-\infty}^{0} (u^2 + 2\mu u + \mu^2) e^{u/\sigma} \, du + \int_{0}^{\infty} (u^2 + 2\mu u + \mu^2) e^{-u/\sigma} \, du\right]$$
+
+By symmetry, odd power terms cancel. Using $\int_{0}^{\infty} u^2 e^{-u/\sigma} \, du = 2\sigma^3$:
+
+$$E(X^2) = \frac{1}{2\sigma}\left[2 \cdot 2\sigma^3 + \mu^2 \cdot 2\sigma\right] = 2\sigma^2 + \mu^2$$
+
+Therefore, $\text{Var}(X) = E(X^2) - [E(X)]^2 = 2\sigma^2 + \mu^2 - \mu^2 = 2\sigma^2$
+
+
+(c) The moment generating function (MGF) using its definition.
+
+$$
+\begin{aligned}
+M_X(t) &= E(e^{tX}) = \int_{-\infty}^{\infty} e^{tx} \cdot \frac{1}{2\sigma}e^{-|x-\mu|/\sigma} \, dx \\
+&= \frac{1}{2\sigma}\int_{-\infty}^{\mu} e^{x(t + 1/\sigma) - \mu/\sigma} \, dx + \frac{1}{2\sigma}\int_{\mu}^{\infty} e^{x(t - 1/\sigma) + \mu/\sigma} \, dx \\
+&= \frac{e^{-\mu/\sigma}}{2\sigma}\int_{-\infty}^{\mu} e^{x(t + 1/\sigma)} \, dx + \frac{e^{\mu/\sigma}}{2\sigma}\int_{\mu}^{\infty} e^{x(t - 1/\sigma)} \, dx
+\end{aligned}
+$$
+
+For convergence, assume $|t| < 1/\sigma$. Evaluating the integrals:
+
+$$M_X(t) = \frac{e^{-\mu/\sigma}}{2\sigma} \cdot \frac{e^{\mu(t + 1/\sigma)}}{t + 1/\sigma} + \frac{e^{\mu/\sigma}}{2\sigma} \cdot \frac{e^{\mu(t - 1/\sigma)}}{1/\sigma - t} = \frac{e^{\mu t}}{2\sigma} \left[\frac{1}{t + 1/\sigma} + \frac{1}{1/\sigma - t}\right]$$  
+\newpage
+
+# Problem 3
+
+The pdf of $X$, representing the lifetime of a device (in years) is
+
+$$f(x) = \begin{cases}
+\frac{1}{4}xe^{-x/2}, & x \geq 0, \\
+0, & x < 0.
+\end{cases}$$
+
+(a) What is the probability that the device survives at least 5 years?
+
+$$P(X \geq 5) = \int_{5}^{\infty} \frac{1}{4}xe^{-x/2} \, dx$$
+
+Using integration by parts with $u = x$, $dv = e^{-x/2}dx$, so $du = dx$, $v = -2e^{-x/2}$:
+
+$$\int xe^{-x/2} \, dx = -2xe^{-x/2} - \int -2e^{-x/2} \, dx = -2xe^{-x/2} - 4e^{-x/2} = -2e^{-x/2}(x + 2)$$
+
+Therefore:
+
+$$P(X \geq 5) = \frac{1}{4}\left[-2e^{-x/2}(x + 2)\right]_{5}^{\infty} = \frac{1}{4}[0 + 14e^{-5/2}] = \frac{7e^{-5/2}}{2} \approx 0.287$$
+
+
+(b) Calculate the expected lifetime of the device.
+
+$$E(X) = \int_{0}^{\infty} x \cdot \frac{1}{4}xe^{-x/2} \, dx = \frac{1}{4}\int_{0}^{\infty} x^2e^{-x/2} \, dx$$
+
+Using the gamma integral formula $\int_{0}^{\infty} x^n e^{-ax} \, dx = \frac{n!}{a^{n+1}}$ with $n = 2$ and $a = 1/2$:
+
+$$\int_{0}^{\infty} x^2 e^{-x/2} \, dx = \frac{2!}{(1/2)^{3}} = 16$$
+
+Therefore, $E(X) = \frac{1}{4} \cdot 16 = 4$ years.
+
+
+(c) In a batch of 100 such devices, what is the (approximate) probability that 25 or more will survive at least 5 years?
+
+Let $Y$ be the number of devices (out of 100) surviving at least 5 years. Then $Y \sim \text{Binomial}(100, p)$ where $p = \frac{7e^{-5/2}}{2} \approx 0.287$.
+
+Using normal approximation with $\mu = np = 28.7$ and $\sigma = \sqrt{np(1-p)} = \sqrt{20.46} \approx 4.52$:
+
+$$P(Y \geq 25) = P(Y > 24.5) \approx P\left(Z > \frac{24.5 - 28.7}{4.52}\right) = P(Z > -0.929) = \Phi(0.929) \approx 0.823$$
+
+\newpage
+
+# Problem 4
+
+Simple transformations of many distributions conform to a known distribution. In this exercise, we provide a set of random variables $X$ paired with a transformation $Y = g(X)$. In each case, (i) derive and identify the distribution of $Y$ and specify its domain, and (ii) calculate $E(Y)$ and $\text{Var}(Y)$.
+
+(a) $X \sim N(\mu, \sigma^2)$, $Y = e^X$.
+
+For $Y = e^X$ where $X \sim N(\mu, \sigma^2)$, using the transformation method with $X = \ln Y$ and $\frac{dx}{dy} = \frac{1}{y}$:
+
+$$f_Y(y) = f_X(\ln y) \cdot \frac{1}{y} = \frac{1}{y\sigma\sqrt{2\pi}}\exp\left(-\frac{(\ln y - \mu)^2}{2\sigma^2}\right), \quad y > 0$$
+
+**Distribution:** $Y \sim \text{LogNormal}(\mu, \sigma^2)$ with domain $(0, \infty)$
+
+Using the MGF of $N(\mu, \sigma^2)$: $M_X(t) = \exp(\mu t + \sigma^2 t^2/2)$:
+
+$$E(Y) = E(e^X) = M_X(1) = \exp\left(\mu + \frac{\sigma^2}{2}\right)$$
+
+$$E(Y^2) = E(e^{2X}) = M_X(2) = \exp(2\mu + 2\sigma^2)$$
+
+$$\text{Var}(Y) = \exp(2\mu + 2\sigma^2) - \exp(2\mu + \sigma^2) = \exp(2\mu + \sigma^2)[\exp(\sigma^2) - 1]$$
+
+
+(b) $X \sim \text{Gamma}(n, \beta)$, $n$ integer, $Y = \frac{2X}{\beta}$.
+
+For $Y = \frac{2X}{\beta}$ where $X \sim \text{Gamma}(n, \beta)$ with pdf $f_X(x) = \frac{1}{\beta^n \Gamma(n)}x^{n-1}e^{-x/\beta}$:
+
+Using transformation with $X = Y\beta/2$ and $\frac{dx}{dy} = \beta/2$:
+
+$$f_Y(y) = f_X\left(\frac{y\beta}{2}\right) \cdot \frac{\beta}{2} = \frac{1}{\beta^n \Gamma(n)}\left(\frac{y\beta}{2}\right)^{n-1}e^{-y/2} \cdot \frac{\beta}{2} = \frac{1}{2^n \Gamma(n)}y^{n-1}e^{-y/2}$$
+
+**Distribution:** $Y \sim \chi^2_{2n}$ with domain $(0, \infty)$
+
+For chi-squared with $k = 2n$ degrees of freedom: $E(Y) = 2n$ and $\text{Var}(Y) = 4n$
+
+
+(c) $X \sim U(0, 1)$, $Y = \max(X, 1 - X)$.
+
+For $Y = \max(X, 1-X)$ where $X \sim U(0,1)$, note that $Y \geq 1/2$ always. For $1/2 \leq y \leq 1$:
+
+$$P(Y \leq y) = P(\max(X, 1-X) \leq y) = P(X \leq y \text{ and } 1-X \leq y) = P(1-y \leq X \leq y) = 2y - 1$$
+
+Therefore, $f_Y(y) = \frac{d}{dy}(2y - 1) = 2$ for $y \in [1/2, 1]$.
+
+**Distribution:** Uniform on $[1/2, 1]$ with domain $[1/2, 1]$
+
+$$E(Y) = \int_{1/2}^{1} 2y \, dy = y^2\Big|_{1/2}^{1} = \frac{3}{4}$$
+
+$$E(Y^2) = \int_{1/2}^{1} 2y^2 \, dy = \frac{2y^3}{3}\Big|_{1/2}^{1} = \frac{7}{12}$$
+
+$$\text{Var}(Y) = \frac{7}{12} - \frac{9}{16} = \frac{1}{48}$$
+
+
+(d) $X \sim \text{Cauchy}(0)$, $Y = \frac{1}{X}$.
+
+For $Y = 1/X$ where $X \sim \text{Cauchy}(0)$ with pdf $f_X(x) = \frac{1}{\pi(1 + x^2)}$:
+
+Using transformation with $X = 1/Y$ and $\left|\frac{dx}{dy}\right| = \frac{1}{y^2}$:
+
+$$f_Y(y) = f_X(1/y) \cdot \frac{1}{y^2} = \frac{1}{\pi(1 + 1/y^2)} \cdot \frac{1}{y^2} = \frac{1}{\pi(y^2 + 1)}$$
+
+**Distribution:** $Y \sim \text{Cauchy}(0)$ with domain $(-\infty, \infty)$
+
+The Cauchy distribution has no finite moments: $E(Y)$ and $\text{Var}(Y)$ do not exist.
+
+
+(e) $X \sim \text{Exp}(\beta)$, $Y = \text{smallest integer} \geq X$. For example, if $X = 5.13$, then $Y = 6$.
+
+For $Y = \lceil X \rceil$ (ceiling function) where $X \sim \text{Exp}(\beta)$ with $F_X(x) = 1 - e^{-x/\beta}$:
+
+$$P(Y = k) = P(k-1 < X \leq k) = F_X(k) - F_X(k-1) = e^{-(k-1)/\beta}(1 - e^{-1/\beta}), \quad k = 1, 2, 3, \ldots$$
+
+Let $p = 1 - e^{-1/\beta}$, then $P(Y = k) = (1-p)^{k-1} p$.
+
+**Distribution:** $Y \sim \text{Geometric}(p)$ where $p = 1 - e^{-1/\beta}$, with domain $\{1, 2, 3, \ldots\}$
+
+$$E(Y) = \frac{1}{p} = \frac{1}{1 - e^{-1/\beta}}, \quad \text{Var}(Y) = \frac{1-p}{p^2} = \frac{e^{-1/\beta}}{(1 - e^{-1/\beta})^2}$$
+
+\newpage
+
+# Problem 5
+
+There is an interesting relationship between the negative binomial and the gamma distribution, which can sometimes provide a useful approximation. Let $Y \sim \text{NegativeBinomial}(r, p)$, where $f(y) = \binom{y-1}{r-1}p^r(1-p)^{y-r}$. Show that the mgf of $pY$ converges to Gamma$(r,1)$ when $p$ goes to 0.
+
+*Hint: You may use L'Hôpital's rule:* $\lim_{x \to c}\frac{g(x)}{f(x)} = \lim_{x \to c}\frac{g'(x)}{f'(x)}$.
+
+Let $W = pY$. For $Y \sim \text{NegativeBinomial}(r, p)$, the MGF is $M_Y(t) = \left[\frac{pe^t}{1 - (1-p)e^t}\right]^r$.
+
+The MGF of $W = pY$ is:
+
+$$M_W(t) = E(e^{tpY}) = M_Y(tp) = \left[\frac{pe^{tp}}{1-(1-p)e^{tp}}\right]^r$$
+
+To find $\lim_{p \to 0} M_W(t)$, consider $\lim_{p \to 0} \frac{pe^{tp}}{1-(1-p)e^{tp}}$.
+
+Let $f(p) = pe^{tp}$ and $g(p) = 1 - (1-p)e^{tp}$. At $p = 0$: $f(0) = 0$ and $g(0) = 1 - e^0 = 0$ (indeterminate form $\frac{0}{0}$).
+
+Applying L'Hôpital's rule:
+
+$$f'(p) = e^{tp}(1 + tp), \quad g'(p) = e^{tp}[1 - t(1-p)]$$
+
+$$\lim_{p \to 0}\frac{f'(p)}{g'(p)} = \lim_{p \to 0}\frac{e^{tp}(1+tp)}{e^{tp}[1-t(1-p)]} = \frac{1}{1-t}$$
+
+Therefore:
+
+$$\lim_{p \to 0} M_W(t) = \left[\frac{1}{1-t}\right]^r = (1-t)^{-r}$$
+
+This is the MGF of Gamma$(r, 1)$, proving that $pY$ converges in distribution to Gamma$(r, 1)$ as $p \to 0$.

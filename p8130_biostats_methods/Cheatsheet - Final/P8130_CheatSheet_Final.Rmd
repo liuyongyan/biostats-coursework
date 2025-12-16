@@ -1,0 +1,333 @@
+---
+geometry: margin=0.5in
+fontsize: 9pt
+output: 
+  pdf_document:
+    latex_engine: xelatex
+classoption: [twocolumn]
+header-includes:
+    - \usepackage{multicol}
+    - \usepackage{enumitem}
+    - \setlist{nolistsep}
+    - \setlength{\parskip}{0pt}
+    - \setlength{\parsep}{0pt}
+    - \usepackage{titlesec}
+    - \titleformat{\section}{\normalfont\normalsize\bfseries}{\thesection}{1em}{}
+    - \titlespacing*{\section}{0pt}{1ex}{0.5ex}
+---
+
+**Fisher's Exact Test (2x2 Independent)**
+
+\begin{itemize}
+    \item \textbf{Use when:} Expected cell counts $< 5$ (Normal approx invalid).
+    \item \textbf{Assumptions:} Row/Col totals fixed.
+    \item \textbf{Hypergeometric:} $P(X=a) = \frac{(a+b)!(c+d)!(a+c)!(b+d)!}{n!a!b!c!d!}$
+    \item \textbf{P-value:} Sum probs of tables as/more extreme.
+\end{itemize}
+
+**McNemar's Test (Paired Binary)**
+
+\begin{itemize}
+    \item \textbf{Use when:} Paired data, not independent.
+    \item \textbf{Focus:} $n_A$: + on A/- on B; $n_B$: - on A/+ on B
+    \item \textbf{Hypothesis:} $H_0: p_{discA} = p_{discB}$ (or $p = 0.5$).
+    \item \textbf{Statistic:} $\chi^2 = \frac{(|n_A - n_B| - 1)^2}{n_A + n_B} \sim \chi^2_1$
+    \item \textbf{Condition:} $\frac{n_A + n_B}{2} \ge 5$. Else use Exact Binomial.
+\end{itemize}
+
+\section*{Session 14: Non-Parametric Tests}
+
+**Use when:** Normality violated (skew, outliers, small $n$). More robust, less power.
+
+**Checks:** Histogram, QQ-Plot, Shapiro-Wilk ($H_0$: Normal).
+
+**Sign Test (One-sample/Paired median)**
+\begin{itemize}
+    \item \textbf{Focus:} Median difference $\Delta$. $H_0: \Delta = 0$ (i.e., $p = 0.5$).
+    \item \textbf{Method:} Count positive diffs ($C$). Ignore zeros ($n^*$).
+    \item \textbf{Dist:} $C \sim Bin(n^*, 0.5)$.
+    \item \textbf{Normal Approx ($n^*p(1-p) \ge 5$):} Reject $H_0$ if $C \ge \frac{n^*}{2} + \frac{1}{2} + z_{1-\alpha/2}\sqrt{\frac{n^*}{4}}$ or $C \le \frac{n^*}{2} - \frac{1}{2} - z_{1-\alpha/2}\sqrt{\frac{n^*}{4}}$
+    \item \textbf{P-value:} If $C > n^*/2$: $p = 2[1 - \Phi(\frac{C - n^*/2 - 1/2}{\sqrt{n^*/4}})]$; If $C < n^*/2$: $p = 2\Phi(\frac{C - n^*/2 + 1/2}{\sqrt{n^*/4}})$
+\end{itemize}
+
+**Wilcoxon Signed-Rank (Paired continuous)**
+\begin{itemize}
+    \item \textbf{Assumes:} Symmetry about median. $H_0: \Delta = 0$.
+    \item \textbf{Method:} Rank $|d_i|$ (ignore zeros). $T_+$ = sum of ranks for positive diffs.
+    \item \textbf{Test Stat (no ties):} $T = \frac{|T_+ - \frac{n^*(n^*+1)}{4}| - \frac{1}{2}}{\sqrt{n^*(n^*+1)(2n^*+1)/24}}$
+    \item \textbf{With ties:} $T = \dfrac{|T_+ - \frac{n^*(n^*+1)}{4}| - \frac{1}{2}}{\sqrt{\frac{n^*(n^*+1)(2n^*+1)}{24} - \frac{\sum_{i=1}^{g}(t_i^3 - t_i)}{48}}}$ ($t_i$ = \# in tied group $i$)
+    \item \textbf{Approx:} $n^* \ge 16$. Reject $H_0$ if $T > z_{1-\alpha/2}$.
+\end{itemize}
+
+**Wilcoxon Rank-Sum / Mann-Whitney (2 Indep)**
+\begin{itemize}
+    \item $H_0: F_1(t) = F_2(t)$ vs $H_1: F_1(t) = F_2(t - \delta)$ for $\delta \ne 0$.
+    \item \textbf{Method:} Rank pooled data. $T_1$ = sum of ranks for sample 1.
+    \item \textbf{Test Stat (no ties):} $T = \dfrac{|T_1 - \frac{n_1(n_1+n_2+1)}{2}| - \frac{1}{2}}{\sqrt{\frac{n_1 n_2}{12}(n_1+n_2+1)}}$
+    \item \textbf{With ties:} $T = \dfrac{|T_1 - \frac{n_1(n_1+n_2+1)}{2}| - \frac{1}{2}}{\sqrt{\frac{n_1 n_2}{12}[n_1+n_2+1 - \frac{\sum_{i=1}^{g}t_i(t_i^2-1)}{(n_1+n_2)(n_1+n_2-1)}]}}$
+    \item \textbf{Approx:} $n_1, n_2 \ge 10$. Reject $H_0$ if $T > z_{1-\alpha/2}$.
+\end{itemize}
+
+\section*{Session 15: SLR Estimation}
+
+**Assumptions ($\epsilon_i$) - LINE:**
+\begin{itemize}
+    \item \textbf{L}inearity: $E(\epsilon_i) = 0$ (true linear between X and Y)
+    \item \textbf{I}ndependence: $\epsilon_i \perp \epsilon_j$ (independent errors)
+    \item \textbf{N}ormality: $\epsilon_i \sim N(0, \sigma^2)$ (normal errors)
+    \item \textbf{E}qual Variance: $Var(\epsilon_i) = \sigma^2$ (equal variance)
+\end{itemize}
+
+**Estimation (OLS):** Minimizes $SSE = \sum (Y_i - \hat{Y}_i)^2 = \sum e_i^2$
+\begin{itemize}
+    \item $\hat{\beta}_1 = \frac{S_{XY}}{S_{XX}} = \frac{Cov(X,Y)}{Var(X)}$, $\hat{\beta}_0 = \bar{Y} - \hat{\beta}_1 \bar{X}$
+    \item $s^2 = MSE = \frac{SSE}{n-p-1}$ (unbiased for $\sigma^2$, for SLR $p=1$)
+\end{itemize}
+
+**Max Likelihood Estimation (MLE):**
+
+If $\epsilon_i \sim N(0, \sigma^2)$, MLE for $\beta_0, \beta_1$ same as OLS.
+
+\section*{Session 16: SLR Inference}
+
+**Sampling Distribution of $\hat{\beta}_1$ (Slope)**
+\begin{itemize}
+    \item $E(\hat{\beta}_1) = \beta_1$, $Var(\hat{\beta}_1) = \frac{\sigma^2}{\sum(X_i - \bar{X})^2}$, $se(\hat{\beta}_1) = \sqrt{\frac{MSE}{\sum(X_i - \bar{X})^2}}$
+    \item $t = \frac{\hat{\beta}_1}{se(\hat{\beta}_1)} \sim t_{n-p-1}$, p-value two side
+    \item CI for $\beta_1: \hat{\beta}_1 \pm t_{n-p-1, 1-\alpha/2} \cdot se(\hat{\beta}_1)$
+\end{itemize}
+
+**Sampling Distribution of $\hat{\beta}_0$ (Intercept)**
+\begin{itemize}
+    \item $E(\hat{\beta}_0) = \beta_0$, $Var(\hat{\beta}_0) = \sigma^2 (\frac{1}{n} + \frac{\bar{X}^2}{\sum(X_i - \bar{X})^2})$
+    \item $se(\hat{\beta}_0) = \sqrt{MSE (\frac{1}{n} + \frac{\bar{X}^2}{\sum(X_i - \bar{X})^2})}$
+\end{itemize}
+
+**Confidence Interval for Mean Response $E(Y_h|X_h)$**
+\begin{itemize}
+    \item $\hat{Y}_h \pm t_{n-p-1, 1-\alpha/2} \cdot se(\hat{Y}_h)$
+    \item $se(\hat{Y}_h) = \sqrt{MSE (\frac{1}{n} + \frac{(X_h - \bar{X})^2}{\sum(X_i - \bar{X})^2})}$
+\end{itemize}
+
+**Prediction Interval (PI) for ONE New $Y_h$**
+\begin{itemize}
+    \item $\hat{Y}_h \pm t_{n-p-1, 1-\alpha/2} \cdot \sqrt{MSE (1 + \frac{1}{n} + \frac{(X_h - \bar{X})^2}{\sum(X_i - \bar{X})^2})}$
+    \item PI is wider than CI for $E(Y_h|X_h)$.
+\end{itemize}
+
+**Correlation ($r$)**
+\begin{itemize}
+    \item $r = \frac{Cov(X,Y)}{\sqrt{Var(X)Var(Y)}}$. Range: $[-1, 1]$.
+    \item $H_0: \rho=0$ equiv. to $H_0: \beta_1=0$.
+\end{itemize}
+
+**Coefficient of Determination ($R^2$)**
+\begin{itemize}
+    \item $R^2 = r^2$ (for SLR). 
+    \item Proportion of Y variation explained by X.
+    \item $R^2 = \frac{SSR}{SSTO} = 1 - \frac{SSE}{SSTO}$
+\end{itemize}
+
+\section*{Session 17: Multiple Linear Regression (MLR)}
+
+**Model:** $Y_i = \beta_0 + \beta_1 X_{i1} + \dots + \beta_p X_{ip} + \epsilon_i$
+\begin{itemize}
+    \item $p$ predictors. Same error assumptions as SLR.
+\end{itemize}
+
+**Interpretation:**
+\begin{itemize}
+    \item $\beta_k$: Change in $Y$ for 1-unit increase in $X_k$, \textbf{holding other predictors constant.}
+\end{itemize}
+
+**Categorical Predictors:**
+\begin{itemize}
+    \item Use $d-1$ indicator (dummy) variables for $d$ levels.
+    \item One level is reference category (all dummies=0).
+\end{itemize}
+
+**Interactions:**
+\begin{itemize}
+    \item Effect of one predictor depends on another's value.
+    \item Included as product terms (e.g., $X_1 X_2$).
+    \item If significant, main effects cannot be interpreted alone.
+\item If not significant, remove.
+\end{itemize}
+
+**Confounding:**
+\begin{itemize}
+    \item $X_2$ influences $X_1-Y$ association.
+    \item Checking change in $\hat{\beta}_1$ when $X_2$ is added/removed.
+    \item Deal with by: randomization, restriction, stratification.
+\end{itemize}
+
+\section*{Session 18: MLR ANOVA}
+
+**Sum of Squares:**
+\begin{itemize}
+    \item $SSTO = \sum(Y_i - \bar{Y})^2$ (Total variation)
+    \item $SSR = \sum(\hat{Y}_i - \bar{Y})^2$ (Explained by regression)
+    \item $SSE = \sum(Y_i - \hat{Y}_i)^2$ (Residual/Error)
+    \item $SSTO = SSR + SSE$
+\end{itemize}
+
+**Global F-test:** $H_0: \beta_1 = \dots = \beta_p = 0$.
+\begin{itemize}
+    \item $F = \frac{MSR}{MSE} \sim F_{p, n-p-1}$. Reject if $F > F_{crit}$.
+    \item For SLR ($p=1$), $t^2=F$.
+\end{itemize}
+
+**Partial F-test (Nested Models):**
+\begin{itemize}
+    \item "small" ($p_S$ predictors) vs "large" ($p_L$ predictors).
+    \item $F = \frac{(SSE_S - SSE_L)/(p_L - p_S)}{MSE_L} \sim F_{(p_L - p_S), n-p_L-1}$.
+    \item Tests if additional predictors are significant.
+\end{itemize}
+
+**$R^2$ vs Adjusted $R^2$: (Higher is better)**
+\begin{itemize}
+    \item $R^2 = 1 - \frac{SSE}{SSTO}$: Proportion of Y variance explained. Always increases with more predictors.
+    \item $R^2_{adj} = 1 - (1-R^2)\frac{n-1}{n-p-1}$: Penalizes for predictors.
+\end{itemize}
+
+**Model Selection (Lowest is best):**
+\begin{itemize}
+    \item AIC $= n \ln(SSE/n) + 2p$: Penalizes $p$ less.
+    \item BIC $= n \ln(SSE/n) + p \ln(n)$: Penalizes $p$ more.
+\end{itemize}
+
+**Multiple Comparisons:** Control FWER (the probability of having at least one Type 1 error among all the tests). Global test first, use adjustments, define comparisons a priori.
+
+\section*{Session 19: MLR Diagnostics}
+
+**Diagnostic Plots:**
+\begin{itemize}
+    \item \textbf{Residuals vs. Fitted:} Heteroscedasticity, outliers. Ideal: random cloud around 0.
+    \item \textbf{Residuals vs. Covariate:} Linearity, heteroscedasticity.
+    \item \textbf{Normal QQ Plot of Residuals:} Normality, outliers, heavy tails. Ideal: straight line.
+    \item \textbf{Scale-Location:} Equal variance. Ideal: horizontal line.
+\end{itemize}
+
+**Remedies for Assumptions:**
+\begin{itemize}
+    \item \textbf{Box-Cox:} Finds optimal power $\lambda$ for Y ($Y^\lambda$, $\lambda = 0$ means $log Y$).
+\end{itemize}
+
+**Unusual Observations:**
+\begin{itemize}
+    \item \textbf{Outliers (Y):} Studentized Residuals $r_i = \frac{e_i}{\sqrt{MSE(1-h_{ii})}}$. $|r_i| > 2.5$.
+    \item \textbf{Leverage (X):} $h_{ii}$ from Hat Matrix ($H$). $h_{ii} > \frac{2p}{n}$ (high), $h_{ii} > \frac{3p}{n}$ (very high).
+    \item \textbf{Influence:} Changes model parameters.
+        \begin{itemize}
+            \item \textbf{Cook's Distance ($D_i$):} Combines residual and leverage. $D_i > 1$ or $D_i > \frac{4}{n}$.
+            \item \textbf{DFFITS:} $|DFFITS_i| > 1$ or $|DFFITS_i| > 2\sqrt{p/n}$.
+        \end{itemize}
+\end{itemize}
+
+**Multicollinearity:** Highly correlated predictors.
+\begin{itemize}
+    \item \textbf{Effects:} Inflated SEs, unstable coefficients, non-significant predictors.
+    \item \textbf{Detect:} VIF (Variance Inflation Factor). $VIF_j = \frac{1}{1-R_j^2}$. $VIF > 5$ (concern), $VIF > 10$ (serious).
+    \item $R_j$ is R-squared of the regression of $X_j$ against all other predictors
+    \item \textbf{Remedies:} Remove correlated variables, PCA, shrinkage methods.
+\end{itemize}
+
+\section*{Session 20: MLR Variable Selection}
+
+**Goal:** Parsimonious model (good fit, low bias, simple).
+
+**Automatic Search Procedures:**
+\begin{itemize}
+    \item \textbf{Backward Elimination:} Start full, remove least significant (high p-value).
+    \item \textbf{Forward Selection:} Start empty, add most significant (low p-value).
+    \item \textbf{Stepwise:} Combines forward/backward.
+\end{itemize}
+
+**Shrinkage Methods (Regularization):**
+\begin{itemize}
+    \item \textbf{LASSO (L1 penalty):} Minimizes $\frac{1}{n}\sum e_i^2 + \lambda \sum |\beta_j|$.
+        \begin{itemize}
+            \item Forces some $\beta_j$ to zero $\implies$ \textbf{variable selection}.
+            \item $\lambda$ controls shrinkage: large $\lambda \implies$ smaller model.
+            \item `lambda.min` (best), `lambda.1se` (simpler, similar).
+        \end{itemize}
+    \item \textbf{Ridge (L2 penalty):} Minimizes $\frac{1}{n}\sum e_i^2 + \lambda \sum \beta_j^2$.
+        \begin{itemize}
+            \item Shrinks $\beta_j$ toward zero, but \textbf{no variable selection}.
+            \item Good for correlated predictors.
+        \end{itemize}
+    \item \textbf{Elastic Net (L1 + L2):} Combines LASSO and Ridge (controlled by `alpha`).
+\end{itemize}
+
+\section*{Session 21: MLR Validation}
+
+**Methods:**
+\begin{itemize}
+    \item \textbf{External Validation:} New, independent data. Evaluate with MSPE (Mean Squared Predicted Error).
+    \item \textbf{Internal Validation (Data Splitting):}
+        \begin{itemize}
+            \item Split data: \textbf{Training Set} (fit model), \textbf{Testing Set} (evaluate MSPE).
+            \item \textbf{$k$-fold Cross-Validation:} Split into $k$ folds. Train on $k-1$, test on 1. Average MSPEs ($CV_k$). Prefer smaller $CV_k$.
+            \item \textbf{LOOCV:} $k=n$. Computationally expensive.
+        \end{itemize}
+\end{itemize}
+
+**Bias-Variance Tradeoff:**
+\begin{itemize}
+    \item \textbf{Simple (Underfit):} High bias, low variance.
+    \item \textbf{Complex (Overfit):} Low bias, high variance.
+    \item \textbf{Goal:} Minimize Prediction Error ($Bias^2 + Variance + Irreducible Error$).
+\end{itemize}
+
+\section*{Session 22: WLS \& Robust Regression}
+
+**Weighted Least Squares (WLS):**
+\begin{itemize}
+    \item \textbf{Use when:} unequal error variances, $\sigma_i^2$.
+    \item \textbf{Method:} Minimize $\sum w_i (Y_i - \hat{Y}_i)^2$, where $w_i = 1/\sigma_i^2$.
+    \item \textbf{Estimating $w_i$ (if $\sigma_i^2$ unknown):}
+        \begin{enumerate}
+            \item Fit unweighted LS.
+            \item Model $e_i^2$ or $|e_i|$ as function of (some subset of) predictors.
+            \item Use fitted values from step 2 to get $\hat{\sigma}_i^2$ or $\hat{s}_i^2$.
+            \item Calculate $w_i = 1/\hat{\sigma}_i^2$. Refit with WLS.
+        \end{enumerate}
+\end{itemize}
+
+**Robust Regression:** Less affected by influential points.
+\begin{itemize}
+    \item \textbf{LAD (Least Absolute Deviations):} Minimizes $\sum |Y_i - \hat{Y}_i|$. Less sensitive to outliers.
+    \item \textbf{LMS (Least Median of Squares):} Minimizes median of squared residuals. Highly robust.
+    \item \textbf{IRLS (Iteratively Reweighted LS):}
+        \begin{enumerate}
+            \item Start with initial weights (e.g., OLS or LAD residuals). Fit WLS, get residuals.
+            \item Update weights based on current residuals (large residual $\implies$ small weight). 
+            \item Repeat until convergence.
+        \end{enumerate}
+    \item \textbf{Weight Functions:} Huber, Bisquare (downweight extreme residuals).
+\end{itemize}
+
+\section*{Session 23: Lowess \& Non-Linear Regression}
+
+**Non-Parametric Regression:** Smoothed curves without strict functional form.
+
+**Lowess (Locally Weighted Scatterplot Smoothing):**
+\begin{itemize}
+    \item Fits series of weighted linear regressions in local neighborhoods. Closer points get higher weights.
+    \item Tuning parameter (span) chosen via cross-validation (smallest MSPE).
+\end{itemize}
+
+\textbf{Non-Linear Regression:} Not linear in parameters (e.g., $Y = \gamma_0 \exp(\gamma_1 X)$).
+
+**Non-Linear Estimation:**
+\begin{itemize}
+    \item Numerical optimization (e.g., Gauss-Newton method).
+    \item Iterative process, requires initial values.
+\end{itemize}
+
+**Inference (Non-Linear):**
+\begin{itemize}
+    \item Exact methods not available. Large-sample theory gives approximate normality.
+    \item CI: $g_k \pm t_{n-p, 1-\alpha/2} \cdot s\{g_k\}$. Test: $t_{stat} = \frac{g_k - \gamma_{k0}}{s\{g_k\}}$.
+    \item $\gamma_k$ is the “true” value of the estimator $g_k$
+\end{itemize}

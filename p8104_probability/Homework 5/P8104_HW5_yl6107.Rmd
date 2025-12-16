@@ -1,0 +1,126 @@
+---
+title: "Homework 5 - P8104 Probability"
+author: "Yongyan Liu (yl6107)"
+date: "Oct 22, 2025"
+output:
+  pdf_document:
+    fig_caption: yes
+fontsize: 11pt
+geometry: margin=1in
+---
+
+# Problem 1
+
+> Let the number of chocolate chips in a certain type of cookie have a Poisson distribution.
+> We want the probability that a randomly chosen cookie has at least two chocolate chips to
+> be greater than 0.99. Find the smallest value of the mean of the distribution that ensures
+> this probability.
+
+
+Let the number of chips be X ~ $Poisson(\lambda)$. We want P(X >= 2) > 0.99. 
+
+Since P(X >= 2) = 1 - P(X = 0) - P(X = 1), this becomes
+$1 - e^{-\lambda} - \lambda e^{-\lambda} > 0.99$, or equivalently
+$e^{-\lambda} (1 + \lambda) < 0.01$. We can use r to find the smallest $\lambda$ as following.
+
+```{r}
+f <- function(lam) { exp(-lam) * (1 + lam) - 0.01 }
+
+# find lambda
+lambda = uniroot(f, c(0, 20))$root
+lambda
+
+# Verify
+1 - ppois(1, lambda)
+```
+
+# Problem 2
+
+> A shipment of 1,000 items is delivered to a factory. Suppose 5% of the items are defective.
+> The factory inspects a random sample of 10 items without replacement and records the
+> number of defectives as X. If X >= 2, the factory decides to return the entire shipment.
+> What is the probability that the factory will return a shipment?
+
+Let X be the number of defectives in a simple random sample of size n = 10
+from a population of size N = 1000 with K = 0.05 * 1000 = 50 defectives.
+Sampling is without replacement, so X ~ Hypergeometric(N = 1000, K = 50, n = 10).
+
+The shipment is returned if X >= 2. Thus
+$P(X >= 2) = 1 - P(X <= 1) = 1 - P(X = 0) - P(X = 1)$.
+
+Use r to compute:
+```{r}
+N <- 1000
+K <- 50
+n <- 10
+
+p_return <- 1 - dhyper(0, K, N-K, n) - dhyper(1, K, N-K, n)
+p_return
+```
+
+# Problem 3
+
+> Of all customers purchasing automatic garage-door openers, 75% purchase a chain-driven
+> model, and the remaining 25% buy a shaft-driven model. Let X be the number among the
+> next 15 buyers who select the chain-driven model. Assume that the preferences of individual
+> customers are independent of each other.
+
+> (a) Calculate the expectation and variance of X.
+
+Let X ~ Binomial(n = 15, p = 0.75).
+
+$E[X] = np = 15 * 0.75 = 11.25$
+
+$Var(X) = np(1-p) = 15 * 0.75 * 0.25 = 2.8125$
+
+
+> (b) If the store currently has 12 chain-driven and 6 shaft-driven models, what is the probability that the requests of these 15 buyers can all be met from the existing stock?
+
+For chain-driven models, we need X <= 12. And, for shaft-driven model, we need 15 - X <= 6.
+
+So the probability is $P(9 <= X <= 12) = \sum_{k=9}^{12} P(X = k)$.
+
+```{r}
+sum(dbinom(9:12, size = 15, prob = 0.75))
+```
+
+# Problem 4
+
+> You play a game where you toss a fair coin until the first head appears. If the first head
+> shows up on the i-th toss, you receive 2i dollars. For example, if the first head is on toss 2,
+> you win 22 = 4 dollars. Denote the reward you can get as X.
+
+> (a) Find the probability mass function of X.
+
+Let T be the trial on which the first head appears with a fair coin.
+Then $P(T = i) = (1/2)^i$ for i = 1, 2, ...
+
+The reward is $X = 2^i$ when T = i. Therefore the pmf of X is
+
+$$
+f_X(x) = \begin{cases}
+(1/2)^i & x = 2^i, i = 1, 2, ... \\
+0 &\text{other}\ x
+\end{cases}
+$$
+
+> (b) What is the expected value of the reward you can get?
+
+$$
+E[X] = \sum_{i=1}^{\infty} 2^i * f_X(x) = \sum_{i=1}^{\infty} 2^i * (1/2)^i = \sum_{i=1}^{\infty} 1 = \infty
+$$
+
+Thus the expected reward does not exist as a finite number.
+
+# Problem 5
+
+> Suppose X ~ Binomial(n, p), and its cdf is denoted as $F_X$. Suppose Y ~ NegativeBinomial(r, p),
+> and its cdf is denoted as $F_Y$ . In this problem, Y counts the number of failures before the
+> r-th success (not the total number of trials). Show that
+> $F_X(r - 1) = 1 - F_Y(n - r)$
+
+$F_X(r - 1) = P(X \le r - 1)$, which is the probability that there are at most r - 1 successes in n trials. 
+
+For Y, $1 - F_Y(n - r) = 1 - P(Y \le n - r) = P(Y > n - r)$, which is the probability that, before the r-th success, there are more than n - r times failure and r - 1 times success. So, before the r-th success, there are more than (n - r) + (r - 1) = n - 1 trails, which is at least n trails.
+
+P("at most r - 1 successes in n trials") and P("at least n trails before the r-th success") is the same thing. Therefore, proved.

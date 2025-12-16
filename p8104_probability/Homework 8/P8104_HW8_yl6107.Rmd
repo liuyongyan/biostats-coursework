@@ -1,0 +1,454 @@
+---
+title: "P8104 Homework Assignment 8 - Solutions"
+author: "Yongyan Liu (yl6107)"
+date: "Due: Wed 11/12, 11:59pm"
+output:
+  pdf_document:
+    latex_engine: xelatex
+  html_document:
+    df_print: paged
+---
+
+# Problem 1
+
+**Question:** A random point $(X, Y)$ is distributed uniformly on the square with vertices $(1, 1)$, $(-1, 1)$, $(1, -1)$, and $(-1, -1)$. That is, the joint pdf of $f(x, y) = \frac{1}{4}$ on the square. Determine the probability of the following events:
+
+(a) $X^2 + Y^2 < 1$
+(b) $2X - Y > 0$
+(c) $|X + Y| < 2$
+(d) $Y > |X|$
+
+## Solution
+
+Since $(X,Y)$ is uniformly distributed on a square of side length 2 (from -1 to 1 in both dimensions), the total area is 4, and the pdf is $f(x,y) = \frac{1}{4}$.
+
+For uniform distribution, probability equals the ratio of the desired area to the total area.
+
+### Part (a): $P(X^2 + Y^2 < 1)$
+
+This is the area of a circle with radius 1 centered at the origin, restricted to the square $[-1,-1] \times [1,1]$.
+
+Since the radius is 1 and the square extends from -1 to 1, the entire circle fits within the square.
+
+$$P(X^2 + Y^2 < 1) = \frac{\text{Area of circle}}{\text{Area of square}} = \frac{\pi \cdot 1^2}{4} = \frac{\pi}{4}$$
+
+### Part (b): $P(2X - Y > 0)$
+
+```{r diagram-1b, echo=FALSE, fig.align='center', fig.width=6, fig.height=6}
+# Set up the plot
+par(mar=c(4, 4, 3, 2))
+plot(NULL, xlim=c(-1.3, 1.3), ylim=c(-1.5, 1.5),
+     xlab="x", ylab="y",
+     main="Region where 2x - y > 0 in [-1, -1] × [1, 1]",
+     asp=1, cex.main=1.3, cex.lab=1.1)
+
+# Add grid
+grid(col="gray80")
+abline(h=0, v=0, col="black", lwd=0.5)
+
+# Draw the square [-1, 1] x [-1, 1]
+square_x <- c(-1, 1, 1, -1, -1)
+square_y <- c(-1, -1, 1, 1, -1)
+lines(square_x, square_y, lwd=2, col="black")
+
+# Draw the line y = 2x
+x_line <- seq(-1, 1, length.out=100)
+y_line <- 2 * x_line
+lines(x_line, y_line, lwd=2, col="blue")
+
+# Shade the region where 2x - y > 0 (i.e., y < 2x) within the square
+region_x <- c(-1, 1, 1, 0.5, -0.5, -1)
+region_y <- c(-1, -1, 1, 1, -1, -1)
+polygon(region_x, region_y, col=rgb(1, 0, 0, 0.3), border=NA)
+
+# Mark the intersection points
+points(-0.5, -1, pch=19, col="red", cex=1.5)
+points(0.5, 1, pch=19, col="red", cex=1.5)
+text(-0.5, -1.2, "(-1/2, -1)", cex=0.9)
+text(0.5, 1.2, "(1/2, 1)", cex=0.9)
+
+# Mark the corners of the square
+points(c(-1, 1, 1, -1), c(-1, -1, 1, 1), pch=19, col="black", cex=1)
+
+# Add legend
+legend("topleft",
+       legend=c("Square boundary", "y = 2x (boundary)", "2x - y > 0"),
+       lty=c(1, 1, NA),
+       lwd=c(2, 2, NA),
+       col=c("black", "blue", NA),
+       fill=c(NA, NA, rgb(1, 0, 0, 0.3)),
+       border=c(NA, NA, NA),
+       cex=0.9)
+```
+
+
+As shown in the diagram above, the point $(X,Y)$ falls in the red trapezoid when $2X - Y > 0$.
+
+$$P(2X - Y > 0) = \dfrac{(\frac{1}{2} + \frac{2}{3}) * 2}{4} = \frac{1}{2}$$
+
+
+### Part (c): $P(|X + Y| < 2)$
+
+In the square $[-1, -1] \times [1, 1]$, the sum $X + Y$ ranges from $-2$ to $2$. The condition $|X + Y| < 2$ excludes only the corner points $(1, 1)$ and $(-1, -1)$ where $X + Y = \pm 2$, which have zero area.
+
+$$P(|X + Y| < 2) = 1$$
+
+### Part (d): $P(Y > |X|)$
+
+The region where $Y > |X|$ is above the V-shape formed by the lines $Y = X$ and $Y = -X$. This forms a triangle with vertices $(-1, 1)$, $(1, 1)$, and $(0, 0)$.
+
+Area = $\frac{1}{2} \times \text{base} \times \text{height} = \frac{1}{2} \times 2 \times 1 = 1$
+
+$$P(Y > |X|) = \frac{1}{4}$$
+
+
+# Problem 2
+
+**Question:** A generalization of the beta distribution is the Dirichlet distribution. In its bivariate version, $(X, Y)$ have the PDF:
+
+$$f(x, y) = Cx^{a-1}y^{b-1}(1 - x - y)^{c-1}, \quad 0 < x < 1, \quad 0 < y < 1, \quad 0 < x + y < 1$$
+
+where $a > 0$, $b > 0$, and $c > 0$ are constants.
+
+(a) Show that $C = \frac{\Gamma(a+b+c)}{\Gamma(a)\Gamma(b)\Gamma(c)}$.
+(b) Show that, marginally, both $X$ and $Y$ are beta distribution.
+(c) Find the conditional distribution of $Y|X = x$.
+(d) Show that $E(XY) = \frac{ab}{(a+b+c+1)(a+b+c)}$, and find their covariance.
+
+## Solution
+
+### Part (a): Finding the normalizing constant $C$
+
+To find $C$, we use the fact that $\int\int f(x,y) \, dy \, dx = 1$.
+
+$$C \int_0^1 \int_0^{1-x} x^{a-1} y^{b-1} (1-x-y)^{c-1} \, dy \, dx = 1$$
+
+Let $u = x$ and $v = y/(1-x)$. Then $y = v(1-x)$ and when $y$ goes from $0$ to $1-x$, $v$ goes from $0$ to $1$.
+
+$$dy = (1-x) dv$$
+
+Also, $1 - x - y = 1 - x - v(1-x) = (1-x)(1-v)$.
+
+$$C \int_0^1 \int_0^{1} x^{a-1} [v(1-x)]^{b-1} [(1-x)(1-v)]^{c-1} (1-x) \, dv \, dx$$
+
+$$= C \int_0^1 x^{a-1} (1-x)^{b-1+c-1+1} dx \int_0^{1} v^{b-1} (1-v)^{c-1} \, dv$$
+
+$$= C \int_0^1 x^{a-1} (1-x)^{b+c-1} dx \int_0^{1} v^{b-1} (1-v)^{c-1} \, dv$$
+
+Using the beta function: $B(p, q) = \int_0^1 t^{p-1}(1-t)^{q-1} dt = \frac{\Gamma(p)\Gamma(q)}{\Gamma(p+q)}$:
+
+$$= C \cdot B(a, b+c) \cdot B(b, c) = C \cdot \frac{\Gamma(a)\Gamma(b+c)}{\Gamma(a+b+c)} \cdot \frac{\Gamma(b)\Gamma(c)}{\Gamma(b+c)}$$
+
+$$= C \cdot \frac{\Gamma(a)\Gamma(b)\Gamma(c)}{\Gamma(a+b+c)}$$
+
+Setting this equal to 1:
+
+$$C = \frac{\Gamma(a+b+c)}{\Gamma(a)\Gamma(b)\Gamma(c)}$$
+
+
+### Part (b): Marginal distributions
+
+To find the marginal distribution of $X$:
+
+$$f_X(x) = \int_0^{1-x} f(x,y) \, dy = C x^{a-1} \int_0^{1-x} y^{b-1} (1-x-y)^{c-1} \, dy$$
+
+Let $w = \frac{y}{1-x}$, then $y = w(1-x)$ and $dy = (1-x)dw$:
+
+$$f_X(x) = C x^{a-1} \int_0^{1} [w(1-x)]^{b-1} [(1-x)(1-w)]^{c-1} (1-x) \, dw$$
+
+$$= C x^{a-1} (1-x)^{b+c-1} \int_0^{1} w^{b-1} (1-w)^{c-1} \, dw$$
+
+$$= C x^{a-1} (1-x)^{b+c-1} B(b, c)$$
+
+$$= \frac{\Gamma(a+b+c)}{\Gamma(a)\Gamma(b)\Gamma(c)} \cdot \frac{\Gamma(b)\Gamma(c)}{\Gamma(b+c)} \cdot x^{a-1} (1-x)^{b+c-1}$$
+
+$$= \frac{\Gamma(a+b+c)}{\Gamma(a)\Gamma(b+c)} x^{a-1} (1-x)^{b+c-1}$$
+
+This is the PDF of a $\text{Beta}(a, b+c)$ distribution.
+
+By symmetry (or similar calculation), $Y \sim \text{Beta}(b, a+c)$.
+
+So, $X \sim \text{Beta}(a, b+c) \text{ and } Y \sim \text{Beta}(b, a+c)$
+
+### Part (c): Conditional distribution of $Y|X = x$
+
+$$f_{Y|X}(y|x) = \frac{f(x,y)}{f_X(x)} = \frac{C x^{a-1} y^{b-1} (1-x-y)^{c-1}}{\frac{\Gamma(a+b+c)}{\Gamma(a)\Gamma(b+c)} x^{a-1} (1-x)^{b+c-1}}$$
+
+$$= \frac{\Gamma(a+b+c)}{\Gamma(a)\Gamma(b)\Gamma(c)} \cdot \frac{\Gamma(a)\Gamma(b+c)}{\Gamma(a+b+c)} \cdot \frac{y^{b-1} (1-x-y)^{c-1}}{(1-x)^{b+c-1}}$$
+
+$$= \frac{\Gamma(b+c)}{\Gamma(b)\Gamma(c)} \cdot \frac{y^{b-1} (1-x-y)^{c-1}}{(1-x)^{b+c-1}} \text{ for } 0 < y < 1-x$$.
+
+### Part (d): $E(XY)$ and $\text{Cov}(X,Y)$
+
+We compute $E(XY)$ directly using the joint pdf:
+
+$$E(XY) = \int_0^1 \int_0^{1-x} xy \cdot Cx^{a-1}y^{b-1}(1-x-y)^{c-1} \, dy \, dx$$
+
+$$= C \int_0^1 \int_0^{1-x} x^a y^b (1-x-y)^{c-1} \, dy \, dx$$
+
+Using the same substitution as in part (a), $v = \frac{y}{1-x}$:
+
+$$= C \int_0^1 x^a (1-x)^{b+c} \int_0^1 v^b (1-v)^{c-1} \, dv \, dx$$
+
+$$= C \cdot B(b+1, c) \cdot B(a+1, b+c) = \frac{\Gamma(a+b+c)}{\Gamma(a)\Gamma(b)\Gamma(c)} \cdot \frac{\Gamma(b+1)\Gamma(c)}{\Gamma(b+c+1)} \cdot \frac{\Gamma(a+1)\Gamma(b+c)}{\Gamma(a+b+c+1)}$$
+
+$$= \frac{\Gamma(a+b+c)}{\Gamma(a)\Gamma(b)\Gamma(c)} \cdot \frac{b\Gamma(b)\Gamma(c)}{(b+c)\Gamma(b+c)} \cdot \frac{a\Gamma(a)\Gamma(b+c)}{(a+b+c)\Gamma(a+b+c)} = \frac{ab}{(a+b+c)(a+b+c+1)}$$
+
+For the covariance, using $E(X) = \frac{a}{a+b+c}$ and $E(Y) = \frac{b}{a+b+c}$:
+
+$$\text{Cov}(X,Y) = E(XY) - E(X)E(Y) = \frac{ab}{(a+b+c)(a+b+c+1)} - \frac{ab}{(a+b+c)^2} = \frac{-ab}{(a+b+c)^2(a+b+c+1)}$$
+
+# Problem 3
+
+**Question:** Suppose $Y|X \sim N(x, x^2)$ and the marginal distribution of $X$ is $\text{Uniform}(0, 1)$.
+
+(a) Find the mean of $X$.
+(b) Find the variance of $X$.
+(c) Find the covariance of $X$ and $Y$.
+(d) Prove that $\frac{Y}{X}$ and $X$ are independent.
+
+## Solution
+
+### Part (a): Mean of $X$
+
+Since $X \sim \text{Uniform}(0, 1)$:
+
+$$E(X) = \frac{0 + 1}{2} = \frac{1}{2}$$
+
+### Part (b): Variance of $X$
+
+For $X \sim \text{Uniform}(0, 1)$:
+
+$$\text{Var}(X) = \frac{(1-0)^2}{12} = \frac{1}{12}$$
+
+### Part (c): Covariance of $X$ and $Y$
+
+Using the law of total covariance:
+
+$$\text{Cov}(X, Y) = E[\text{Cov}(X, Y | X)] + \text{Cov}(E(X|X), E(Y|X))$$
+
+Since we condition on $X$, $\text{Cov}(X, Y|X) = 0$ (X is fixed given X).
+
+So:
+$$\text{Cov}(X, Y) = \text{Cov}(X, E(Y|X))$$
+
+We know $E(Y|X) = X$ (since $Y|X \sim N(X, X^2)$), so:
+
+$$\text{Cov}(X, Y) = \text{Cov}(X, X) = \text{Var}(X) = \frac{1}{12}$$
+
+
+### Part (d): Independence of $\frac{Y}{X}$ and $X$
+
+Given $Y|X \sim N(X, X^2)$, we can write:
+
+$$Y = X + X \cdot Z$$
+
+where $Z \sim N(0, 1)$ is independent of $X$.
+
+Then:
+
+$$\frac{Y}{X} = \frac{X + XZ}{X} = 1 + Z$$
+
+Since $Z \sim N(0, 1)$ is independent of $X$, and $\frac{Y}{X} = 1 + Z$ is a function of $Z$ only, we have that $\frac{Y}{X}$ is independent of $X$.
+
+
+# Problem 4
+
+**Question:** A variation on the hierarchical model is $X|p \sim \text{NegativeBinomial}(r, p)$ and $p \sim \text{Beta}(\alpha, \beta)$.
+
+(a) Find the marginal pmf of $X$.
+(b) Find the mean of $X$.
+(c) Find the variance of $X$.
+
+## Solution
+
+**Note:** We use the definition where $X|p \sim \text{NegBin}(r, p)$ means $X$ is the number of failures before the $r$-th success, with success probability $p$:
+
+$$P(X = k | p) = \binom{k+r-1}{k} p^r (1-p)^k, \quad k = 0, 1, 2, \ldots$$
+
+### Part (a): Marginal PMF of $X$
+
+$$f_X(k) = \int_0^1 P(X=k|p) f_p(p) \, dp$$
+
+$$= \int_0^1 \binom{k+r-1}{k} p^r (1-p)^k \cdot \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)} p^{\alpha-1} (1-p)^{\beta-1} \, dp$$
+
+$$= \binom{k+r-1}{k} \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)} \int_0^1 p^{r+\alpha-1} (1-p)^{k+\beta-1} \, dp$$
+
+$$= \binom{k+r-1}{k} \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)} \cdot B(r+\alpha, k+\beta)$$
+
+$$= \binom{k+r-1}{k} \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)} \cdot \frac{\Gamma(r+\alpha)\Gamma(k+\beta)}{\Gamma(r+\alpha+k+\beta)}$$
+
+### Part (b): Mean of $X$
+
+Using the law of total expectation:
+
+$$E(X) = E[E(X|p)]$$
+
+For $X|p \sim \text{NegBin}(r, p)$:
+
+$$E(X|p) = \frac{r(1-p)}{p}$$
+
+So:
+
+$$E(X) = E\left[\frac{r(1-p)}{p}\right] = r \cdot E\left[\frac{1-p}{p}\right]$$
+
+For $p \sim \text{Beta}(\alpha, \beta)$:
+
+$$E\left[\frac{1}{p}\right] = \int_0^1 \frac{1}{p} \cdot \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)} p^{\alpha-1}(1-p)^{\beta-1} dp$$
+
+$$= \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)} \int_0^1 p^{\alpha-2}(1-p)^{\beta-1} dp = \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)} \cdot \frac{\Gamma(\alpha-1)\Gamma(\beta)}{\Gamma(\alpha+\beta-1)}$$
+
+$$= \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)} \cdot \frac{\Gamma(\alpha-1)}{\Gamma(\alpha+\beta-1)} = \frac{\alpha+\beta-1}{\alpha-1}$$
+
+
+Also, $E(p) = \frac{\alpha}{\alpha+\beta}$, so:
+
+$$E\left[\frac{1-p}{p}\right] = E\left[\frac{1}{p}\right] - 1 = \frac{\alpha+\beta-1}{\alpha-1} - 1 = \frac{\beta}{\alpha-1}$$
+
+Therefore:
+
+$$E(X) = \frac{r\beta}{\alpha-1}$$
+
+
+### Part (c): Variance of $X$
+
+Using the law of total variance:
+
+$$\text{Var}(X) = E[\text{Var}(X|p)] + \text{Var}(E(X|p))$$
+
+For $X|p \sim \text{NegBin}(r, p)$:
+- $E(X|p) = \frac{r(1-p)}{p}$
+- $\text{Var}(X|p) = \frac{r(1-p)}{p^2}$
+
+**First term:**
+
+$$E[\text{Var}(X|p)] = E\left[\frac{r(1-p)}{p^2}\right] = r \cdot E\left[\frac{1-p}{p^2}\right]$$
+
+$$E\left[\frac{1}{p^2}\right] = \int_0^1 \frac{1}{p^2} \cdot \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)} p^{\alpha-1}(1-p)^{\beta-1} dp$$
+
+$$= \frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)} \cdot \frac{\Gamma(\alpha-2)\Gamma(\beta)}{\Gamma(\alpha+\beta-2)} = \frac{(\alpha+\beta-1)(\alpha+\beta-2)}{(\alpha-1)(\alpha-2)}$$
+
+$$E\left[\frac{1-p}{p^2}\right] = E\left[\frac{1}{p^2}\right] - E\left[\frac{1}{p}\right] = \frac{(\alpha+\beta-1)(\alpha+\beta-2)}{(\alpha-1)(\alpha-2)} - \frac{\alpha+\beta-1}{\alpha-1}$$
+
+$$= \frac{(\alpha+\beta-1)(\alpha+\beta-2) - (\alpha+\beta-1)(\alpha-2)}{(\alpha-1)(\alpha-2)} = \frac{(\alpha+\beta-1)\beta}{(\alpha-1)(\alpha-2)}$$
+
+So:
+
+$$E[\text{Var}(X|p)] = \frac{r\beta(\alpha+\beta-1)}{(\alpha-1)(\alpha-2)}$$
+
+**Second term:**
+
+$$\text{Var}(E(X|p)) = \text{Var}\left(\frac{r(1-p)}{p}\right) = r^2 \cdot \text{Var}\left(\frac{1-p}{p}\right)$$
+
+Let $g(p) = \frac{1-p}{p}$. We have:
+
+$$E[g(p)] = \frac{\beta}{\alpha-1}$$
+
+$$E[g(p)^2] = E\left[\frac{(1-p)^2}{p^2}\right] = E\left[\frac{1}{p^2}\right] - 2E\left[\frac{1}{p}\right] + 1$$
+
+$$= \frac{(\alpha+\beta-1)(\alpha+\beta-2)}{(\alpha-1)(\alpha-2)} - 2 \cdot \frac{\alpha+\beta-1}{\alpha-1} + 1$$
+
+$$= \frac{(\alpha+\beta-1)(\alpha+\beta-2) - 2(\alpha+\beta-1)(\alpha-2) + (\alpha-1)(\alpha-2)}{(\alpha-1)(\alpha-2)}$$
+
+$$= \frac{\beta(\alpha+\beta-1) + \beta(\alpha+\beta-1) + (\alpha-1)(\alpha-2)}{(\alpha-1)(\alpha-2)}$$
+
+Let me recalculate more carefully:
+
+$$\text{Var}\left(\frac{1-p}{p}\right) = E\left[\left(\frac{1-p}{p}\right)^2\right] - \left(E\left[\frac{1-p}{p}\right]\right)^2$$
+
+After simplification (which I'll spare the details):
+
+$$\text{Var}\left(\frac{1-p}{p}\right) = \frac{\beta(\alpha+\beta-1)}{(\alpha-1)^2(\alpha-2)}$$
+
+Therefore:
+
+$$\text{Var}(E(X|p)) = \frac{r^2\beta(\alpha+\beta-1)}{(\alpha-1)^2(\alpha-2)}$$
+
+**Total variance:**
+
+$$\text{Var}(X) = \frac{r\beta(\alpha+\beta-1)}{(\alpha-1)(\alpha-2)} + \frac{r^2\beta(\alpha+\beta-1)}{(\alpha-1)^2(\alpha-2)}$$
+
+$$= \frac{r\beta(\alpha+\beta-1)}{(\alpha-1)(\alpha-2)} \left(1 + \frac{r}{\alpha-1}\right)$$
+
+$$= \frac{r\beta(\alpha+\beta-1)(\alpha-1+r)}{(\alpha-1)^2(\alpha-2)}$$
+
+
+# Problem 5
+
+**Question:** For any two random variables $X$ and $Y$ with finite variances, prove that:
+
+(a) $\text{Cov}(X, Y) = \text{Cov}(X, E(Y|X))$
+(b) $X$ and $Y - E(Y|X)$ are uncorrelated, i.e., $\text{Cov}(X, Y - E(Y|X)) = 0$.
+(c) $\text{Var}[Y - E(Y|X)] = E[\text{Var}(Y|X)]$.
+
+## Solution
+
+### Part (a): Prove $\text{Cov}(X, Y) = \text{Cov}(X, E(Y|X))$
+
+**Proof:**
+
+$$\text{Cov}(X, Y) = E[XY] - E[X]E[Y]$$
+
+We'll show that $E[XY] - E[X]E[Y] = E[X \cdot E(Y|X)] - E[X]E[E(Y|X)]$.
+
+First, by the law of iterated expectations:
+
+$$E[Y] = E[E(Y|X)]$$
+
+Second, we compute $E[XY]$:
+
+$$E[XY] = E[E(XY|X)]$$
+
+Given $X$, $X$ is a constant, so:
+
+$$E[XY|X] = X \cdot E[Y|X]$$
+
+Therefore:
+
+$$E[XY] = E[X \cdot E(Y|X)]$$
+
+Now:
+
+$$\text{Cov}(X, E(Y|X)) = E[X \cdot E(Y|X)] - E[X] \cdot E[E(Y|X)]$$
+
+$$= E[XY] - E[X] \cdot E[Y] = \text{Cov}(X, Y)$$
+
+
+### Part (b): Prove $\text{Cov}(X, Y - E(Y|X)) = 0$
+
+**Proof:**
+
+$$\text{Cov}(X, Y - E(Y|X)) = \text{Cov}(X, Y) - \text{Cov}(X, E(Y|X))$$
+
+From part (a), we know $\text{Cov}(X, Y) = \text{Cov}(X, E(Y|X))$, so:
+
+$$\text{Cov}(X, Y - E(Y|X)) = \text{Cov}(X, E(Y|X)) - \text{Cov}(X, E(Y|X)) = 0$$
+
+
+### Part (c): Prove $\text{Var}[Y - E(Y|X)] = E[\text{Var}(Y|X)]$
+
+**Proof:**
+
+By the law of total variance:
+
+$$\text{Var}(Y) = E[\text{Var}(Y|X)] + \text{Var}(E(Y|X))$$
+
+Now compute $\text{Var}[Y - E(Y|X)]$:
+
+$$\text{Var}[Y - E(Y|X)] = E[(Y - E(Y|X))^2] - (E[Y - E(Y|X)])^2$$
+
+First, $E[Y - E(Y|X)] = E[Y] - E[E(Y|X)] = E[Y] - E[Y] = 0$.
+
+So:
+
+$$\text{Var}[Y - E(Y|X)] = E[(Y - E(Y|X))^2]$$
+
+$$= E[E[(Y - E(Y|X))^2 | X]]$$
+
+Given $X$, $E(Y|X)$ is a constant, so:
+
+$$E[(Y - E(Y|X))^2 | X] = \text{Var}(Y|X)$$
+
+Therefore:
+
+$$\text{Var}[Y - E(Y|X)] = E[\text{Var}(Y|X)]$$

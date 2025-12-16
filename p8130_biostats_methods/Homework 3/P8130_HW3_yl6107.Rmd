@@ -1,0 +1,207 @@
+---
+title: "Homework 3 - P8130 Biostatistics Method I"
+author: "Yongyan Liu (yl6107)"
+date: "Oct 11, 2025"
+output:
+  pdf_document:
+    toc: false
+    number_sections: false
+geometry: margin=1in
+fontsize: 11pt
+---
+
+## Problems 1–3 use `birthwt` from `{MASS}`
+
+We first load and lightly prepare the data referenced by the problems.
+
+```{r load-data, echo=FALSE}
+suppressPackageStartupMessages({
+  library(MASS)      # for birthwt
+  library(dplyr)     # for manipulation
+  library(ggplot2)   # for quick diagnostics
+})
+data(birthwt, package = "MASS")
+bw <- birthwt %>% 
+  mutate(
+    smoke = factor(smoke, levels = c(0,1), labels = c("No smoke","Smoke")),
+    ui    = factor(ui,    levels = c(0,1), labels = c("No","Yes")),
+    race  = factor(race, levels = c(1,2,3), labels = c("White","Black","Other"))
+  )
+```
+
+------------------------------------------------------------------------
+
+# Problem 1 (10 points)
+
+*In this data set, we have a variable (smoke) indicating the smoking status of the mothers during pregnancy. Some doctors believe that smoking status is related to weight. Using the columns smoke and lwt, test this claim. (Note: A value of 1 indicates the mother is in the “smoking” group.)*
+
+**a)** Test for the equality of variances between the two groups using a 5% significance level.
+
+We assume the wights of smoker and non-smokers are two independent samples from approximately normal populations.
+
+```{r p1a}
+smoke0 <- bw$lwt[bw$smoke == "No smoke"]
+smoke1 <- bw$lwt[bw$smoke == "Smoke"]
+f_test <- var.test(smoke1, smoke0, alternative = "two.sided")  # F test for sigma1^2 = sigma0^2
+f_test
+```
+
+From the result, we can see p = 0.09744 \> 0.05, so we fail to reject $H_0$ at the 5% significance level.
+
+**b)** Given your answer from part (a), what kind of hypothesis test will you perform to compare means?
+
+Since the variances are not significantly different, we will use the pooled two‑sample t test.
+
+**c)** Conduct your chosen hypothesis test from part (b) at the 10% significance level. What is your decision regarding the null? Interpret this result in the context of the problem.
+
+```{r p1c}
+equal_var <- f_test$p.value >= 0.05
+tt <- t.test(lwt ~ smoke, data = bw, var.equal = equal_var, alternative = "two.sided", conf.level = 0.90)
+tt
+```
+
+$H_0:\mu_{\text{Smoke}} = \mu_{\text{No smoke}}$ vs. $H_1:\mu_{\text{Smoke}} \neq \mu_{\text{No smoke}}$
+
+Since the p-value = 0.5461 \> 10%, we failed to reject $H_0$. There is not enough evidence that smoking has an impact on weight.
+
+**d)** Construct a 95% confidence interval for the difference in means and provide a proper interpretation.
+
+```{r p1d}
+tt95 <- t.test(lwt ~ smoke, data = bw, var.equal = equal_var, conf.level = 0.95)
+tt95
+```
+
+The 95% CI for $\mu_{\text{Smoke}}-\mu_{\text{No smoke}}$ is (-6.24, 11.77).
+
+------------------------------------------------------------------------
+
+# Problem 2 (10 points)
+
+*Researchers are interested in exploring whether rates of uterine irritability in the group of pregnant women who smoke vs those who do not smoke? (Use columns ui and smoke.)*
+
+**a)** Construct a 95% confidence interval for the rate of uterine irritability among pregnant women who smoke and interpret the interval.
+
+```{r p2a}
+tab <- table(bw$smoke, bw$ui)
+tab
+
+x_smoke <- tab["Smoke","Yes"]
+n_smoke <- sum(tab["Smoke",])
+p_hat  <- x_smoke / n_smoke
+ci_smoke <- prop.test(x_smoke, n_smoke, conf.level = 0.95, correct = TRUE)
+ci_smoke
+```
+
+The 95% confidence interval for the rate of uterine irritability among women who smoke is (0.100, 0.285).
+
+**b)** Construct a 95% confidence interval for the difference in the rate between those who smoke and those who do not. Interpret the interval.
+
+```{r p2b}
+x_nosmoke <- tab["No smoke","Yes"]
+n_nosmoke <- sum(tab["No smoke",])
+diff_ci <- prop.test(x = c(x_smoke, x_nosmoke),
+                     n = c(n_smoke, n_nosmoke),
+                     conf.level = 0.95,
+                     correct = TRUE)  # gives CI for p1 - p2
+diff_ci
+```
+
+The 95% confidence interval for the differences in the rate of uterine irritability between women who smoke and those who do not is (-0.072, 0.163).
+
+**c)** Conduct a hypothesis test for a difference in proportions at the $\alpha = 0.01$ level. What can we conclude?
+
+```{r p2c}
+# Two-sample test for equality of proportions (with continuity correction)
+prop_test <- prop.test(x = c(x_smoke, x_nosmoke),
+                       n = c(n_smoke, n_nosmoke),
+                       alternative = "two.sided",
+                       conf.level = 0.99,
+                       correct = TRUE)
+prop_test
+```
+
+$H_0: p_{\text{Smoke}} = p_{\text{No smoke}}$ vs. $H_1: p_{\text{Smoke}} \neq p_{\text{No smoke}}$
+
+Since the p-value = 0.5191 \> 0.01, there is not enough evidence to say smoking has an impact on the rate of uterine irritability.
+
+------------------------------------------------------------------------
+
+# Problem 3 (10 points)
+
+*Is race related to birth weight? (Use columns race and bwt.)*
+
+**a)** What test would be most appropriate to answer this question?
+
+Since the dataset $bwt$ across 3 groups of race, the standard choice is a **one‑way ANOVA** to compare group means.
+
+**b)** What assumptions are we making by using this test? Are all assumptions met?
+
+ANOVA assumes - (i) the 3 set of data are independent to each other - (ii) data within each group are normally distributed - (iii) the variances of each group are roughly the same
+
+**c)** Conduct the test at the 5% significance level and interpret your results. Be sure to write the hypotheses you are testing.
+
+```{r p3c}
+fit_aov <- aov(bwt ~ race, data = bw)
+fit_aov
+
+anova_res <- summary(fit_aov)
+anova_res
+```
+
+$H_0:\ \mu_{\text{White}}=\mu_{\text{Black}}=\mu_{\text{Other}}$ vs. $H_1:$ at least one group mean differs.
+
+From the result, the p-value is 0.00834 \< 5%, we reject $H_0$. So, at least one race has a different mean of birth weight.
+
+**d)** Perform multiple comparisons - which races can you claim are different from which? Interpret your results.
+
+Use Tukey’s HSD to control the family‑wise error rate for all pairwise mean differences.
+
+```{r p3d}
+tuk <- TukeyHSD(fit_aov)
+tuk
+```
+
+From the result, since both adjusted p-values for Black-White and Other-White are \< 5%, people in the 'White' race group are more likely to have a different birth weight than other people.
+
+------------------------------------------------------------------------
+
+# Problem 4 (10 points)
+
+A public-health team is evaluating a new community program intended to reduce average systolic blood pressure (SBP) among participants. The current population guideline level is $\mu$ ! = 130 mmHg. Past studies indicate that the population standard deviation of SBP is $\sigma$ = 15mmHg.
+
+**a)** The investigators will use a one-sample Z test and a 5% significance level to test H!: $\mu$ = 130 vs. H": $\mu$ \< 130.
+
+**b)** If the true mean after the program is 125 mmHg, calculate the power of the test for $n = 30$. What is the power if the true mean is 122?
+
+$$
+Power = P(Z < z_\alpha + \dfrac{\mu_0 - \mu}{\sigma / \sqrt{n}}) = P(Z < z_\alpha + \dfrac{130 - 125}{15 / \sqrt{30}})
+$$
+
+```{r}
+power_mu <- function(mu1, mu0 = 130, sigma = 15, n = 30, z_alpha = qnorm(0.05)) {
+  pnorm(z_alpha + (mu0 - mu1)/(sigma/sqrt(n)))
+}
+
+power_mu(125)
+power_mu(122)
+```
+
+The power is 57.1% if the true mean is 125 mmHg or 89.9% if the true mean is 122 mmHg.
+
+**c)** What should the sample size $n$ be to ensure at least 80% power if the true mean after the program is 124? What would it need to be if we needed 90% power?
+
+$$
+n = \left(\frac{\sigma}{\mu_0 - \mu_1}(z_{1-\beta} - z_{\alpha})\right)^2
+  = \left(\frac{15}{130 - 124}(z_{1-\beta} - z_{\alpha})\right)^2
+$$
+
+```{r}
+min_n <- function(power, sigma = 15, mu0 = 130, mu1 = 124, alpha = 0.05) {
+  (sigma / (mu0 - mu1) * (qnorm(power) - qnorm(alpha)))^2  
+}
+
+min_n(0.8)
+min_n(0.9)
+```
+
+The required sample size n is at least 39 to have a power of 80% or 54 to have a power of 90%.

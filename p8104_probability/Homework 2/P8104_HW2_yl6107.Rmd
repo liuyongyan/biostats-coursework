@@ -1,0 +1,258 @@
+---
+title: "P8104 Probability - Homework 2"
+author: "Yongyan Liu"
+date: "`r format(Sys.Date(), '%Y-%m-%d')`"
+output:
+  pdf_document: default
+  html_document: default
+fontsize: 11pt
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+# Problem 1
+
+Let $X$ be the sum of the faces when rolling two fair six-sided dice.
+
+**(a)** List all possible values of $X$ and determine the probability
+mass function (pmf) $p_X(x)$.
+
+$$X = \{2, 3, 4, ..., 12\}$$ $$
+p_X(x) =
+\begin{cases}
+\dfrac{x - 1}{36}, & 2 \leq x \leq 7 \\
+\dfrac{13 - x}{36}, & 8 \leq x \leq 12 \\
+0, &otherwise
+\end{cases}
+$$
+
+**(b)** Compute:
+
+$$
+\mathbb{P}\bigl(X \in \{7, 11\}\bigr) = \dfrac{6}{36} + \dfrac{2}{36} = \dfrac{2}{9}
+$$
+$$
+\mathbb{P}\bigl(X \in \{2, 3, 12\}\bigr) = \dfrac{1}{36} + \dfrac{2}{36} + \dfrac{1}{36} = \dfrac{1}{9}
+$$
+
+**(c)** Determine the cumulative distribution function (cdf) $F_X(x)$.
+
+$$
+F_X(x) =
+\begin{cases}
+0, & x < 2, \\
+\frac{1}{36}, & 2 \leq x < 3, \\
+\frac{1+2}{36} = \frac{3}{36}, & 3 \leq x < 4, \\
+\frac{1+2+3}{36} = \frac{6}{36}, & 4 \leq x < 5, \\
+\frac{1+2+3+4}{36} = \frac{10}{36}, & 5 \leq x < 6, \\
+\frac{1+2+3+4+5}{36} = \frac{15}{36}, & 6 \leq x < 7, \\
+\frac{1+2+3+4+5+6}{36} = \frac{21}{36}, & 7 \leq x < 8, \\
+\frac{1+2+3+4+5+6+5}{36} = \frac{26}{36}, & 8 \leq x < 9, \\
+\frac{1+2+3+4+5+6+5+4}{36} = \frac{30}{36}, & 9 \leq x < 10, \\
+\frac{1+2+3+4+5+6+5+4+3}{36} = \frac{33}{36}, & 10 \leq x < 11, \\
+\frac{1+2+3+4+5+6+5+4+3+2}{36} = \frac{35}{36}, & 11 \leq x < 12, \\
+1, & x \geq 12.
+\end{cases}
+$$
+
+# Problem 2
+
+Let $X$ be a discrete random variable with pmf $$
+p_X(x) = 
+\begin{cases}
+c x, & x = 1,2,\ldots,10, \\
+0, & \text{otherwise.}
+\end{cases}
+$$
+
+**(a)** What’s the support of $X$?
+
+The support of $X$ is $\{x : p_X(x) > 0\} = \{1, 2, 3, ..., 10\}$
+
+**(b)** Find the constant $c$.
+
+since $\sum_{x \in X} p_X(x) = 1$, we have $$
+\sum_{x = 1}^{10}cx = c\sum_{x = 1}^{10}x = 55c = 1
+$$ so, $c = \dfrac{1}{55}$
+
+**(c)** Compute $\mathbb{P}(2 < X \le 4)$.
+
+$$
+\mathbb{P}(2 < X \le 4) = \mathbb{P}(3) + \mathbb{P}(4) = \dfrac{3}{55} + \dfrac{4}{55} = \dfrac{7}{55}
+$$
+
+**(d)** Sketch the cdf $F_X(x)$. (You can also plot an R approximation.)
+
+$$
+F_X(x) = 
+\begin{cases}
+0, &x < 1 \\
+\sum_{i=1}^{\lfloor x \rfloor} \dfrac{i}{55}, &1 \leq x \leq 10 \\
+1, &x > 10
+\end{cases}
+$$
+
+```{r echo=FALSE, out.width="80%", fig.align='center'}
+# Populate the pmf and cdf
+x <- 1:10
+c_const <- 1 / sum(x)  # 1 / 55
+pmf <- c_const * x
+cdf <- cumsum(pmf)
+
+# Step function (right-continuous)
+Fx <- stepfun(x, c(0, cdf), right = TRUE)
+
+# Plot horizontals from stepfun; suppress verticals/points
+plot(Fx,
+     verticals = FALSE, do.points = FALSE,
+     xlab = "x",
+     ylab = expression(F[X](x)),
+     main = "CDF of p(x) = c * x,  x = 1,...,10",
+     xlim = c(0, 11), ylim = c(0, 1),
+     lwd = 2)
+
+# Add dashed vertical jump lines + open/closed circles at each jump
+y_prev <- 0
+for (i in seq_along(x)) {
+  segments(x[i], y_prev, x[i], cdf[i], lty = 2)
+  points(x[i], y_prev, pch = 1)
+  points(x[i], cdf[i], pch = 16)
+  y_prev <- cdf[i]
+}
+
+# Extend the last horizontal segment to the right margin (optional)
+segments(max(x), y_prev, 11, y_prev, lwd = 2)
+```
+
+# Problem 3
+
+Let $X$ be the number of tails before the first head in independent
+flips of a coin with head probability $p$.
+
+**(a)** Write the pmf of $X$ and justify it.
+
+Let $f_X(x)$ be the pmf of $X$.
+
+$$
+f_X(x) = \begin{cases}
+0, &x < 0 \\
+(1-p)^{x}p, &x \geq 0
+\end{cases}
+$$
+
+The probability of flipping the coin with a head is p, so the
+probability of flipping with a tail is 1-p. So, f_X(x) is the
+probability that the first X flips all result in tails and followed by
+one flip results in a head, which is $(1-p)^x * p$.
+
+**(b)** Compute $\mathbb{P}(\text{$X$ is even})$.
+
+$$
+\begin{aligned}
+\mathbb{P}(\text{X is even}) 
+    & = \sum_{x = 0,2,4,...}^{\infty}(1-p)^xp \\
+    & = p\sum_{i = 0,1,2,...}^{\infty}((1-p)^2)^i \\
+    & = \dfrac{p}{(1 - (1 - p)^2)} \\
+    & = \dfrac{p}{2p - p^2} \\
+    & = \dfrac{1}{2 - p}
+\end{aligned}
+$$
+
+**(c)** What is the support of $X$?
+
+The support of $X$ is {0, 1, 2, 3, ...}.
+
+# Problem 4
+
+Let $X \sim \text{Uniform}(0,1)$, i.e., a real number chosen at random
+between 0 and 1.
+
+**(a)** Write the cdf $F_X(x)$ and pdf $f_X(x)$.
+
+$$
+F_X(x) =
+\begin{cases}
+0, &x < 0 \\
+x, &0 \leq x \leq 1 \\
+1, &x > 1
+\end{cases}
+$$ $$
+f_X(x) =
+\begin{cases}
+1, &0 \leq x \leq 1 \\
+0, &otherwise
+\end{cases}
+$$
+
+**(b)** Verify that $f_X(x) = \dfrac{d}{dx} F_X(x)$.
+
+When x \< 0 or x \> 1, $F_X(x)$ is constant. So $F'_X(x) = 0$. As
+$f_X(x) = 0$ by definition, the equality holds.
+
+For $0 \leq x \leq 1$,
+$\dfrac{d}{dx} F_X(x) = \dfrac{dx}{dx} = 1 = f_X(x)$, thus the equality
+also holds.
+
+Note $F_X(x)$ is not differentiable at $x=0$ and $x=1$, but the equation
+holds everywhere else.
+
+**(c)** Let $A = (0.3, 0.7]$. Compute $\mathbb{P}(X \in A)$ using both
+the cdf and the pdf.
+
+$$\mathbb{P}(X \in A) = F_X(0.7) - F_X(0.3) = 0.4$$
+$$\mathbb P(X\in(0.3,0.7])=\int_{0.3}^{0.7} dx = 0.4.$$
+
+**(d)** State whether $X$ is discrete, continuous, or neither, and
+explain why.
+
+$X$ is continuous, since the probabilities are given by integrals over
+intervals; for any single point $a$, $\mathbb{P}(X=a)=0$.
+
+# Problem 5
+
+Let $X \sim \text{Binomial}(n=4, p)$, i.e., the number of heads in 4
+independent coin flips where the probability of heads is $p$. Define a
+new random variable $Y = |X - 2|$.
+
+**(a)** List all possible values of $X$ and write out its pmf $p_X(x)$.
+
+$$X = \{0, 1, 2, 3, 4\}$$
+
+$$p_X(x) = \binom{4}{x}p^{x}(1-p)^{4 - x}$$
+
+**(b)** List all possible values of $Y$ and determine its support.
+
+$$Y = \{0, 1, 2\}$$ For $0<p<1$, all are in the support. If $p=0$ or
+$p=1$, the support reduces to $\{2\}$.
+
+**(c)** Express each $y$ value in terms of the corresponding $x$ values
+from the binomial distribution.
+
+$$
+y=\begin{cases}
+0, &x = 2 \\
+1, &x = 1\ or\ 3 \\
+2, &x = 0\ or\ 4
+\end{cases}
+$$
+
+**(d)** Is the transformation one-to-one? Derive the pmf of $Y$.
+
+No, as shown above.
+
+Since $y = |x - 2|$, we have $y = x - 2$ or $y = -(x - 2)$. Thus
+$x = 2 + y$ or $x = 2 - y$.
+
+$$
+p_Y(y)=\begin{cases}
+p_X(y + 2), &y = 0 \\
+p_X(2 + y) + p_X(2 - y), &otherwise
+\end{cases}
+$$
+
+**(e)** Verify that $\sum_y p_Y(y) = 1$.
+
+$$\sum_y p_Y(y) = p_Y(0) + p_Y(1) + p_Y(2) = p_X(2) + (p_X(3) + p_X(1)) + (p_X(4) + p_X(0)) = \sum_x p_X(x) = 1$$
+
+So the equality holds.
