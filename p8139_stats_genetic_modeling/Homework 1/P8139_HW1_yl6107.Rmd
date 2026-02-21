@@ -1,0 +1,163 @@
+---
+title: "P8139 Homework 1"
+author: "Yongyan Liu (yl6107)"
+date: "2026-02-10"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    extra_dependencies: ["amsmath", "amssymb", "amsthm"]
+header-includes:
+  - \usepackage{bm}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# Problem 1
+
+**A couple who has been married for almost five years has three children. Given that at least two of the children are girls, find the probability that all three children are girls.**
+
+## Solution
+
+Assume each child is equally likely to be a boy (B) or girl (G), with probability $1/2$ each, and births are independent.
+
+**Sample space for 3 children:** $\{BBB, BBG, BGB, BGG, GBB, GBG, GGB, GGG\}$, each with probability $(1/2)^3 = 1/8$.
+
+**Event A:** At least two children are girls.
+$$A = \{BGG, GBG, GGB, GGG\}$$
+$$P(A) = 4 \times \frac{1}{8} = \frac{4}{8} = \frac{1}{2}$$
+
+**Event B:** All three children are girls.
+$$B = \{GGG\}$$
+$$P(B) = \frac{1}{8}$$
+
+Note that $B \subset A$, so $A \cap B = B$.
+
+**Conditional probability:**
+$$P(B|A) = \frac{P(A \cap B)}{P(A)} = \frac{P(B)}{P(A)} = \frac{1/8}{4/8} = \frac{1}{4}$$
+
+$$P(\text{all girls} \mid \text{at least 2 girls}) = \frac{1}{4}$$
+
+# Problem 2
+
+**Three allelic variants, A, B, and C of the red cell acid phosphatase enzyme were found in a sample of 178 people. All genotypes were distinguishable by electrophoresis, and the frequencies in the sample were:**
+
+| Genotype | AA | AB | BB | AC | BC | CC |
+|:--------:|:--:|:--:|:--:|:--:|:--:|:--:|
+| Frequency (%) | 9.6 | 48.3 | 34.3 | 2.8 | 5.0 | 0.0 |
+
+**What are the allele frequencies in the sample?**
+
+## Solution
+
+For a diploid organism, each individual carries two alleles. Let $p_A$, $p_B$, and $p_C$ denote the frequencies of alleles A, B, and C respectively.
+
+**Allele A frequency:**
+$$p_A = \frac{2 \times f_{AA} + f_{AB} + f_{AC}}{2}$$
+$$p_A = \frac{2(0.096) + 0.483 + 0.028}{2} = \frac{0.192 + 0.483 + 0.028}{2} = \frac{0.703}{2} = 0.3515$$
+
+**Allele B frequency:**
+$$p_B = \frac{2 \times f_{BB} + f_{AB} + f_{BC}}{2}$$
+$$p_B = \frac{2(0.343) + 0.483 + 0.050}{2} = \frac{0.686 + 0.483 + 0.050}{2} = \frac{1.219}{2} = 0.6095$$
+
+**Allele C frequency:**
+$$p_C = \frac{2 \times f_{CC} + f_{AC} + f_{BC}}{2}$$
+$$p_C = \frac{2(0.000) + 0.028 + 0.050}{2} = \frac{0.078}{2} = 0.0390$$
+
+# Problem 3
+
+**About 30% of people do not recognize the bitter taste of phenyl-thiocarbamate (PTC). Inability to taste is due to a single autosomal recessive gene. What is the frequency of the non-tasting gene, assuming the population to be in Hardy-Weinberg equilibrium (HWE)?**
+
+## Solution
+
+Let $T$ = taster allele (dominant) and $t$ = non-taster allele (recessive).
+
+Let $p = f(T)$ and $q = f(t)$, where $p + q = 1$.
+
+Under Hardy-Weinberg Equilibrium, the genotype frequencies are: $P(TT) = p^2$, $P(Tt) = 2pq$, $P(tt) = q^2$.
+
+**Solving for $q$:**
+$$q^2 = 0.30$$
+$$q = \sqrt{0.30} = 0.5477$$
+
+$$f(t) = q \approx 0.55$$
+
+# Problem 4
+
+**Albinism occurs with a frequency of about 1 in 20,000 in European populations. Assuming it to be due to a single autosomal recessive gene, and assuming the population to be in HWE, what is the approximate proportion of people who are carriers?**
+
+## Solution
+
+Let $A$ = normal allele (dominant) and $a$ = albinism allele (recessive).
+
+Let $p = f(A)$ and $q = f(a)$, where $p + q = 1$.
+
+Under Hardy-Weinberg Equilibrium: $P(aa) = q^2$, $P(Aa) = 2pq$ 
+
+**Given:** Frequency of albinism = $q^2 = \frac{1}{20000}$
+
+**Solving for $q$:**
+$$q = \sqrt{\frac{1}{20000}} = \frac{1}{\sqrt{20000}} = \frac{1}{141.42} \approx 0.00707$$
+
+**Carrier Frequency (Approximation):** Since $q$ is very small, $p \approx 1$, so:
+$$P(Aa) + P(aa) = 2pq + q^2\approx 2q = 2\sqrt{\frac{1}{20000}} = \frac{2}{141.42} \approx 0.0141$$
+The approximate proportion of carriers is 1.41%.
+
+# Problem 5
+
+**The following numbers are the numbers of the human M-N blood groups that were recorded in a sample of American whites:**
+
+| Genotype | M (MM) | MN | N (NN) |
+|:--------:|:------:|:--:|:------:|
+| Count | 1787 | 3039 | 1303 |
+
+## (a) What are the genotype frequencies observed in the sample?
+
+**Total sample size:** $n = 1787 + 3039 + 1303 = 6129$
+
+**Observed genotype frequencies:**
+$$f_{MM} = \frac{1787}{6129} = 0.2916 = 29.16\%$$
+$$f_{MN} = \frac{3039}{6129} = 0.4958 = 49.58\%$$
+$$f_{NN} = \frac{1303}{6129} = 0.2126 = 21.26\%$$
+
+## (b) What are the gene frequencies?
+
+**Method: Gene counting**
+
+For codominant alleles M and N:
+$$p_M = f_{MM} + \frac{1}{2}f_{MN} = \frac{2 \times 1787 + 3039}{2 \times 6129} = \frac{6613}{12258} = 0.5395$$
+$$p_N = f_{NN} + \frac{1}{2}f_{MN} = \frac{2 \times 1303 + 3039}{2 \times 6129} = \frac{5645}{12258} = 0.4605$$
+
+## (c) Test whether the genotypes are in HWE
+
+**Hypotheses:**
+
+- $H_0$: The population is in Hardy-Weinberg Equilibrium
+- $H_1$: The population is not in Hardy-Weinberg Equilibrium
+
+**Expected frequencies under HWE:**
+
+Using the estimated allele frequencies $\hat{p}_M = 0.5395$ and $\hat{p}_N = 0.4605$:
+$$E(MM) = n \cdot \hat{p}_M^2 = 6129 \times (0.5395)^2 = 6129 \times 0.2911 = 1784.0$$
+$$E(MN) = n \cdot 2\hat{p}_M\hat{p}_N = 6129 \times 2 \times 0.5395 \times 0.4605 = 6129 \times 0.4969 = 3045.0$$
+$$E(NN) = n \cdot \hat{p}_N^2 = 6129 \times (0.4605)^2 = 6129 \times 0.2121 = 1300.0$$
+
+**Chi-squared test statistic:**
+$$\chi^2 = \sum \frac{(O - E)^2}{E}$$
+$$\chi^2 = \frac{(1787 - 1784.0)^2}{1784.0} + \frac{(3039 - 3045.0)^2}{3045.0} + \frac{(1303 - 1300.0)^2}{1300.0}$$
+$$\chi^2 = \frac{9}{1784.0} + \frac{36}{3045.0} + \frac{9}{1300.0}$$
+$$\chi^2 = 0.0050 + 0.0118 + 0.0069 = 0.0237$$
+
+**Degrees of freedom:** For a biallelic locus with 3 genotypes and 1 estimated allele frequency:
+$$df = (\text{number of genotypes} - 1) - (\text{number of estimated parameters}) = 3 - 1 - 1 = 1$$
+
+**Critical value:** $\chi^2_{0.95, 1} = 3.841$
+
+**Decision:** Since $\chi^2 = 0.0237 < 3.841$, we **fail to reject $H_0$**.
+
+**Conclusion:**
+
+$$\text{Do not reject } H_0: \text{ The genotypes are consistent with HWE.}$$
+
+The M-N blood group data from American whites shows no significant departure from Hardy-Weinberg Equilibrium ($\chi^2 = 0.024$, $df = 1$, $p = 0.88$). The observed genotype frequencies closely match those expected under random mating.

@@ -1,0 +1,212 @@
+---
+title: "P8109 Statistical Inference -- Homework 2"
+author: "yl6107"
+date: "2026-02-21"
+output:
+  pdf_document:
+    latex_engine: xelatex
+header-includes:
+  - \usepackage{amsmath,amssymb,amsthm}
+  - \DeclareMathOperator{\Var}{Var}
+  - \DeclareMathOperator{\Cov}{Cov}
+  - \DeclareMathOperator{\E}{E}
+  - \newcommand{\iid}{\overset{\text{iid}}{\sim}}
+  - \newcommand{\dto}{\xrightarrow{d}}
+  - \newcommand{\pto}{\xrightarrow{p}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem 1
+
+**Let $X_1,\ldots,X_n$ be i.i.d. Poisson$(\lambda)$ random variables. Find the MLE of $\lambda$.**
+
+**Solution.** The likelihood function is
+$$L(\lambda) = \prod_{i=1}^n \frac{e^{-\lambda}\lambda^{X_i}}{X_i!} = \frac{e^{-n\lambda}\lambda^{\sum_{i=1}^n X_i}}{\prod_{i=1}^n X_i!}.$$
+The log-likelihood is
+$$\ell(\lambda) = -n\lambda + \left(\sum_{i=1}^n X_i\right)\log\lambda - \sum_{i=1}^n\log(X_i!).$$
+Taking the derivative and setting it to zero:
+$$\frac{d\ell}{d\lambda} = -n + \frac{\sum_{i=1}^n X_i}{\lambda} = 0.$$
+Solving gives $\boxed{\hat{\lambda}_{\text{MLE}} = \bar{X}}$.
+
+The second derivative $d^2\ell/d\lambda^2 = -\sum X_i/\lambda^2 < 0$ confirms this is a maximum.
+
+\newpage
+
+# Problem 2
+
+**Consider a sequence of i.i.d. random variables from a $N(\mu,\sigma^2)$ distribution. Let $m = \frac{1}{n}\sum_{i=1}^n X_i^2$.**
+
+## (a) Given that $\sigma^2=\mu$, show that the MLE of $\mu$ is $\hat{\mu} = \frac{-1+\sqrt{1+4m}}{2}$.
+
+**Proof.** When $\sigma^2 = \mu$, the log-likelihood is
+$$\ell(\mu) = -\frac{n}{2}\log(2\pi) - \frac{n}{2}\log\mu - \frac{1}{2\mu}\sum_{i=1}^n(X_i-\mu)^2.$$
+Expanding $(X_i-\mu)^2 = X_i^2 - 2\mu X_i + \mu^2$:
+$$\ell(\mu) = -\frac{n}{2}\log(2\pi) - \frac{n}{2}\log\mu - \frac{nm}{2\mu} + n\bar{X} - \frac{n\mu}{2}.$$
+Taking the derivative:
+$$\frac{d\ell}{d\mu} = -\frac{n}{2\mu} + \frac{nm}{2\mu^2} - \frac{n}{2} = 0.$$
+Multiplying by $2\mu^2/n$:
+$$-\mu + m - \mu^2 = 0 \quad\Rightarrow\quad \mu^2 + \mu - m = 0.$$
+By the quadratic formula: $\mu = \frac{-1 \pm \sqrt{1+4m}}{2}$. Since $\mu > 0$ (as variance must be positive), we take the positive root:
+$$\boxed{\hat{\mu} = \frac{-1+\sqrt{1+4m}}{2}.}$$
+
+## (b) Given that $\sigma=\mu$, show that the MLE of $\mu$ is $\hat{\mu} = \frac{-\bar{X}+\sqrt{\bar{X}^2+4m}}{2}$.
+
+**Proof.** When $\sigma = \mu$, we have $\sigma^2 = \mu^2$. The log-likelihood is
+$$\ell(\mu) = -\frac{n}{2}\log(2\pi) - n\log\mu - \frac{1}{2\mu^2}\sum_{i=1}^n(X_i-\mu)^2.$$
+Expanding:
+$$\ell(\mu) = -\frac{n}{2}\log(2\pi) - n\log\mu - \frac{nm}{2\mu^2} + \frac{n\bar{X}}{\mu} - \frac{n}{2}.$$
+Taking the derivative:
+$$\frac{d\ell}{d\mu} = -\frac{n}{\mu} + \frac{nm}{\mu^3} - \frac{n\bar{X}}{\mu^2} = 0.$$
+Multiplying by $\mu^3/n$:
+$$-\mu^2 + m - \bar{X}\mu = 0 \quad\Rightarrow\quad \mu^2 + \bar{X}\mu - m = 0.$$
+By the quadratic formula: $\mu = \frac{-\bar{X} \pm \sqrt{\bar{X}^2+4m}}{2}$. Taking the positive root:
+$$\boxed{\hat{\mu} = \frac{-\bar{X}+\sqrt{\bar{X}^2+4m}}{2}.}$$
+
+\newpage
+
+# Problem 3
+
+**Let $X_1,\ldots,X_n$ be a random sample from a $N(\mu,1)$ distribution.**
+
+## (a) Show that $T = \frac{1}{n}\sum_{i=1}^n X_i^2 - 1$ is an unbiased estimator of $\mu^2$.
+
+**Proof.** For $X_i \sim N(\mu,1)$, we have $\E[X_i^2] = \Var(X_i) + (\E[X_i])^2 = 1 + \mu^2$. Therefore,
+$$\E[T] = \E\left[\frac{1}{n}\sum_{i=1}^n X_i^2 - 1\right] = \frac{1}{n}\sum_{i=1}^n \E[X_i^2] - 1 = (1+\mu^2) - 1 = \mu^2.$$
+Hence $T$ is unbiased for $\mu^2$. $\square$
+
+## (b) Explain why $2T$ is not an appropriate estimator of $2\mu^2$.
+
+**Solution.** Although $\E[2T] = 2\mu^2$, the estimator $2T$ is not appropriate because $T$ (and hence $2T$) can take negative values. Since $2\mu^2 \geq 0$ for all $\mu$, an estimator that can be negative violates the natural constraint of the parameter space. For instance, if $\mu = 0$ and $n=1$, then $T = X_1^2 - 1$ has a positive probability of being negative when $|X_1| < 1$.
+
+## (c) Give a simple proof that $T$ is a biased estimator of $\mu$.
+
+**Proof.** From part (a), $\E[T] = \mu^2$. For $T$ to be unbiased for $\mu$, we would need $\E[T] = \mu$, i.e., $\mu^2 = \mu$ for all $\mu$. This only holds when $\mu \in \{0, 1\}$. For any other value of $\mu$, we have $\E[T] = \mu^2 \neq \mu$, so $T$ is biased for $\mu$. $\square$
+
+\newpage
+
+# Problem 4
+
+## (a) Define what it means for $T_n$ to be a consistent estimator of a parameter $\theta$.
+
+**Definition.** $T_n$ is a consistent estimator of $\theta$ if $T_n \pto \theta$ as $n \to \infty$, i.e., for any $\varepsilon > 0$,
+$$P(|T_n - \theta| > \varepsilon) \to 0 \quad\text{as } n \to \infty.$$
+
+## (b) Given $T_n$ is unbiased for $\theta$, use Chebyshev's inequality to show that $T_n$ is consistent for $\theta$ if $\Var(T_n) \to 0$ as $n \to \infty$.
+
+**Proof.** By Chebyshev's inequality, for any $\varepsilon > 0$:
+$$P(|T_n - \E[T_n]| > \varepsilon) \leq \frac{\Var(T_n)}{\varepsilon^2}.$$
+Since $T_n$ is unbiased, $\E[T_n] = \theta$. Thus:
+$$P(|T_n - \theta| > \varepsilon) \leq \frac{\Var(T_n)}{\varepsilon^2} \to 0 \quad\text{as } n \to \infty,$$
+provided $\Var(T_n) \to 0$. Therefore $T_n \pto \theta$, i.e., $T_n$ is consistent for $\theta$. $\square$
+
+\newpage
+
+# Problem 5
+
+**Let $X_1,\ldots,X_n$ be i.i.d. $N(\theta,1)$ random variables.**
+
+## (a) Obtain the CRLB for any unbiased estimator of $\theta$.
+
+**Solution.** The log-likelihood for one observation is
+$$\log f(x;\theta) = -\frac{1}{2}\log(2\pi) - \frac{(x-\theta)^2}{2}.$$
+The score function is $S_1(\theta) = \frac{\partial}{\partial\theta}\log f = x - \theta$.
+
+The Fisher information for one observation is
+$$I_1(\theta) = \E[(X-\theta)^2] = \Var(X) = 1.$$
+For $n$ i.i.d. observations: $I_n(\theta) = nI_1(\theta) = n$.
+
+The CRLB for any unbiased estimator $T$ of $\theta$ is:
+$$\boxed{\Var(T) \geq \frac{1}{I_n(\theta)} = \frac{1}{n}.}$$
+
+## (b) By writing the score function in suitable form, identify the function $\tau(\theta)$ for which an MVBU estimator exists. Write down the latter estimator.
+
+**Solution.** The total score function is
+$$S(\theta) = \sum_{i=1}^n (X_i - \theta) = n\bar{X} - n\theta = n(\bar{X} - \theta).$$
+This can be written as
+$$S(\theta) = I_n(\theta) \cdot (\bar{X} - \theta),$$
+which has the form $S(\theta) = I_n(\theta) \cdot (\hat{\tau} - \tau(\theta))$ with $\tau(\theta) = \theta$ and $\hat{\tau} = \bar{X}$.
+
+By the Cram\'er-Rao theorem, MVBU exists for $\tau(\theta) = \theta$, and the MVBU estimator is $\boxed{\bar{X}}$.
+
+## (c) Write down the UMVUE for $\theta$.
+
+**Solution.** Since $\bar{X}$ achieves the CRLB, it is the MVBU (minimum variance bound unbiased) estimator and hence is the UMVUE for $\theta$:
+$$\boxed{\text{UMVUE} = \bar{X}.}$$
+
+## (d) Obtain the CRLB for any unbiased estimator of $2\theta$.
+
+**Solution.** Let $\tau(\theta) = 2\theta$. Then $\tau'(\theta) = 2$. By the Cram\'er-Rao inequality:
+$$\Var(T) \geq \frac{[\tau'(\theta)]^2}{I_n(\theta)} = \frac{4}{n}.$$
+$$\boxed{\text{CRLB for } 2\theta = \frac{4}{n}.}$$
+
+## (e) By writing the score function in suitable form, identify the MVBU estimator of $2\theta$ if it exists.
+
+**Solution.** The score function is $S(\theta) = n(\bar{X} - \theta)$. For $\tau(\theta) = 2\theta$ with $\tau'(\theta) = 2$:
+$$S(\theta) = n(\bar{X} - \theta) = \frac{n}{2}(2\bar{X} - 2\theta) = \frac{I_n(\theta)}{\tau'(\theta)}(\hat{\tau} - \tau(\theta)),$$
+where $\hat{\tau} = 2\bar{X}$.
+
+This matches the form required for MVBU existence. Therefore, the MVBU estimator of $2\theta$ is $\boxed{2\bar{X}}$.
+
+We can verify: $\Var(2\bar{X}) = 4\Var(\bar{X}) = 4/n$, which equals the CRLB.
+
+\newpage
+
+# Problem 6
+
+**Let $X_1,\ldots,X_n$ be i.i.d. Poisson$(\lambda)$ random variables. We wish to estimate $p = P(X_j = 0)$.**
+
+## (a) Find an expression for $p$ in terms of $\lambda$.
+
+**Solution.** For $X \sim \text{Poisson}(\lambda)$:
+$$\boxed{p = P(X = 0) = \frac{e^{-\lambda}\lambda^0}{0!} = e^{-\lambda}.}$$
+
+## (b) Find the CRLB in terms of $p$ for any unbiased estimator of $p$.
+
+**Solution.** The Fisher information for one Poisson observation is $I_1(\lambda) = 1/\lambda$, so $I_n(\lambda) = n/\lambda$.
+
+Since $p = e^{-\lambda}$, we have $\frac{dp}{d\lambda} = -e^{-\lambda} = -p$.
+
+By the Cram\'er-Rao inequality:
+$$\Var(T) \geq \frac{(dp/d\lambda)^2}{I_n(\lambda)} = \frac{p^2}{n/\lambda} = \frac{p^2\lambda}{n}.$$
+
+Since $\lambda = -\log p$, the CRLB in terms of $p$ is:
+$$\boxed{\text{CRLB} = \frac{-p^2\log p}{n}.}$$
+
+## (c) Let $Y_j = \begin{cases} 1, & \text{if } X_j = 0,\\ 0, & \text{otherwise.}\end{cases}$ Find $\E Y_j$ and use this result to write down an unbiased estimator $T$ of $p$.
+
+**Solution.** We have
+$$\E[Y_j] = P(X_j = 0) = e^{-\lambda} = p.$$
+Therefore, an unbiased estimator of $p$ is
+$$\boxed{T = \bar{Y} = \frac{1}{n}\sum_{j=1}^n Y_j.}$$
+
+## (d) Find $\Var(T)$ (in terms of $p$).
+
+**Solution.** Since $Y_j \sim \text{Bernoulli}(p)$, we have $\Var(Y_j) = p(1-p)$. Therefore,
+$$\boxed{\Var(T) = \Var(\bar{Y}) = \frac{\Var(Y_1)}{n} = \frac{p(1-p)}{n}.}$$
+
+## (e) By graphing suitable functions or otherwise, determine if $T$ is the MVBU estimator.
+
+**Solution.** $T$ is MVBU if and only if $\Var(T) = \text{CRLB}$, i.e.,
+$$\frac{p(1-p)}{n} = \frac{-p^2\log p}{n}.$$
+This simplifies to:
+$$1-p = -p\log p \quad\Leftrightarrow\quad \frac{1-p}{p} = -\log p \quad\Leftrightarrow\quad \frac{1}{p} - 1 = -\log p.$$
+
+Let $\lambda = -\log p$ (so $p = e^{-\lambda}$). The condition becomes:
+$$e^{\lambda} - 1 = \lambda.$$
+
+```{r fig.height=3.5, fig.width=5}
+lambda_vals <- seq(0, 2, length.out = 100)
+plot(lambda_vals, exp(lambda_vals) - 1, type = "l",
+     ylab = "y", xlab = expression(lambda),
+     main = expression(paste("Comparison: ", e^lambda - 1, " vs ", lambda)))
+lines(lambda_vals, lambda_vals, lty = 2, col = "red")
+legend("topleft", legend = c(expression(e^lambda - 1), expression(lambda)),
+       lty = c(1, 2), col = c("black", "red"))
+```
+
+The curves intersect only at $\lambda = 0$ (i.e., $p = 1$), which is a degenerate case. For all $\lambda > 0$, we have $e^{\lambda} - 1 > \lambda$ by the strict convexity of $e^{\lambda}$.
+
+This means $\Var(T) > \text{CRLB}$ for all $p \in (0,1)$. Therefore, $T$ does **not** achieve the CRLB and is **not** the MVBU estimator.

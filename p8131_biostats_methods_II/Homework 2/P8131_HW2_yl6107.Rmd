@@ -1,0 +1,415 @@
+---
+title: "P8131 Homework 2"
+author: "Yongyan Liu (yl6107)"
+date: "2026-02-19"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    extra_dependencies: ["amsmath", "amssymb", "amsthm"]
+header-includes:
+  - \usepackage{bm}
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(knitr)
+```
+
+# Problem 1: Bioassay Study
+
+**The table below gives the data collected from a bioassay study in
+which** $X$ variable (treated as continuous variable) is the
+concentration level. At each of five different dose levels (0-4), 30
+animals are tested and the number of dying are recorded.
+
+|   Dose ($X$)    |  0  |  1  |  2  |  3  |  4  |
+|:---------------:|:---:|:---:|:---:|:---:|:---:|
+| Number of dying |  2  |  8  | 15  | 23  | 27  |
+
+**Fit the model** $g(P(\text{dying})) = \alpha + \beta X$, with logit,
+probit, and complementary log-log links.
+
+```{r}
+# Input data
+dose <- 0:4
+dying <- c(2, 8, 15, 23, 27)
+n <- rep(30, 5)
+
+bioassay <- data.frame(dose = dose, dying = dying, n = n, surviving = n - dying)
+
+# Fit models with different link functions
+fit_logit <- glm(cbind(dying, surviving) ~ dose, 
+                 family = binomial(link = "logit"), data = bioassay)
+fit_probit <- glm(cbind(dying, surviving) ~ dose, 
+                  family = binomial(link = "probit"), data = bioassay)
+fit_cloglog <- glm(cbind(dying, surviving) ~ dose, 
+                   family = binomial(link = "cloglog"), data = bioassay)
+```
+
+## (a) Fill out the table and give comments
+
+```{r}
+# Function to extract results
+get_results <- function(fit, link_name) {
+  beta <- coef(fit)[2]
+  se_beta <- summary(fit)$coefficients[2, 2]
+  ci_beta <- confint.default(fit)[2, ]  # Wald CI
+  dev <- fit$deviance
+
+  # Prediction at x = 0.01
+  newdata <- data.frame(dose = 0.01)
+  p_pred <- predict(fit, newdata = newdata, type = "response")
+
+  return(c(
+    Model = link_name,
+    Estimate_beta = round(beta, 4),
+    CI_lower = round(ci_beta[1], 4),
+    CI_upper = round(ci_beta[2], 4),
+    Deviance = round(dev, 4),
+    p_dying = round(p_pred, 4)
+  ))
+}
+
+# Extract results for all models
+results_logit <- get_results(fit_logit, "logit")
+results_probit <- get_results(fit_probit, "probit")
+results_cloglog <- get_results(fit_cloglog, "c-log-log")
+
+# Combine into a table
+results_table <- rbind(results_logit, results_probit, results_cloglog)
+results_df <- as.data.frame(results_table)
+colnames(results_df) <- c("Model", "Estimate of $\\beta$", "95% CI Lower", "95% CI Upper",
+                          "Deviance", "$\\hat{p}$(dying|x=0.01)")
+rownames(results_df) <- NULL
+
+kable(results_df, caption = "Model Comparison for Bioassay Data")
+```
+
+**Comments:**
+
+1.  **Coefficient estimates:** All three models show positive
+    $\hat{\beta}$, indicating that higher dose increases the probability
+    of dying. The logit model has the largest $\hat{\beta}$ (1.1619),
+    followed by probit (0.6864), and c-log-log (0.7468). This difference
+    is expected due to different scales of the link functions.
+
+2.  **Deviance:** The deviance measures the goodness of fit (smaller is
+    better). All three models fit reasonably well:
+
+    -   Logit: 0.3787
+    -   Probit: 0.3137
+    -   C-log-log: 2.2305
+
+    With $n - p = 5 - 2 = 3$ degrees of freedom and
+    $\chi^2_{0.95}(3) = 7.81$, all deviances are well below the critical
+    value, suggesting adequate fit. The probit model has the smallest
+    deviance, followed by logit. The c-log-log model has noticeably
+    larger deviance.
+
+3.  **Predicted probability at** $x = 0.01$: The three models give
+    similar predictions at low doses:
+
+    -   Logit: 0.0729
+    -   Probit: 0.0711
+    -   C-log-log: 0.0533
+
+    The c-log-log model predicts a slightly lower probability,
+    reflecting its asymmetric nature.
+
+4.  **Model selection:** Based on deviance, the probit and logit models
+    fit better than c-log-log for this symmetric dose-response data. The
+    logit model is often preferred due to interpretability (odds ratio).
+
+------------------------------------------------------------------------
+
+## (b) LD50 Estimation with 90% Confidence Interval
+
+**Suppose that the dose level is in natural logarithm scale, estimate
+LD50 with 90% confidence interval based on the three models.**
+
+The LD50 is the dose at which $P(\text{dying}) = 0.5$.
+
+For a model $g(\pi) = \alpha + \beta X$:
+
+-   **Logit:**
+    $\log\frac{0.5}{0.5} = 0 = \alpha + \beta \cdot \text{LD50} \Rightarrow \text{LD50} = -\frac{\alpha}{\beta}$
+
+-   **Probit:**
+    $\Phi^{-1}(0.5) = 0 = \alpha + \beta \cdot \text{LD50} \Rightarrow \text{LD50} = -\frac{\alpha}{\beta}$
+
+-   **C-log-log:**
+    $\log(-\log(0.5)) = -0.3665 = \alpha + \beta \cdot \text{LD50} \Rightarrow \text{LD50} = \frac{-0.3665 - \alpha}{\beta}$
+
+Since dose is on log scale, the actual LD50 in original scale is
+$e^{\text{LD50}}$.
+
+```{r}
+# Function to calculate LD50 and CI using Delta method
+calc_LD50 <- function(fit, link_type, alpha_level = 0.10) {
+  coefs <- coef(fit)
+  vcov_mat <- vcov(fit)
+
+  a <- coefs[1]  # intercept
+  b <- coefs[2]  # slope
+
+  if (link_type == "cloglog") {
+    c_val <- log(-log(0.5))  # ≈ -0.3665
+    LD50 <- (c_val - a) / b
+    # Gradient for delta method: d(LD50)/d(a) = -1/b, d(LD50)/d(b) = -(c-a)/b^2
+    grad <- c(-1/b, -(c_val - a)/b^2)
+  } else {
+    # For logit and probit, g(0.5) = 0
+    LD50 <- -a / b
+    # Gradient: d(LD50)/d(a) = -1/b, d(LD50)/d(b) = a/b^2
+    grad <- c(-1/b, a/b^2)
+  }
+
+  # Variance using delta method
+  var_LD50 <- t(grad) %*% vcov_mat %*% grad
+  se_LD50 <- sqrt(var_LD50)
+
+  # CI for log(dose)
+  z_val <- qnorm(1 - alpha_level/2)
+  ci_lower <- LD50 - z_val * se_LD50
+  ci_upper <- LD50 + z_val * se_LD50
+
+  # Transform to original scale (exponentiate)
+  LD50_orig <- exp(LD50)
+  ci_lower_orig <- exp(ci_lower)
+  ci_upper_orig <- exp(ci_upper)
+
+  return(list(
+    LD50_log = LD50,
+    SE_log = se_LD50,
+    CI_log = c(ci_lower, ci_upper),
+    LD50_orig = LD50_orig,
+    CI_orig = c(ci_lower_orig, ci_upper_orig)
+  ))
+}
+
+# Calculate LD50 for each model
+LD50_logit <- calc_LD50(fit_logit, "logit")
+LD50_probit <- calc_LD50(fit_probit, "probit")
+LD50_cloglog <- calc_LD50(fit_cloglog, "cloglog")
+
+# Create summary table
+LD50_summary <- data.frame(
+  Model = c("Logit", "Probit", "C-log-log"),
+  LD50_log_scale = c(LD50_logit$LD50_log, LD50_probit$LD50_log, LD50_cloglog$LD50_log),
+  SE = c(LD50_logit$SE_log, LD50_probit$SE_log, LD50_cloglog$SE_log),
+  CI_lower_log = c(LD50_logit$CI_log[1], LD50_probit$CI_log[1], LD50_cloglog$CI_log[1]),
+  CI_upper_log = c(LD50_logit$CI_log[2], LD50_probit$CI_log[2], LD50_cloglog$CI_log[2]),
+  LD50_original = c(LD50_logit$LD50_orig, LD50_probit$LD50_orig, LD50_cloglog$LD50_orig),
+  CI_lower_orig = c(LD50_logit$CI_orig[1], LD50_probit$CI_orig[1], LD50_cloglog$CI_orig[1]),
+  CI_upper_orig = c(LD50_logit$CI_orig[2], LD50_probit$CI_orig[2], LD50_cloglog$CI_orig[2])
+)
+
+kable(LD50_summary, digits = 4,
+      col.names = c("Model", "LD50 (log)", "SE", "90% CI Lower (log)", "90% CI Upper (log)",
+                    "LD50 (original)", "90% CI Lower (orig)", "90% CI Upper (orig)"),
+      caption = "LD50 Estimates with 90% Confidence Intervals")
+```
+
+**Interpretation:**
+
+The logit and probit models give very similar LD50 estimates, while the
+c-log-log model gives a lower estimate. This reflects the asymmetric
+nature of the c-log-log link function.
+
+# Problem 2: MPH Enrollment Data
+
+**The table below contains the enrollment data of some MPH program in a
+year.**
+
+```{r}
+# Input enrollment data
+enrollment <- data.frame(
+  amount = c(10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90),
+  offers = c(4, 6, 10, 12, 39, 36, 22, 14, 10, 12, 8, 9, 3, 1, 5, 2, 1),
+  enrolls = c(0, 2, 4, 2, 12, 14, 10, 7, 5, 5, 3, 5, 2, 0, 4, 2, 1)
+)
+enrollment$not_enrolls <- enrollment$offers - enrollment$enrolls
+
+kable(enrollment[, 1:3], caption = "MPH Enrollment Data",
+      col.names = c("Amount (thousand $)", "Offers", "Enrolls"))
+```
+
+**Fit a logistic regression model:**
+
+```{r}
+# Fit logistic regression
+fit_enroll <- glm(cbind(enrolls, not_enrolls) ~ amount,
+                  family = binomial(link = "logit"), data = enrollment)
+summary(fit_enroll)
+```
+
+## (a) How does the model fit the data?
+
+```{r}
+# Goodness of fit
+dev <- fit_enroll$deviance
+df <- fit_enroll$df.residual
+p_value_dev <- 1 - pchisq(dev, df)
+
+# Pearson chi-squared
+pearson_resid <- residuals(fit_enroll, type = "pearson")
+pearson_chisq <- sum(pearson_resid^2)
+p_value_pearson <- 1 - pchisq(pearson_chisq, df)
+
+# Hosmer-Lemeshow test (more appropriate for small group sizes)
+library(ResourceSelection)
+enroll_individual <- enrollment[rep(seq_len(nrow(enrollment)), enrollment$offers), ]
+enroll_individual$y <- unlist(
+  mapply(function(e, n) c(rep(1, e), rep(0, n - e)),
+         enrollment$enrolls, enrollment$offers))
+enroll_individual$fitted <- predict(
+  fit_enroll, type = "response")[rep(seq_len(nrow(enrollment)), enrollment$offers)]
+hl_test <- hoslem.test(enroll_individual$y, enroll_individual$fitted, g = 10)
+
+cat("Deviance Chi-squared:", round(qchisq(0.95, df), 4), "\n")
+cat("Deviance P-value:", round(p_value_dev, 4), "\n")
+cat("Pearson Chi-squared:", round(pearson_chisq, 4), "\n")
+cat("Pearson P-value:", round(p_value_pearson, 4), "\n")
+cat("Hosmer-Lemeshow Chi-squared:", round(hl_test$statistic, 4), "\n")
+cat("Hosmer-Lemeshow P-value:", round(hl_test$p.value, 4), "\n")
+```
+
+**Assessment of model fit:**
+
+1.  **Deviance test:** The residual deviance is `r round(dev, 2)` with
+    `r df` degrees of freedom. The critical value
+    $\chi^2_{0.95}(15) = 25.00$. Since the deviance (`r round(dev, 2)`)
+    is less than the critical value, we fail to reject the null
+    hypothesis that the model fits adequately. The p-value is
+    `r round(p_value_dev, 4)`, further supporting good fit.
+
+2.  **Pearson's** $\chi^2$: The Pearson chi-squared statistic is
+    `r round(pearson_chisq, 2)` with p-value
+    `r round(p_value_pearson, 4)`, also indicating adequate fit.
+
+3.  **Estimated dispersion parameter:**
+    $\hat{\phi} = \frac{G}{n-p} = \frac{`r round(pearson_chisq, 2)`}{15} = `r round(pearson_chisq/df, 4)`$,
+    which is less than 1, suggesting no significant overdispersion.
+
+4.  **Hosmer-Lemeshow test:** Since several scholarship amount groups have
+very few observations, we also did the HL test, whose statistic is
+    `r round(hl_test$statistic, 2)` with p-value
+    `r round(hl_test$p.value, 4)`, which also suggests adequate model
+    fit.
+    
+**Visual Inspection**.
+
+```{r, fig.height=4, fig.width=6}
+# Diagnostic plot
+enrollment$fitted_prob <- fitted(fit_enroll)
+enrollment$observed_prob <- enrollment$enrolls / enrollment$offers
+
+ggplot(enrollment, aes(x = amount)) +
+  geom_point(aes(y = observed_prob), color = "blue", size = 2) +
+  geom_line(aes(y = fitted_prob), color = "red") +
+  labs(x = "Scholarship Amount (thousand $)", y = "Enrollment Rate",
+       title = "Observed vs Fitted Enrollment Rates") +
+  theme_minimal()
+```
+
+**Conclusion:** The logistic regression model fits the data adequately.
+This conclusion is supported by multiple assessments: (1) formal tests
+(Deviance, Pearson, and Hosmer-Lemeshow) all yield non-significant
+p-values, and (2) visual inspection of the fitted curve against observed
+proportions (see plot below) shows reasonable agreement between the
+model and data.
+
+
+------------------------------------------------------------------------
+
+## (b) Relationship between scholarship amount and enrollment rate
+
+```{r}
+# Extract coefficient for amount
+beta_hat <- coef(fit_enroll)[2]
+se_beta <- summary(fit_enroll)$coefficients[2, 2]
+
+# 95% CI for beta
+ci_beta <- confint.default(fit_enroll)[2, ]
+
+# Odds ratio and its CI
+OR <- exp(beta_hat)
+ci_OR <- exp(ci_beta)
+
+cat("Coefficient (beta):", round(beta_hat, 6), "\n")
+cat("95% CI for beta:", round(ci_beta, 6), "\n")
+cat("Odds Ratio (per $1,000 increase):", round(OR, 4), "\n")
+cat("95% CI for Odds Ratio:", round(ci_OR, 4), "\n")
+```
+
+**Relationship between scholarship amount and enrollment rate:**
+
+There is a **statistically significant positive relationship** between scholarship amount and enrollment rate (p-value = `r round(summary(fit_enroll)$coefficients[2, 4], 4)`).
+
+For every \$1,000 increase in scholarship amount, the odds of enrollment increase by a factor of $e^{`r round(beta_hat, 4)`} = `r round(OR, 4)`$, or approximately `r round((OR - 1) * 100, 2)`%.
+
+**95% Confidence Interval:**
+
+- 95% CI for $\beta$: $(`r round(ci_beta[1], 4)`, `r round(ci_beta[2], 4)`)$
+- 95% CI for Odds Ratio: $(`r round(ci_OR[1], 4)`, `r round(ci_OR[2], 4)`)$
+
+Since the 95% CI for the odds ratio does not include 1, the positive effect of scholarship amount on enrollment is statistically significant at the 0.05 level.
+
+------------------------------------------------------------------------
+
+## (c) Scholarship amount for 40% yield rate
+
+We want to find the scholarship amount $X^*$ such that $\pi = 0.4$.
+
+From the logistic model:
+$$\log\left(\frac{0.4}{0.6}\right) = \alpha + \beta X^*$$
+$$X^* = \frac{\log(0.4/0.6) - \alpha}{\beta} = \frac{-0.4055 - \alpha}{\beta}$$
+
+```{r}
+# Calculate scholarship amount for 40% yield rate
+alpha_hat <- coef(fit_enroll)[1]
+beta_hat <- coef(fit_enroll)[2]
+vcov_mat <- vcov(fit_enroll)
+
+target_prob <- 0.4
+eta_target <- log(target_prob / (1 - target_prob))  # = log(0.4/0.6) ≈ -0.4055
+
+X_star <- (eta_target - alpha_hat) / beta_hat
+
+# Delta method for CI
+# X* = (c - alpha) / beta where c = eta_target
+# dX*/d(alpha) = -1/beta
+# dX*/d(beta) = -(c - alpha)/beta^2
+grad <- c(-1/beta_hat, -(eta_target - alpha_hat)/beta_hat^2)
+var_X_star <- t(grad) %*% vcov_mat %*% grad
+se_X_star <- sqrt(var_X_star)
+
+# 95% CI
+z_val <- qnorm(0.975)
+ci_lower <- X_star - z_val * se_X_star
+ci_upper <- X_star + z_val * se_X_star
+
+cat("Target yield rate:", target_prob, "\n")
+cat("Required scholarship amount: $", round(X_star * 1000, 0), "\n")
+cat("Standard error: $", round(se_X_star * 1000, 0), "\n")
+cat("95% CI: ($", round(ci_lower * 1000, 0), ", $", round(ci_upper * 1000, 0), ")\n")
+```
+
+**Answer:**
+
+To achieve a 40% yield rate (enrollment rate), the estimated scholarship
+amount needed is:
+
+$$\hat{X}^* = \frac{\log(0.4/0.6) - (`r round(alpha_hat, 4)`)}{`r round(beta_hat, 6)`} = `r round(X_star, 2)` \text{ (thousand dollars)}$$
+
+-   **Point estimate:**
+    \$`r format(round(X_star * 1000, 0), big.mark = ",")`
+-   **95% Confidence Interval:**
+    (\$`r format(round(ci_lower * 1000, 0), big.mark = ",")`,
+    \$`r format(round(ci_upper * 1000, 0), big.mark = ",")`)
+
+The 95% confidence interval (\$`r format(round(ci_lower * 1000, 0), big.mark = ",")` to \$`r format(round(ci_upper * 1000, 0), big.mark = ",")`) is reasonably narrow and falls within the range of scholarship amounts in the data, indicating a reliable estimate.
