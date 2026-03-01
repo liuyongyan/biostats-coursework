@@ -1,0 +1,429 @@
+---
+title: "P8131 Homework 3"
+author: "Yongyan Liu (yl6107)"
+date: "2026-02-25"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    extra_dependencies: ["amsmath", "amssymb", "amsthm"]
+header-includes:
+  - \usepackage{bm}
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(knitr)
+```
+
+# Problem 1: Esophageal Cancer and Alcohol Consumption
+
+**The following table gives data from a retrospective study between
+esophageal cancer and daily alcohol consumption adjusted for age.**
+
+| Age   | Case 0-79g | Case 80+g | Control 0-79g | Control 80+g |
+|:-----:|:----------:|:---------:|:-------------:|:------------:|
+| 25-34 | 0          | 1         | 106           | 9            |
+| 35-44 | 5          | 4         | 164           | 26           |
+| 45-54 | 21         | 25        | 138           | 29           |
+| 55-64 | 34         | 42        | 139           | 27           |
+| 65-74 | 36         | 19        | 88            | 18           |
+| 75+   | 8          | 5         | 31            | 0            |
+
+```{r}
+# Input data
+# Create data frame with all cells
+age_midpoint <- c(25, 35, 45, 55, 65, 75)
+
+# Case data
+case_low <- c(0, 5, 21, 34, 36, 8)   # 0-79g alcohol
+case_high <- c(1, 4, 25, 42, 19, 5)  # 80+g alcohol
+
+# Control data
+ctrl_low <- c(106, 164, 138, 139, 88, 31)   # 0-79g alcohol
+ctrl_high <- c(9, 26, 29, 27, 18, 0)        # 80+g alcohol
+
+# Create long-format data for prospective analysis
+# Each row: age, alcohol (0=low, 1=high), case count, control count
+data1 <- data.frame(
+  age = rep(age_midpoint, each = 2),
+  alcohol = rep(c(0, 1), 6),
+  case = c(rbind(case_low, case_high)),
+  control = c(rbind(ctrl_low, ctrl_high))
+)
+
+data1$total <- data1$case + data1$control
+```
+
+**(a) Fit a prospective model to the data to study the relation between
+alcohol consumption, age, and disease (model age as a continuous
+variable taking values 25, 35, 45, 55, 65, and 75). Interpret the
+result.**
+
+For a retrospective (case-control) study, although we sample based on
+disease status, we can still fit a prospective logistic model to
+estimate the odds ratio, since the odds ratio is symmetric (same whether
+estimated prospectively or retrospectively).
+
+The model:
+$$\log\left(\frac{\pi}{1-\pi}\right) = \beta_0 + \beta_1 \cdot \text{Age} + \beta_2 \cdot \text{Alcohol}$$
+where $\pi = P(\text{Disease} = 1 | \text{Age}, \text{Alcohol})$ and
+Alcohol = 1 for 80+ g/day, 0 otherwise.
+
+```{r}
+# Fit prospective logistic regression model
+fit_prospective <- glm(cbind(case, control) ~ age + alcohol,
+                       family = binomial(link = "logit"), data = data1)
+summary(fit_prospective)
+```
+
+```{r}
+# Extract coefficients and confidence intervals
+coefs <- summary(fit_prospective)$coefficients
+ci <- confint.default(fit_prospective)
+
+# Odds ratios
+OR_age <- exp(coef(fit_prospective)["age"])
+OR_alcohol <- exp(coef(fit_prospective)["alcohol"])
+
+# OR confidence intervals
+OR_ci_age <- exp(ci["age", ])
+OR_ci_alcohol <- exp(ci["alcohol", ])
+
+cat("Odds Ratio for Age (per 10-year increase):", round(OR_age^10, 4), "\n")
+cat("95% CI:", round(OR_ci_age^10, 4), "\n\n")
+cat("Odds Ratio for Alcohol (80+g vs 0-79g):", round(OR_alcohol, 4), "\n")
+cat("95% CI:", round(OR_ci_alcohol, 4), "\n")
+```
+
+**Interpretation:**
+
+1.  **Age effect:** $\hat{\beta}_1 = `r round(coef(fit_prospective)["age"], 5)`$
+    (p < 0.001). For each 10-year increase in age, the odds of
+    esophageal cancer increase by a factor of
+    $e^{10 \times `r round(coef(fit_prospective)["age"], 5)`} = `r round(OR_age^10, 3)`$
+    (95% CI: `r round(OR_ci_age[1]^10, 3)` -- `r round(OR_ci_age[2]^10, 3)`),
+    holding alcohol consumption constant.
+
+2.  **Alcohol effect:** $\hat{\beta}_2 = `r round(coef(fit_prospective)["alcohol"], 4)`$
+    (p < 0.001). The odds of esophageal cancer for high alcohol
+    consumption (80+ g/day) are $e^{`r round(coef(fit_prospective)["alcohol"], 4)`} = `r round(OR_alcohol, 3)`$
+    times the odds for low alcohol consumption (0-79 g/day), adjusting
+    for age (95% CI: `r round(OR_ci_alcohol[1], 3)` -- `r round(OR_ci_alcohol[2], 3)`).
+
+3.  **Model fit:** The residual deviance is `r round(fit_prospective$deviance, 2)`
+    on `r fit_prospective$df.residual` degrees of freedom. Comparing to
+    $\chi^2_{0.95}(`r fit_prospective$df.residual`) = `r round(qchisq(0.95, fit_prospective$df.residual), 2)`$,
+    the deviance exceeds the threshold, suggesting some lack of fit
+    (p = `r round(1 - pchisq(fit_prospective$deviance, fit_prospective$df.residual), 4)`).
+    This could be due to the assumption that age has a linear effect on
+    the log-odds, or potential interaction between age and alcohol.
+
+**Conclusion:** Both age and high alcohol consumption are significantly
+associated with increased risk of esophageal cancer.
+
+------------------------------------------------------------------------
+
+**(b) Let $\Psi_j$ be the odds ratio relating alcohol consumption and
+disease in the $j^{th}$ age group ($j = 1, ..., 6$). Assume different
+age groups have different odds. Compare the following two models:**
+
+-   $M_0: \Psi_j = 1$ for all $j$
+-   $M_1: \Psi_j = \Psi$ (where $\Psi$ is an unknown constant)
+
+**Model Formulation:**
+
+For each age group $j$, let $\pi_{j,k}$ be the probability of disease
+given alcohol level $k$ (0 = low, 1 = high). The odds ratio in age group
+$j$ is:
+$$\Psi_j = \frac{\pi_{j,1}/(1-\pi_{j,1})}{\pi_{j,0}/(1-\pi_{j,0})}$$
+
+**Model $M_0$:** $\Psi_j = 1$ for all $j$ means alcohol has no effect on
+disease within any age group.
+$$\text{logit}(\pi) = \beta_0 + \beta_1 \cdot \text{Age}$$
+This model includes only age (as a continuous variable), with no alcohol
+effect.
+
+**Model $M_1$:** $\Psi_j = \Psi$ (constant) means the odds ratio for
+alcohol is the same across all age groups. For any age group $j$,
+$$\text{logit}(\pi_{j,1}) - \text{logit}(\pi_{j,0}) = log(\Psi) = \beta_2$$
+which means $\log(\Psi_j) = \beta_2$ is the same for all $j$. Therefore
+$\Psi_j = e^{\beta_2} = \Psi$ is constant across all age groups, consistent
+with the logistic regression model structure.
+$$\text{logit}(\pi) = \beta_0 + \beta_1 \cdot \text{Age} + \beta_2 \cdot \text{Alcohol}$$
+
+$M_0$ is nested within $M_1$ (set $\beta_2 = 0$ in $M_1$ to get $M_0$).
+
+```{r}
+# Fit M0: Only age effect (no alcohol effect, implies Psi_j = 1)
+fit_M0 <- glm(cbind(case, control) ~ age,
+              family = binomial(link = "logit"), data = data1)
+
+# Fit M1: Age effect + constant alcohol effect (Psi_j = Psi for all j)
+fit_M1 <- glm(cbind(case, control) ~ age + alcohol,
+              family = binomial(link = "logit"), data = data1)
+
+# Deviance analysis
+dev_M0 <- fit_M0$deviance
+dev_M1 <- fit_M1$deviance
+df_M0 <- fit_M0$df.residual
+df_M1 <- fit_M1$df.residual
+
+# Test statistic: difference in deviances
+dev_diff <- dev_M0 - dev_M1
+df_diff <- df_M0 - df_M1
+p_value <- 1 - pchisq(dev_diff, df_diff)
+
+cat("Model M0 (Psi_j = 1): Deviance =", round(dev_M0, 4), ", df =", df_M0, "\n")
+cat("Model M1 (Psi_j = Psi): Deviance =", round(dev_M1, 4), ", df =", df_M1, "\n")
+cat("\nDeviance difference:", round(dev_diff, 4), "\n")
+cat("df difference:", df_diff, "\n")
+cat("Critical value chi^2_0.95(1):", round(qchisq(0.95, 1), 4), "\n")
+cat("P-value:", format(p_value, scientific = TRUE, digits = 4), "\n")
+```
+
+```{r}
+# Estimate of common odds ratio Psi
+Psi_hat <- exp(coef(fit_M1)["alcohol"])
+ci_Psi <- exp(confint.default(fit_M1)["alcohol", ])
+cat("\nEstimate of common odds ratio Psi:", round(Psi_hat, 4), "\n")
+cat("95% CI for Psi:", round(ci_Psi, 4), "\n")
+```
+
+**Deviance Analysis:**
+
+Since $M_0$ is nested within $M_1$, we can use the likelihood ratio test:
+$$D_{M_0} - D_{M_1} \sim \chi^2(df_{M_0} - df_{M_1}) \text{ under } H_0: \beta = 0$$
+
+-   Test statistic: $`r round(dev_diff, 4)`$
+-   Degrees of freedom: $`r df_diff`$
+-   Critical value $\chi^2_{0.95}(1)$: $`r round(qchisq(0.95, 1), 4)`$
+-   P-value: $`r format(p_value, scientific = TRUE, digits = 4)`$
+
+**Conclusion:** Since the test statistic (`r round(dev_diff, 2)`) far exceeds
+the critical value (3.84), we reject $M_0$ in favor of $M_1$ at the 0.05
+significance level. There is strong evidence that alcohol consumption is
+associated with esophageal cancer risk ($\Psi \neq 1$).
+
+The estimated common odds ratio is $\hat{\Psi} = `r round(Psi_hat, 3)`$
+(95% CI: `r round(ci_Psi[1], 3)` -- `r round(ci_Psi[2], 3)`), indicating
+that high alcohol consumption (80+ g/day) is associated with
+approximately `r round(Psi_hat, 1)` times the odds of esophageal cancer
+compared to low consumption, across all age groups.
+
+# Problem 2: Orobanche Seed Germination
+
+**The following table provides data from a study of the germination of
+two species of Orobanche seeds. The seeds were grown on 1/125 dilutions
+of two different root extract media (cucumber or bean) in a 2 x 2
+factorial layout with replicates. The data $(y_i/m_i)$ consist of the
+number of seeds, $m_i$, and the number germinating, $y_i$, for each
+batch. Interest focuses on the possible differences in germination rates
+for the two types of seed and root extract.**
+
+```{r}
+# Input germination data
+# O. aegyptiaca 75
+bean_75 <- data.frame(
+  germ = c(10, 23, 23, 26, 17),
+  total = c(39, 62, 81, 51, 39),
+  seed = "O. aegyptiaca 75",
+  extract = "Bean"
+)
+
+cucumber_75 <- data.frame(
+  germ = c(5, 53, 55, 32, 46, 10),
+  total = c(6, 74, 72, 51, 79, 13),
+  seed = "O. aegyptiaca 75",
+  extract = "Cucumber"
+)
+
+# O. aegyptiaca 73
+bean_73 <- data.frame(
+  germ = c(8, 10, 8, 23, 0),
+  total = c(16, 30, 28, 45, 4),
+  seed = "O. aegyptiaca 73",
+  extract = "Bean"
+)
+
+cucumber_73 <- data.frame(
+  germ = c(3, 22, 15, 32, 3),
+  total = c(12, 41, 30, 51, 7),
+  seed = "O. aegyptiaca 73",
+  extract = "Cucumber"
+)
+
+# Combine all data
+germ_data <- rbind(bean_75, cucumber_75, bean_73, cucumber_73)
+germ_data$not_germ <- germ_data$total - germ_data$germ
+germ_data$seed <- factor(germ_data$seed)
+germ_data$extract <- factor(germ_data$extract)
+
+# Display data summary
+kable(germ_data[, c("seed", "extract", "germ", "total")],
+      col.names = c("Seed Type", "Extract", "Germinated", "Total"),
+      caption = "Orobanche Seed Germination Data")
+```
+
+**(a) Fit a logistic regression model to study the relation between
+germination rates and different types of seed and root extract.
+Interpret the result.**
+
+Model:
+$$\text{logit}(\pi_i) = \beta_0 + \beta_1 \cdot \text{Seed} + \beta_2 \cdot \text{Extract}$$
+where Seed = 1 for O. aegyptiaca 75, Extract = 1 for Cucumber.
+
+```{r}
+# Fit logistic regression with main effects
+fit_germ <- glm(cbind(germ, not_germ) ~ seed + extract,
+                family = binomial(link = "logit"), data = germ_data)
+summary(fit_germ)
+```
+
+```{r}
+# Odds ratios and confidence intervals
+OR <- exp(coef(fit_germ))
+ci <- exp(confint.default(fit_germ))
+
+results <- data.frame(
+  Coefficient = round(coef(fit_germ), 4),
+  OR = round(OR, 4),
+  CI_lower = round(ci[, 1], 4),
+  CI_upper = round(ci[, 2], 4),
+  p_value = round(summary(fit_germ)$coefficients[, 4], 4)
+)
+kable(results, caption = "Logistic Regression Results (Standard Binomial)")
+```
+
+**Interpretation:**
+
+1.  **Seed type effect:** The coefficient for seed type (O. aegyptiaca 75
+    vs 73) is $\hat{\beta}_1 = `r round(coef(fit_germ)["seedO. aegyptiaca 75"], 4)`$
+    with OR = `r round(OR["seedO. aegyptiaca 75"], 3)`. O. aegyptiaca 75
+    has `r round(OR["seedO. aegyptiaca 75"], 3)` times the odds of
+    germination compared to O. aegyptiaca 73 (p = `r round(summary(fit_germ)$coefficients["seedO. aegyptiaca 75", 4], 4)`).
+    Note that the 95% CI (`r round(ci["seedO. aegyptiaca 75", 1], 3)` -- `r round(ci["seedO. aegyptiaca 75", 2], 3)`)
+    includes 1, suggesting the effect may not be statistically significant.
+
+2.  **Extract effect:** The coefficient for extract type (Cucumber vs
+    Bean) is $\hat{\beta}_2 = `r round(coef(fit_germ)["extractCucumber"], 4)`$
+    with OR = `r round(OR["extractCucumber"], 3)`. Seeds grown on
+    cucumber extract have `r round(OR["extractCucumber"], 3)` times the
+    odds of germination compared to bean extract (p = `r round(summary(fit_germ)$coefficients["extractCucumber", 4], 4)`).
+
+3.  **Model deviance:** Residual deviance = `r round(fit_germ$deviance, 2)`
+    on `r fit_germ$df.residual` df. Compared to $\chi^2_{0.95}(`r fit_germ$df.residual`) = `r round(qchisq(0.95, fit_germ$df.residual), 2)`$,
+    the deviance is much larger, suggesting lack of fit which could indicate
+    overdispersion.
+
+------------------------------------------------------------------------
+
+**(b) Is there overdispersion? If so, what is the estimate of dispersion
+parameter? Update your model and reinterpret the result.**
+
+```{r}
+# Check for overdispersion
+# Pearson chi-squared statistic
+pearson_resid <- residuals(fit_germ, type = "pearson")
+G <- sum(pearson_resid^2)
+n <- nrow(germ_data)
+p <- length(coef(fit_germ))
+
+# Estimate dispersion parameter
+phi_hat <- G / (n - p)
+
+cat("Pearson chi-squared statistic G =", round(G, 4), "\n")
+cat("Degrees of freedom (n - p) =", n - p, "\n")
+cat("Estimated dispersion parameter phi_hat = G/(n-p) =", round(phi_hat, 4), "\n")
+cat("Alternative estimate using deviance: D/(n-p) =",
+    round(fit_germ$deviance / (n - p), 4), "\n")
+```
+
+**Assessment of overdispersion:**
+
+Under the standard binomial model, $E[G] \approx n - p = `r n - p`$ when
+the model is correct. We observe $G = `r round(G, 2)`$, which is
+substantially larger than expected.
+
+The estimated dispersion parameter is:
+$$\hat{\phi} = \frac{G}{n - p} = \frac{`r round(G, 2)`}{`r n - p`} = `r round(phi_hat, 3)`$$
+
+Since $\hat{\phi} = `r round(phi_hat, 3)` > 1$, there is evidence of
+**overdispersion** in the data.
+
+```{r}
+# Adjust for overdispersion by specifying dispersion parameter
+summary_adj <- summary(fit_germ, dispersion = phi_hat)
+summary_adj
+```
+
+```{r}
+# Updated results with overdispersion adjustment
+# Note: coefficients are the same, only SEs and p-values change
+se_adj <- summary_adj$coefficients[, 2]
+ci_adj <- cbind(
+  coef(fit_germ) - 1.96 * se_adj,
+  coef(fit_germ) + 1.96 * se_adj
+)
+
+results_adj <- data.frame(
+  Coefficient = round(coef(fit_germ), 4),
+  SE = round(se_adj, 4),
+  OR = round(OR, 4),
+  CI_lower = round(exp(ci_adj[, 1]), 4),
+  CI_upper = round(exp(ci_adj[, 2]), 4),
+  p_value = round(summary_adj$coefficients[, 4], 4)
+)
+kable(results_adj,
+      caption = "Results Adjusted for Overdispersion")
+```
+
+**Comparison of standard errors:**
+
+```{r}
+# Compare standard errors
+se_comparison <- data.frame(
+  Parameter = names(coef(fit_germ)),
+  SE_binomial = round(summary(fit_germ)$coefficients[, 2], 4),
+  SE_adjusted = round(se_adj, 4),
+  Ratio = round(se_adj / summary(fit_germ)$coefficients[, 2], 4)
+)
+kable(se_comparison, caption = "Standard Error Comparison")
+```
+
+**Reinterpretation with overdispersion adjustment:**
+
+After accounting for overdispersion ($\hat{\phi} = `r round(phi_hat, 3)`$):
+
+1.  **Seed type effect:** O. aegyptiaca 75 still has higher germination
+    odds than O. aegyptiaca 73 (OR = `r round(OR["seedO. aegyptiaca 75"], 3)`),
+    but the effect is not statistically significant at $\alpha = 0.05$
+    (p = `r round(summary_adj$coefficients["seedO. aegyptiaca 75", 4], 4)`).
+
+2.  **Extract effect:** Cucumber extract is associated with higher
+    germination odds than bean extract (OR = `r round(OR["extractCucumber"], 3)`),
+    and this effect remains statistically significant at $\alpha = 0.05$
+    (p = `r round(summary_adj$coefficients["extractCucumber", 4], 4)`).
+
+3.  **Standard errors:** The standard errors are inflated by a factor of
+    $\sqrt{\hat{\phi}} = \sqrt{`r round(phi_hat, 3)`} = `r round(sqrt(phi_hat), 3)`$
+    compared to the standard binomial model.
+
+**Conclusion:** After adjusting for overdispersion, extract type remains
+statistically significant while seed type does not. Cucumber extract is
+associated with higher germination rates than bean extract.
+
+------------------------------------------------------------------------
+
+**(c) What is a plausible cause of the overdispersion?**
+
+1.  **Intra-batch correlation:** Seeds within the same batch share
+    environmental conditions, leading to correlated outcomes
+    ($\text{Var}(Y) = m\pi(1-\pi)\{1 + (m-1)\rho\} > m\pi(1-\pi)$).
+
+2.  **Batch-to-batch heterogeneity:** Unmeasured factors (seed quality,
+    storage conditions) may cause germination probability to vary across
+    batches beyond what seed type and extract explain.

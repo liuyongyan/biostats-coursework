@@ -1,0 +1,264 @@
+---
+title: "P8139 Homework 2"
+author: "Yongyan Liu (yl6107)"
+date: "2026-03-01"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    extra_dependencies: ["amsmath", "amssymb", "amsthm"]
+header-includes:
+  - \usepackage{bm}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# Problem 1
+
+**(a) How many informative meioses does the pedigree have?**
+
+A meiosis is **informative** when the parent is heterozygous and we can determine which allele was transmitted.
+
+Both individuals on Gen 2 are heterozygous at both marker loci. With 12 offspring, each contributing 2 informative meioses:
+
+$$\text{Informative meioses} = 2 \text{ parents} \times 12 \text{ offspring} = 24$$
+
+
+**(b) Indicate recombinants and non-recombinants**
+
+There are no observable recombinations in Gen 2.
+
+In Gen 3, from left to right: NR NR NR R NR R NR NR NR NR NR NR.
+
+
+**(c) Estimate the recombination fraction in this pedigree.**
+
+$$\hat{\theta} = \frac{r}{n} = \frac{2}{24} = \frac{1}{12}$$
+
+
+**(d) Determine the LOD score**
+
+The LOD score is:
+$$
+\text{LOD}(\theta) = \log_{10}\left(\frac{\theta^r(1-\theta)^{n-r}}{0.5^n}\right)= \log_{10}\left(\frac{(1/12)^2(11/12)^{22}}{(1/2)^{24}}\right) = 4.235
+$$
+
+This substantially exceeds the threshold of 3.0, providing strong evidence for linkage.
+
+
+# Problem 2
+
+**Consider a rare autosomal recessive disease segregating with complete penetrance and no phenocopies in the family shown in the figure below. All family members have been genotyped at all genetic markers.**
+
+
+**(a) Determine the parental haplotypes.**
+
+For a **rare autosomal recessive** disease with complete penetrance:
+
+- Affected individuals are homozygous **dd**
+- Unaffected individuals are **DD** or **Dd**
+
+**Generation I:**
+
+```
+ 1 1     2 2
+ d d --- D D
+```
+
+**Generation II:**
+
+```
+ 1 1     1 2
+ d d --- d D
+```
+
+**Generation III:**
+
+```
+ 11  11  11  12  11  11  11  11
+ dD  dd  dd  dD  dd  dd  dd  dD
+```
+
+**(b) How many recombination events have occurred?**
+
+Only the father in Gen 2 is informative (heterozygous at both disease and marker loci).
+
+Only the last child (on the right side) in Gen 3 has recombination event, so only 1 occurred.
+
+**(c) Determine the LOD score**
+
+With $r = 1$ and $n = 8$:
+
+$$\text{LOD}\left(\frac{1}{8}\right) = \log_{10}\left(\frac{(1/8)^1(7/8)^{7}}{(1/2)^{8}}\right) = 1.099$$
+
+
+# Problem 3
+
+**Determine the IBD and IBS values of the sib-pairs in the two pedigrees shown below.**
+
+**Definitions:**
+
+- **IBS (Identity By State):** Number of alleles that are identical in state (same allele value)
+- **IBD (Identity By Descent):** Number of alleles inherited from the same parental copy
+
+
+**Pedigree 1:** Sibs with genotypes **12** and **11**
+
+*IBS calculation:*
+
+- Sib 1 has alleles {1, 2}
+- Sib 2 has alleles {1, 1}
+- They share one allele "1" in common
+
+$$\text{IBS} = 1$$
+
+*IBD calculation:*
+
+- Parents: both 12, so each can transmit either 1 or 2
+- Sib 1 (12): received 1 from one parent, 2 from the other
+- Sib 2 (11): received 1 from both parents
+- They share one allele IBD (the "1" from the parent who transmitted 1 to both)
+
+$$\text{IBD} = 1$$
+
+
+**Pedigree 2:** Sibs with genotypes **11** and **11**
+
+*IBS calculation:*
+
+- Sib 1 has alleles {1, 1}
+- Sib 2 has alleles {1, 1}
+- Both alleles match
+
+$$\text{IBS} = 2$$
+
+*IBD calculation:*
+
+- Both sibs received allele 1 from father AND allele 1 from mother
+- They share both alleles IBD
+
+$$\text{IBD} = 2$$
+
+# Problem 4
+
+**Read the paper "Three lectures on case-control genetic association analysis" published in Briefings in Bioinformatics, 9(1): 1-13, 2007 and write a half-page paragraph with your understanding. Going through the R code in the paper and reproduce all numbers.**
+
+## Summary of the Paper
+
+This review by Wentian Li provides an accessible introduction to three fundamental themes in genetic association studies using case-control designs. **Lecture 1** covers the statistical background of categorical data analysis, explaining how genotype and allele frequency differences between cases and controls can be tested using Pearson's chi-square test, Fisher's exact test, and the Cochran-Armitage trend test (CAT). The paper demonstrates that these test statistics (genotype-based GBT, allele-based ABT, and MAX2) are highly correlated but may differ depending on the true mode of inheritance. **Lecture 2** addresses the fact that disease gene mutations and haplotype phases are not directly observable. The concept of linkage disequilibrium (LD) is introduced, with measures D, D', and $r^2$ quantifying the correlation between marker alleles and disease alleles. The EM algorithm is presented as a method for inferring haplotype frequencies from unphased genotype data when double heterozygotes are present. **Lecture 3** discusses the critical issue of population heterogeneity (stratification), which can lead to spurious associations through Simpson's paradox---where subpopulation-level relationships reverse when data are aggregated. The paper illustrates both false positive and false negative scenarios and introduces Wright's F-statistic as a measure of population substructure. Overall, this review effectively bridges basic statistical concepts with their applications in genetic epidemiology, emphasizing that careful study design and appropriate statistical methods are essential for valid genetic association findings.
+
+## Reproducing R Code from the Paper
+
+### Figure 2: Chi-square and Fisher's exact tests (Table 1 data)
+
+```{r}
+# Table 1 data: Case-control genotype counts
+gc <- c(10, 190, 800, 3, 100, 900)  # AA, AB, BB for case; AA, AB, BB for control
+
+# Allele counts (Table 1B)
+ac <- c(2*gc[1]+gc[2], gc[2]+2*gc[3], 2*gc[4]+gc[5], gc[5]+2*gc[6])
+
+# Dominant and recessive model groupings (Table 1C)
+gc1 <- c(gc[1]+gc[2], gc[3], gc[4]+gc[5], gc[6])  # AA+AB vs BB
+gc2 <- c(gc[1], gc[2]+gc[3], gc[4], gc[5]+gc[6])  # AA vs AB+BB
+
+# Pearson's chi-square tests
+pvg <- chisq.test(matrix(gc, ncol=3, byrow=T), correct=FALSE)$p.value
+pva <- chisq.test(matrix(ac, ncol=2, byrow=T), correct=FALSE)$p.value
+pvg1 <- chisq.test(matrix(gc1, ncol=2, byrow=T), correct=FALSE)$p.value
+pvg2 <- chisq.test(matrix(gc2, ncol=2, byrow=T), correct=FALSE)$p.value
+pvb <- min(pvg1, pvg2)
+
+cat("Chi-square p-values:\n")
+cat("GBT (genotype):", format(pvg, digits=4), "\n")
+cat("ABT (allele):  ", format(pva, digits=4), "\n")
+cat("MAX2:          ", format(pvb, digits=4), "\n")
+
+# Fisher's exact tests
+pvg.f <- fisher.test(matrix(gc, ncol=3, byrow=T))$p.value
+pva.f <- fisher.test(matrix(ac, ncol=2, byrow=T))$p.value
+pvg1.f <- fisher.test(matrix(gc1, ncol=2, byrow=T))$p.value
+pvg2.f <- fisher.test(matrix(gc2, ncol=2, byrow=T))$p.value
+pvb.f <- min(pvg1.f, pvg2.f)
+
+cat("\nFisher's exact test p-values:\n")
+cat("GBT:", format(pvg.f, digits=4), "\n")
+cat("ABT:", format(pva.f, digits=4), "\n")
+cat("MAX2:", format(pvb.f, digits=4), "\n")
+
+# Cochran-Armitage trend test
+pvcat <- prop.trend.test(gc[1:3], gc[1:3]+gc[4:6], score=c(0, 0.5, 1))$p.value
+cat("\nCochran-Armitage trend test p-value:", format(pvcat, digits=4), "\n")
+```
+
+### Doubled sample size:
+
+```{r}
+gc2x <- gc * 2
+ac2x <- c(2*gc2x[1]+gc2x[2], gc2x[2]+2*gc2x[3], 2*gc2x[4]+gc2x[5], gc2x[5]+2*gc2x[6])
+
+pvg2x <- chisq.test(matrix(gc2x, ncol=3, byrow=T), correct=FALSE)$p.value
+pva2x <- chisq.test(matrix(ac2x, ncol=2, byrow=T), correct=FALSE)$p.value
+
+cat("With doubled sample size:\n")
+cat("GBT:", format(pvg2x, digits=4), "\n")
+cat("ABT:", format(pva2x, digits=4), "\n")
+```
+
+### Figure 3: Odds ratio and confidence interval
+
+```{r}
+ci.or <- function(counts, alpha=0.05) {
+  f <- qnorm(1 - alpha/2)
+  or <- counts[1] * counts[4] / (counts[2] * counts[3])
+  sq <- sqrt(1/counts[1] + 1/counts[2] + 1/counts[3] + 1/counts[4])
+  upper <- exp(log(or) + f * sq)
+  lower <- exp(log(or) - f * sq)
+  c(lower, or, upper)
+}
+
+# Allele counts from Table 1B
+ac_orig <- c(210, 1790, 106, 1900)
+cat("95% CI for OR:", round(ci.or(ac_orig, 0.05), 4), "\n")
+cat("99% CI for OR:", round(ci.or(ac_orig, 0.01), 4), "\n")
+
+# With doubled sample
+ac_double <- ac_orig * 2
+cat("\nWith doubled sample:\n")
+cat("95% CI for OR:", round(ci.or(ac_double, 0.05), 4), "\n")
+cat("99% CI for OR:", round(ci.or(ac_double, 0.01), 4), "\n")
+```
+
+### Figure 4: EM algorithm for haplotype frequency estimation
+
+```{r}
+# Table 3 data: Joint genotype counts (3x3 table)
+# HH, Hh, hh (rows) x AA, AB, BB (columns)
+g <- c(14, 0, 0, 34, 4, 0, 109, 50, 10)
+n1 <- g[5]/2  # Double heterozygotes in phase 1 (H-A, h-B)
+n2 <- g[5]/2  # Double heterozygotes in phase 2 (H-B, h-A)
+N <- 2 * sum(g)
+
+delta <- 1
+f <- c(0.25, 0.25, 0.25, 0.25)
+
+cat("EM Algorithm iterations (f1, f2, f3, f4):\n")
+while(delta > 1e-10) {
+  fold <- f
+  f <- c(2*g[1]+g[2]+g[4]+n1, 2*g[3]+g[2]+g[6]+n2,
+         2*g[7]+g[4]+g[8]+n2, 2*g[9]+g[6]+g[8]+n1)/N
+  n1 <- g[5]*f[1]*f[4]/(f[1]*f[4]+f[2]*f[3])
+  n2 <- g[5]*f[2]*f[3]/(f[1]*f[4]+f[2]*f[3])
+  delta <- sum(abs(f - fold))
+  cat(round(f, 4), "\n")
+}
+
+cat("\nFinal haplotype frequencies:\n")
+cat("f1 (H-A):", round(f[1], 4), "\n")
+cat("f2 (H-B):", round(f[2], 4), "\n")
+cat("f3 (h-A):", round(f[3], 4), "\n")
+cat("f4 (h-B):", round(f[4], 4), "\n")
+```
+
+The EM algorithm converges to: $f_1 \approx 0.1493$, $f_2 \approx 0.0000$, $f_3 \approx 0.6833$, $f_4 \approx 0.1674$, matching the paper's results.
