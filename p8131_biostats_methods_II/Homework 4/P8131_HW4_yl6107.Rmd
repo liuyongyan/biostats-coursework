@@ -1,0 +1,305 @@
+---
+title: "P8131 Homework 4"
+author: "Yongyan Liu (yl6107)"
+date: "2026-03-01"
+output:
+  pdf_document:
+    latex_engine: xelatex
+header-includes:
+  - \usepackage{amsmath}
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(knitr)
+library(nnet)
+library(MASS)
+```
+
+# Housing Satisfaction in Copenhagen
+
+```{r}
+htypes <- c("Tower", "Apartment", "House")
+sat_lvl <- c("Low", "Medium", "High")
+
+housing <- data.frame(
+  housing_type = factor(rep(htypes, each = 2), levels = htypes),
+  contact = factor(rep(c("Low", "High"), 3), levels = c("Low", "High")),
+  low_sat  = c(65, 34, 130, 141, 67, 130),
+  med_sat  = c(54, 47,  76, 116, 48, 105),
+  high_sat = c(100, 100, 111, 191, 62, 104)
+)
+housing$total <- housing$low_sat + housing$med_sat + housing$high_sat
+```
+
+---
+
+## Problem 1
+
+**Summarize the data using appropriate tables of percentages to show the
+pair-wise associations between the levels of satisfaction and 1) contact
+with other residents and 2) type of housing. Comment on patterns.**
+
+### Satisfaction by Contact Level
+
+```{r}
+contact_tbl <- housing %>%
+  group_by(contact) %>%
+  summarize(Low = sum(low_sat), Medium = sum(med_sat),
+            High = sum(high_sat), Total = sum(total)) %>%
+  mutate(across(Low:High, ~ sprintf("%.1f%%", 100 * .x / Total),
+                .names = "{.col}_pct"))
+
+kable(contact_tbl %>% dplyr::select(contact, Low, Low_pct, Medium, Medium_pct,
+                                     High, High_pct, Total),
+      col.names = c("Contact", "Low", "(%)", "Medium", "(%)",
+                     "High", "(%)", "Total"),
+      caption = "Satisfaction by Contact Level")
+```
+
+**Pattern:** High-contact residents report higher satisfaction (40.8%
+high) compared to low-contact residents (38.3% high). Low satisfaction
+is more prevalent among low-contact residents (36.7%) than high-contact
+(31.5%). More contact with neighbors is associated with greater
+housing satisfaction.
+
+### Satisfaction by Housing Type
+
+```{r}
+housing_tbl <- housing %>%
+  group_by(housing_type) %>%
+  summarize(Low = sum(low_sat), Medium = sum(med_sat),
+            High = sum(high_sat), Total = sum(total)) %>%
+  mutate(across(Low:High, ~ sprintf("%.1f%%", 100 * .x / Total),
+                .names = "{.col}_pct"))
+
+kable(housing_tbl %>% dplyr::select(housing_type, Low, Low_pct, Medium,
+                                     Medium_pct, High, High_pct, Total),
+      col.names = c("Housing Type", "Low", "(%)", "Medium", "(%)",
+                     "High", "(%)", "Total"),
+      caption = "Satisfaction by Housing Type")
+```
+
+**Pattern:** Tower block residents have the highest proportion of high
+satisfaction (50.0%) and lowest low satisfaction (24.8%). House
+residents show the most low satisfaction (38.2%) and least high
+satisfaction (32.2%). Apartment residents fall in between.
+
+---
+
+## Problem 2
+
+**Use nominal logistic regression to model the associations. Obtain a
+model that summarizes the patterns. Describe findings (odds ratios with
+95% CIs, goodness-of-fit). Is there interaction?**
+
+We use satisfaction (Low/Medium/High) as the response with "Low" as
+reference:
+$$\log\frac{\pi_j}{\pi_{\text{Low}}} = \beta_{0j} + \beta_{1j}\,\text{Contact}_{\text{High}} + \beta_{2j}\,\text{Apartment} + \beta_{3j}\,\text{House}, \quad j \in \{\text{Med, High}\}$$
+
+```{r}
+# Reshape to long format
+dat <- data.frame(
+  housing_type = rep(housing$housing_type, 3),
+  contact = rep(housing$contact, 3),
+  satisfaction = factor(rep(sat_lvl, each = 6), levels = sat_lvl),
+  count = c(housing$low_sat, housing$med_sat, housing$high_sat)
+)
+```
+
+### Test for Interaction
+
+```{r}
+fit_full <- multinom(satisfaction ~ contact * housing_type,
+                     weights = count, data = dat, trace = FALSE)
+fit_main <- multinom(satisfaction ~ contact + housing_type,
+                     weights = count, data = dat, trace = FALSE)
+summary(fit_full)
+summary(fit_main)
+
+dev_diff <- fit_main$deviance - fit_full$deviance
+df_diff <- length(coef(fit_full)) - length(coef(fit_main))
+p_int <- 1 - pchisq(dev_diff, df_diff)
+
+cat("LRT for interaction: G =", round(dev_diff, 3),
+    ", df =", df_diff, ", p =", round(p_int, 3), "\n")
+```
+
+The interaction is not significant (p = `r round(p_int, 3)`), so we use
+the main effects model.
+
+```{r}
+# Odds ratios with 95% CIs
+coefs <- coef(fit_main)
+se <- summary(fit_main)$standard.errors
+OR <- exp(coefs)
+OR_lo <- exp(coefs - 1.96 * se)
+OR_hi <- exp(coefs + 1.96 * se)
+
+for (j in c("Medium", "High")) {
+  cat("\n--- ", j, "vs Low ---\n")
+  res <- data.frame(OR = round(OR[j, ], 3),
+                    CI_lower = round(OR_lo[j, ], 3),
+                    CI_upper = round(OR_hi[j, ], 3))
+  print(kable(res))
+}
+```
+
+### Goodness-of-Fit
+
+```{r}
+patterns <- distinct(dat[, c("housing_type", "contact")])
+obs <- matrix(dat$count, nrow = 6, ncol = 3)
+m <- rowSums(obs)
+pred <- predict(fit_main, newdata = patterns, type = "probs")
+expected <- pred * m
+
+df_gof <- 6 * 2 - 8  # 6 patterns x (3-1) - 8 parameters = 4
+
+# Pearson chi-square
+X2 <- sum((obs - expected)^2 / expected)
+p_X2 <- 1 - pchisq(X2, df_gof)
+
+# Deviance (likelihood ratio)
+D <- 2 * sum(obs * log(obs / expected))
+p_D <- 1 - pchisq(D, df_gof)
+
+cat("Pearson X² =", round(X2, 3), ", df =", df_gof, ", p =", round(p_X2, 3), "\n")
+cat("Deviance   =", round(D, 3), ", df =", df_gof, ", p =", round(p_D, 3), "\n")
+```
+
+### Interpretation
+
+1. **Contact:** High contact significantly increases odds of both medium
+   (OR = `r round(OR["Medium","contactHigh"], 2)`, 95% CI:
+   `r round(OR_lo["Medium","contactHigh"], 2)`--`r round(OR_hi["Medium","contactHigh"], 2)`)
+   and high satisfaction
+   (OR = `r round(OR["High","contactHigh"], 2)`, 95% CI:
+   `r round(OR_lo["High","contactHigh"], 2)`--`r round(OR_hi["High","contactHigh"], 2)`)
+   vs. low satisfaction.
+
+2. **Housing type:** Compared to tower blocks, apartment residents have
+   lower odds of high satisfaction
+   (OR = `r round(OR["High","housing_typeApartment"], 2)`, 95% CI:
+   `r round(OR_lo["High","housing_typeApartment"], 2)`--`r round(OR_hi["High","housing_typeApartment"], 2)`),
+   and house residents have even lower odds
+   (OR = `r round(OR["High","housing_typeHouse"], 2)`, 95% CI:
+   `r round(OR_lo["High","housing_typeHouse"], 2)`--`r round(OR_hi["High","housing_typeHouse"], 2)`).
+
+3. **Goodness-of-fit:** Pearson $\chi^2$ = `r round(X2, 2)` (p =
+   `r round(p_X2, 3)`) and Deviance = `r round(D, 2)` (p =
+   `r round(p_D, 3)`) with `r df_gof` df, both indicating adequate fit.
+
+4. **No significant interaction** (p = `r round(p_int, 3)`).
+
+---
+
+## Problem 3
+
+**Fit a proportional odds model with the same variables. What does it
+tell?**
+
+The proportional odds model:
+$$\log\frac{P(Y \leq j)}{P(Y > j)} = \beta_{0j} - \mathbf{x}^T\boldsymbol{\beta}, \quad j = 1, 2$$
+
+```{r}
+dat$satisfaction_ord <- ordered(dat$satisfaction, levels = sat_lvl)
+fit_po <- polr(satisfaction_ord ~ contact + housing_type,
+               weights = count, data = dat)
+summary(fit_po)
+```
+
+```{r}
+# Cumulative ORs for higher satisfaction
+# polr: logit(P(Y<=j)) = beta_0j - x'beta, so exp(beta) = OR for Y > j
+b <- coef(fit_po)
+se_po <- sqrt(diag(vcov(fit_po)))[1:length(b)]
+
+OR_po <- exp(b)
+CI_lo_po <- exp(b - 1.96 * se_po)
+CI_hi_po <- exp(b + 1.96 * se_po)
+
+po_res <- data.frame(
+  Coefficient = round(b, 4), SE = round(se_po, 4),
+  OR = round(OR_po, 3),
+  CI_lower = round(CI_lo_po, 3),
+  CI_upper = round(CI_hi_po, 3)
+)
+kable(po_res, col.names = c("Coef", "SE", "OR (higher sat.)",
+                             "95% CI Lower", "95% CI Upper"),
+      caption = "Proportional Odds Model: Cumulative ORs")
+```
+
+```{r}
+# Goodness-of-fit
+pred_po <- predict(fit_po, newdata = patterns, type = "probs")
+exp_po <- pred_po * m
+df_po <- 6 * 2 - 5  # 12 - 5 parameters = 7
+
+X2_po <- sum((obs - exp_po)^2 / exp_po)
+p_X2_po <- 1 - pchisq(X2_po, df_po)
+
+D_po <- 2 * sum(obs * log(obs / exp_po))
+p_D_po <- 1 - pchisq(D_po, df_po)
+
+cat("Pearson X² =", round(X2_po, 3), ", df =", df_po, ", p =", round(p_X2_po, 3), "\n")
+cat("Deviance   =", round(D_po, 3), ", df =", df_po, ", p =", round(p_D_po, 3), "\n")
+```
+
+### Interpretation
+
+1. **Contact:** High contact increases odds of higher satisfaction by a
+   factor of `r round(OR_po["contactHigh"], 2)` (95% CI:
+   `r round(CI_lo_po["contactHigh"], 2)`--`r round(CI_hi_po["contactHigh"], 2)`).
+
+2. **Housing type:** Apartment residents have lower odds of higher
+   satisfaction vs. tower blocks
+   (OR = `r round(OR_po["housing_typeApartment"], 2)`, 95% CI:
+   `r round(CI_lo_po["housing_typeApartment"], 2)`--`r round(CI_hi_po["housing_typeApartment"], 2)`).
+   House residents have even lower odds
+   (OR = `r round(OR_po["housing_typeHouse"], 2)`, 95% CI:
+   `r round(CI_lo_po["housing_typeHouse"], 2)`--`r round(CI_hi_po["housing_typeHouse"], 2)`).
+
+3. **Model fit:** Pearson $\chi^2$ = `r round(X2_po, 2)` (p =
+   `r round(p_X2_po, 3)`) and Deviance = `r round(D_po, 2)` (p =
+   `r round(p_D_po, 3)`) with `r df_po` df, both indicating adequate fit.
+
+4. **Parsimony:** The proportional odds model uses 5 parameters vs. 8
+   in the nominal model, giving a more concise summary while fitting
+   the data well.
+
+---
+
+## Problem 4
+
+**Calculate Pearson residuals from the proportional odds model. Where
+are the largest discrepancies?**
+
+```{r}
+resid_po <- (obs - exp_po) / sqrt(exp_po)
+
+rownames(resid_po) <- paste(rep(htypes, each = 2),
+                            rep(c("Low", "High"), 3), sep = "-")
+colnames(resid_po) <- c("Low Sat", "Med Sat", "High Sat")
+
+kable(round(resid_po, 3), caption = "Pearson Residuals")
+```
+
+```{r}
+cat("Range of residuals:", round(range(resid_po), 3), "\n")
+cat("Largest |residual|:", round(max(abs(resid_po)), 3), "\n")
+```
+
+### Interpretation
+
+All Pearson residuals are relatively small ($|r| < 1.5$), confirming
+adequate model fit. The largest discrepancies involve house residents:
+the model over-predicts high satisfaction for high-contact house
+residents (r = -1.48) and under-predicts medium satisfaction for the
+same group (r = 1.37). This suggests minor heterogeneity in the
+contact-by-housing-type pattern that the main effects model does not
+fully capture.
