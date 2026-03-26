@@ -1,0 +1,203 @@
+---
+title: "Data Science II Homework 3"
+author: "Yongyan Liu (yl6107)"
+date: "2026-03-25"
+output:
+  pdf_document:
+    latex_engine: xelatex
+header-includes:
+- \usepackage{fancyhdr}
+- \usepackage{lipsum}
+- \pagestyle{fancy}
+- \fancyhead[R]{\thepage}
+- \fancypagestyle{plain}{\pagestyle{fancy}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+In this problem, you will develop a model to predict whether a given car gets high or low gas mileage based on the dataset "auto.csv". The dataset contains 392 observations. The response variable is "mpg\_cat", which indicates whether the miles per gallon of a car is high or low. The predictors include both continuous and categorical variables:
+
+- cylinders: Number of cylinders between 4 and 8
+- displacement: Engine displacement (cu. inches)
+- horsepower: Engine horsepower
+- weight: Vehicle weight (lbs.)
+- acceleration: Time to accelerate from 0 to 60 mph (sec.)
+- year: Model year (modulo 100)
+- origin: Origin of car (1. American, 2. European, 3. Japanese)
+
+Split the dataset into two parts: training data (70%) and test data (30%).
+
+```{r}
+library(tidyverse)
+library(rsample)
+library(caret)
+library(earth)
+library(MASS)
+library(pROC)
+library(pdp)
+library(vip)
+
+auto <- read.csv("auto.csv") %>%
+  mutate(mpg_cat = factor(mpg_cat, levels = c("low", "high")),
+         origin = factor(origin))
+
+set.seed(2026)
+data_split <- initial_split(auto, prop = 0.7, strata = mpg_cat)
+train_data <- training(data_split)
+test_data <- testing(data_split)
+
+ctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 5,
+                     summaryFunction = twoClassSummary,
+                     classProbs = TRUE)
+```
+
+# (a) Logistic Regression
+
+**(a)** Perform logistic regression analysis. Are there redundant predictors in your model? If so, identify them. If there are none, please provide an explanation.
+
+```{r}
+glm.fit <- glm(mpg_cat ~ ., data = train_data, family = binomial(link = "logit"))
+summary(glm.fit)
+```
+
+```{r}
+# Fit logistic regression using caret for later comparison
+set.seed(2026)
+model.glm <- train(mpg_cat ~ .,
+                   data = train_data,
+                   method = "glm",
+                   metric = "ROC",
+                   trControl = ctrl)
+```
+
+Several predictors are not statistically significant (p-value > 0.05), including `cylinders`, `displacement`, `horsepower`, and `acceleration`. These are likely redundant due to high multicollinearity among engine-related variables (e.g., displacement and horsepower are strongly correlated with cylinders and weight). We can verify this via VIF:
+
+```{r}
+car::vif(glm.fit)
+```
+
+Predictors with high VIF values (e.g., > 5) confirm multicollinearity. Although these predictors are redundant in the presence of other correlated variables, they may still be collectively informative, so we retain all predictors for comparison purposes.
+
+# (b) MARS Model
+
+**(b)** Train a multivariate adaptive regression spline (MARS) model. Does the MARS model improve prediction performance compared to logistic regression?
+
+```{r, fig.height=4, fig.width=6}
+mars_grid <- expand.grid(degree = 1:3, nprune = 2:20)
+
+set.seed(2026)
+model.mars <- train(mpg_cat ~ .,
+                    data = train_data,
+                    method = "earth",
+                    tuneGrid = mars_grid,
+                    metric = "ROC",
+                    trControl = ctrl,
+                    glm = list(family = binomial))
+
+ggplot(model.mars) + theme_bw()
+model.mars$bestTune
+coef(model.mars$finalModel)
+```
+
+```{r, fig.height=4, fig.width=6}
+vip(model.mars$finalModel, type = "nsubsets")
+```
+
+```{r}
+# Compare CV performance
+res_ab <- resamples(list(GLM = model.glm, MARS = model.mars))
+summary(res_ab)
+bwplot(res_ab, metric = "ROC")
+```
+
+Based on the cross-validation ROC comparison, the MARS model achieves a comparable (or slightly higher) AUC relative to logistic regression. MARS can capture nonlinear relationships and interactions automatically, which may provide marginal improvement in prediction performance.
+
+# (c) Linear Discriminant Analysis
+
+**(c)** Perform linear discriminant analysis using the training data. Plot the linear discriminant(s).
+
+```{r}
+lda.fit <- lda(mpg_cat ~ ., data = train_data)
+lda.fit
+```
+
+Since there are $K = 2$ classes, there is only one linear discriminant. We plot the histogram of the discriminant scores for each class:
+
+```{r, fig.height=4, fig.width=6}
+plot(lda.fit)
+```
+
+```{r}
+# Fit LDA using caret for model comparison
+set.seed(2026)
+model.lda <- train(mpg_cat ~ .,
+                   data = train_data,
+                   method = "lda",
+                   metric = "ROC",
+                   trControl = ctrl)
+```
+
+The plot shows the distribution of the linear discriminant scores $Z = \mathbf{a}^T \mathbf{x}$ for each class. The two groups are well separated, indicating that the linear discriminant effectively distinguishes between high and low mpg.
+
+# (d) Model Comparison and ROC Curve
+
+**(d)** Which model will you choose to predict the response variable? Plot its ROC curve and report the AUC.
+
+```{r}
+# Compare all three models via CV
+res_all <- resamples(list(GLM = model.glm, MARS = model.mars, LDA = model.lda))
+summary(res_all)
+bwplot(res_all, metric = "ROC")
+```
+
+```{r, fig.height=5, fig.width=6}
+# Test set predictions
+glm.pred <- predict(model.glm, newdata = test_data, type = "prob")[, 2]
+mars.pred <- predict(model.mars, newdata = test_data, type = "prob")[, 2]
+lda.pred <- predict(model.lda, newdata = test_data, type = "prob")[, 2]
+
+# ROC curves
+roc.glm <- roc(test_data$mpg_cat, glm.pred)
+roc.mars <- roc(test_data$mpg_cat, mars.pred)
+roc.lda <- roc(test_data$mpg_cat, lda.pred)
+
+auc <- c(roc.glm$auc[1], roc.mars$auc[1], roc.lda$auc[1])
+modelNames <- c("GLM", "MARS", "LDA")
+
+ggroc(list(roc.glm, roc.mars, roc.lda), legacy.axes = TRUE) +
+  scale_color_discrete(labels = paste0(modelNames, " (", round(auc, 3), ")"),
+                       name = "Models (AUC)") +
+  geom_abline(intercept = 0, slope = 1, color = "grey") +
+  theme_bw()
+```
+
+Based on both cross-validation and test AUC, we select the model with the highest AUC. The chosen model's test AUC is reported in the legend above.
+
+# (e) Confusion Matrix
+
+**(e)** Select a probability threshold to classify observations and compute the confusion matrix for the final model you choose. Briefly interpret what the confusion matrix indicates about your model's performance.
+
+```{r}
+# Use the best-performing model based on test AUC
+best_idx <- which.max(auc)
+best_pred_prob <- list(glm.pred, mars.pred, lda.pred)[[best_idx]]
+best_roc <- list(roc.glm, roc.mars, roc.lda)[[best_idx]]
+cat("Selected model:", modelNames[best_idx], "\n")
+
+# Use the threshold that maximizes sensitivity + specificity (Youden's J)
+threshold <- coords(best_roc, "best", ret = "threshold",
+                    best.method = "youden")$threshold
+cat("Optimal threshold (Youden's J):", round(threshold, 3), "\n")
+
+# Classify using the selected threshold
+test.pred <- factor(ifelse(best_pred_prob > threshold, "high", "low"),
+                    levels = c("low", "high"))
+
+confusionMatrix(data = test.pred,
+                reference = test_data$mpg_cat,
+                positive = "high")
+```
+
+The confusion matrix shows the model's classification performance at the selected threshold. The diagonal entries represent correct predictions (true negatives and true positives), while off-diagonal entries represent misclassifications. The high accuracy, sensitivity, and specificity indicate that the model effectively discriminates between cars with high and low gas mileage. The balanced accuracy suggests the model performs well for both classes without being biased toward the majority class.

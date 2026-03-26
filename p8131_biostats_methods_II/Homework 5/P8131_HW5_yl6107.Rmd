@@ -1,0 +1,418 @@
+---
+title: "P8131 Homework 5"
+author: "Yongyan Liu (yl6107)"
+date: "2026-03-24"
+output:
+  pdf_document:
+    latex_engine: xelatex
+header-includes:
+  - \usepackage{amsmath}
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(pscl)
+```
+
+# Problem 1: Horseshoe Crabs
+
+In a study of nesting horseshoe crabs, each female horseshoe crab had a
+male crab attached to her in her nest. The study investigated factors
+that affect whether the female crab had any other males, called
+satellites, residing near her. Explanatory variables that are thought to
+affect this included the female crab's color (C), spine condition (S),
+carapace width (W) and weight (Wt). The response outcome for each
+female crab is her number of satellites (Sa). There are 173 females in
+this study. Data are provided in the crab.txt.
+
+```{r}
+crab <- read.table("HW5-crab.txt", header = TRUE)
+```
+
+## (a) Poisson Model M1 with W
+
+**Fit a Poisson model (M1) with log link with W as the single
+predictor. Check the goodness of fit and interpret your model.**
+
+Model: $\log(\mu_i) = \beta_0 + \beta_1 W_i$, where
+$Y_i \sim \text{Poisson}(\mu_i)$.
+
+```{r}
+M1 <- glm(Sa ~ W, family = poisson(link = "log"), data = crab)
+summary(M1)
+```
+
+**Goodness of fit:**
+
+```{r}
+dev_M1 <- deviance(M1)
+df_M1 <- M1$df.residual
+p_dev_M1 <- 1 - pchisq(dev_M1, df_M1)
+
+G_M1 <- sum(residuals(M1, type = "pearson")^2)
+p_G_M1 <- 1 - pchisq(G_M1, df_M1)
+
+cat("Deviance =", round(dev_M1, 2), ", df =", df_M1,
+    ", p =", round(p_dev_M1, 4), "\n")
+cat("Pearson X² =", round(G_M1, 2), ", df =", df_M1,
+    ", p =", round(p_G_M1, 4), "\n")
+```
+
+Both the deviance and Pearson $\chi^2$ statistics are large relative to
+their degrees of freedom (p < 0.05), indicating that the model does not
+fit the data well. There is evidence of lack of fit, possibly due to
+over-dispersion or missing predictors.
+
+**Interpretation:** The estimated model is
+$\log(\hat{\mu}) = `r round(coef(M1)[1], 4)` + `r round(coef(M1)[2], 4)` \cdot W$.
+
+$\exp(\hat{\beta}_1)$ is the estimated rate ratio for the number of
+satellites associated with a one-cm increase in carapace width. With
+$\hat{\beta}_1 = `r round(coef(M1)[2], 4)`$ (p < 0.001), the expected
+number of satellites for a female crab is
+$`r round(exp(coef(M1)[2]), 3)`$ $(= \exp(`r round(coef(M1)[2], 4)`))$
+times of that for a crab one cm narrower in width.
+
+## (b) Model M2 with W and Wt
+
+**Fit a model (M2) with W and Wt as predictors. Compare it with the
+model in (a). Interpret your results.**
+
+```{r}
+M2 <- glm(Sa ~ W + Wt, family = poisson(link = "log"), data = crab)
+summary(M2)
+```
+
+**Model comparison via deviance analysis (LRT):**
+
+```{r}
+test_stat <- deviance(M1) - deviance(M2)
+df_test <- df_M1 - M2$df.residual
+p_test <- 1 - pchisq(test_stat, df_test)
+
+cat("Delta Deviance =", round(test_stat, 3), ", df =", df_test,
+    ", p =", round(p_test, 4), "\n")
+```
+
+The test statistic is `r round(test_stat, 3)` on `r df_test` df with
+p = `r round(p_test, 4)` < 0.05, so adding Wt leads to a statistically
+significant improvement. However, the deviance only decreases from
+`r round(dev_M1, 2)` to `r round(deviance(M2), 2)`, both far exceeding
+their respective degrees of freedom, indicating that neither M1 nor M2
+fits the data adequately (likely due to over-dispersion).
+
+**Interpretation:** In M2, $W$ is no longer significant (p =
+`r round(summary(M2)$coefficients["W", "Pr(>|z|)"], 3)`) while $Wt$ is
+significant (p =
+`r round(summary(M2)$coefficients["Wt", "Pr(>|z|)"], 3)`). This
+suggests that weight captures most of the information about satellite
+count that width provided, and the two predictors are likely correlated.
+
+$\exp(\hat{\beta}_{Wt})$ is the estimated rate ratio for the number of
+satellites associated with a one-kg increase in weight, holding width
+fixed. With $\hat{\beta}_{Wt} = `r round(coef(M2)["Wt"], 4)`$, the
+expected number of satellites is
+$`r round(exp(coef(M2)["Wt"]), 3)`$
+$(= \exp(`r round(coef(M2)["Wt"], 4)`))$ times of that for a crab one
+kg lighter, holding width constant.
+
+$\exp(\hat{\beta}_{W})$ is the estimated rate ratio for a one-cm
+increase in width, holding weight fixed. With
+$\hat{\beta}_{W} = `r round(coef(M2)["W"], 4)`$, $W$ is not
+significant (p = `r round(summary(M2)$coefficients["W", "Pr(>|z|)"], 3)`),
+suggesting width does not provide additional information beyond weight.
+
+## (c) Over-dispersion in M2
+
+**Check over dispersion in M2. Interpret the model after adjusting for
+over dispersion.**
+
+```{r}
+G_M2 <- sum(residuals(M2, type = "pearson")^2)
+phi_hat <- G_M2 / M2$df.residual
+
+cat("Pearson X² =", round(G_M2, 2), "\n")
+cat("Estimated dispersion parameter: phi =", round(phi_hat, 4), "\n")
+```
+
+Since $\hat{\phi} = `r round(phi_hat, 2)`$ is substantially greater
+than 1, there is evidence of over-dispersion.
+
+**Adjusted model using quasi-Poisson:**
+
+```{r}
+M2_quasi <- glm(Sa ~ W + Wt, family = quasipoisson(link = "log"),
+                data = crab)
+summary(M2_quasi)
+```
+
+The updated model has the same coefficient estimates as M2. After
+adjusting for over-dispersion, the standard errors are inflated by a
+factor of $\sqrt{\hat{\phi}} = `r round(sqrt(phi_hat), 3)`$. In the
+adjusted model, neither $W$ (p =
+`r round(summary(M2_quasi)$coefficients["W", "Pr(>|t|)"], 3)`) nor $Wt$
+(p =
+`r round(summary(M2_quasi)$coefficients["Wt", "Pr(>|t|)"], 3)`) is
+individually significant at $\alpha = 0.05$.
+
+**Negative binomial regression as a comparison:**
+
+```{r}
+library(MASS)
+M2_nb <- glm.nb(Sa ~ W + Wt, data = crab)
+summary(M2_nb)
+```
+
+The NB model assumes $\text{Var}(Y) = \mu + \mu^2/\theta$. The
+estimated $\hat{\theta} = `r round(M2_nb$theta, 2)`$ with a finite
+standard error, confirming over-dispersion. The coefficient estimates
+are similar to those from quasi-Poisson, and neither $W$ nor $Wt$ is
+individually significant, consistent with the quasi-Poisson results.
+
+\newpage
+
+# Problem 2: Fish Parasites
+
+Researchers examined a large number of fish to determine the prevalence
+of parasites. The dataset (parasite.txt) includes the variables
+Intensity (i.e., the number of parasites), Area (a categorical
+variable), Year (to be treated as categorical), and Length of the fish.
+
+```{r}
+parasite <- read.table("HW5-parasite.txt", header = TRUE, sep = "\t")
+parasite <- parasite %>%
+  dplyr::select(Sample, Intensity, Year, Length, Area)
+parasite$Area <- factor(parasite$Area)
+parasite$Year <- factor(parasite$Year)
+```
+
+## (a) Poisson Model
+
+**Fit a Poisson model with log link to the data with area, year, and
+length as predictors. Interpret each model parameter.**
+
+Model:
+$\log(\mu_i) = \beta_0 + \beta_1 \text{Area}_2 + \beta_2 \text{Area}_3 + \beta_3 \text{Area}_4 + \beta_4 \text{Year}_{2000} + \beta_5 \text{Year}_{2001} + \beta_6 \text{Length}$
+
+```{r}
+fit_pois <- glm(Intensity ~ Area + Year + Length,
+                family = poisson(link = "log"), data = parasite)
+summary(fit_pois)
+```
+
+**Interpretation of parameters:**
+
+```{r}
+coefs <- round(coef(fit_pois), 4)
+```
+
+$\exp(\hat{\beta}_0) = `r round(exp(coefs[1]), 2)`$
+$(= \exp(`r coefs[1]`))$ is the estimated expected parasite count for a
+fish in Area 1, Year 1999, with Length = 0.
+
+$\exp(\hat{\beta}_1)$ is the estimated rate ratio comparing Area 2 to
+Area 1, holding year and length fixed. With
+$\hat{\beta}_1 = `r coefs["Area2"]`$, the expected parasite count for
+fish in Area 2 is $`r round(exp(coefs["Area2"]), 3)`$
+$(= \exp(`r coefs["Area2"]`))$ times of that in Area 1.
+
+$\exp(\hat{\beta}_2)$ is the estimated rate ratio comparing Area 3 to
+Area 1, holding year and length fixed. With
+$\hat{\beta}_2 = `r coefs["Area3"]`$, the expected parasite count for
+fish in Area 3 is $`r round(exp(coefs["Area3"]), 3)`$
+$(= \exp(`r coefs["Area3"]`))$ times of that in Area 1.
+
+$\exp(\hat{\beta}_3)$ is the estimated rate ratio comparing Area 4 to
+Area 1, holding year and length fixed. With
+$\hat{\beta}_3 = `r coefs["Area4"]`$, the expected parasite count for
+fish in Area 4 is $`r round(exp(coefs["Area4"]), 3)`$
+$(= \exp(`r coefs["Area4"]`))$ times of that in Area 1.
+
+$\exp(\hat{\beta}_4)$ is the estimated rate ratio comparing Year 2000
+to Year 1999, holding area and length fixed. With
+$\hat{\beta}_4 = `r coefs["Year2000"]`$, the expected parasite count in
+2000 is $`r round(exp(coefs["Year2000"]), 3)`$
+$(= \exp(`r coefs["Year2000"]`))$ times of that in 1999.
+
+$\exp(\hat{\beta}_5)$ is the estimated rate ratio comparing Year 2001
+to Year 1999, holding area and length fixed. With
+$\hat{\beta}_5 = `r coefs["Year2001"]`$, the expected parasite count in
+2001 is $`r round(exp(coefs["Year2001"]), 3)`$
+$(= \exp(`r coefs["Year2001"]`))$ times of that in 1999.
+
+$\exp(\hat{\beta}_6)$ is the estimated rate ratio for a one-unit
+increase in fish length, holding area and year fixed. With
+$\hat{\beta}_6 = `r coefs["Length"]`$, the expected parasite count is
+$`r round(exp(coefs["Length"]), 4)`$
+$(= \exp(`r coefs["Length"]`))$ times of that for a fish one unit
+shorter.
+
+## (b) Goodness of Fit
+
+**Test for goodness of fit of the model in (a) and state conclusions.**
+
+```{r}
+dev_pois <- deviance(fit_pois)
+df_pois <- fit_pois$df.residual
+p_dev_pois <- 1 - pchisq(dev_pois, df_pois)
+
+G_pois <- sum(residuals(fit_pois, type = "pearson")^2)
+p_G_pois <- 1 - pchisq(G_pois, df_pois)
+
+cat("Deviance =", round(dev_pois, 2), ", df =", df_pois,
+    ", p =", round(p_dev_pois, 4), "\n")
+cat("Pearson X² =", round(G_pois, 2), ", df =", df_pois,
+    ", p =", round(p_G_pois, 4), "\n")
+```
+
+Both the deviance and Pearson $\chi^2$ are extremely large relative to
+the degrees of freedom (p $\approx$ 0), indicating very poor fit. The
+Poisson model does not adequately describe these data. This could be due
+to over-dispersion, excess zeros, or both.
+
+## (c) Zero-Inflated Poisson Model
+
+**Researchers suspect that there may be two strains of fish, one that is
+susceptible to parasites and one that is not. Without knowing which fish
+are susceptible, this could be regarded as a zero-inflated model.
+Building on the model in (a) (using the same predictors), fit an
+appropriate model to the data that can account for extra zeros. Provide
+an interpretation for each model parameter in terms of the problem.**
+
+The Zero-Inflated Poisson (ZIP) model assumes two components. Let
+$Z_i$ be a latent binary variable indicating whether fish $i$ is
+susceptible ($Z_i = 1$) or non-susceptible ($Z_i = 0$), with
+$P(Z_i = 0) = \pi_i$. Then:
+
+- With probability $\pi_i$, $Y_i | (Z_i = 0) = 0$ (structural zero:
+  non-susceptible fish always have 0 parasites).
+- With probability $1 - \pi_i$,
+  $Y_i | (Z_i = 1) \sim \text{Poisson}(\lambda_i)$.
+
+Thus $P(Y_i = 0) = \pi_i + (1-\pi_i)e^{-\lambda_i}$, and for $y > 0$,
+$P(Y_i = y) = (1-\pi_i)\frac{e^{-\lambda_i}\lambda_i^y}{y!}$.
+
+We model both components using the same predictors
+$\mathbf{x}_i = (1, \text{Area}_i, \text{Year}_i, \text{Length}_i)^T$:
+$\log(\lambda_i) = \mathbf{x}_i^T\boldsymbol{\beta}$ (Poisson count
+component) and
+$\text{logit}(\pi_i) = \mathbf{x}_i^T\boldsymbol{\gamma}$
+(zero-inflation component).
+
+```{r}
+fit_zip <- zeroinfl(Intensity ~ Area + Year + Length | Area + Year + Length,
+                    data = parasite)
+summary(fit_zip)
+```
+
+**Interpretation of parameters:**
+
+*Count model (Poisson with log link) — for susceptible fish:*
+
+```{r}
+coefs_c <- round(coef(fit_zip, "count"), 4)
+coefs_z <- round(coef(fit_zip, "zero"), 4)
+```
+
+$\exp(\hat{\beta}_0) = `r round(exp(coefs_c[1]), 2)`$
+$(= \exp(`r coefs_c[1]`))$ is the estimated expected parasite count for
+a susceptible fish in Area 1, Year 1999, at Length = 0.
+
+$\exp(\hat{\beta}_{\text{Area2}})$ is the estimated rate ratio comparing
+Area 2 to Area 1 among susceptible fish, holding year and length fixed.
+With $\hat{\beta}_{\text{Area2}} = `r coefs_c["Area2"]`$, the expected
+parasite count in Area 2 is $`r round(exp(coefs_c["Area2"]), 3)`$
+$(= \exp(`r coefs_c["Area2"]`))$ times of that in Area 1.
+
+$\exp(\hat{\beta}_{\text{Area3}})$ is the estimated rate ratio comparing
+Area 3 to Area 1 among susceptible fish, holding year and length fixed.
+With $\hat{\beta}_{\text{Area3}} = `r coefs_c["Area3"]`$, the expected
+parasite count in Area 3 is $`r round(exp(coefs_c["Area3"]), 3)`$
+$(= \exp(`r coefs_c["Area3"]`))$ times of that in Area 1.
+
+$\exp(\hat{\beta}_{\text{Area4}})$ is the estimated rate ratio comparing
+Area 4 to Area 1 among susceptible fish, holding year and length fixed.
+With $\hat{\beta}_{\text{Area4}} = `r coefs_c["Area4"]`$, the expected
+parasite count in Area 4 is $`r round(exp(coefs_c["Area4"]), 3)`$
+$(= \exp(`r coefs_c["Area4"]`))$ times of that in Area 1.
+
+$\exp(\hat{\beta}_{\text{Year2000}})$ is the estimated rate ratio
+comparing Year 2000 to 1999 among susceptible fish, holding area and
+length fixed. With
+$\hat{\beta}_{\text{Year2000}} = `r coefs_c["Year2000"]`$, the expected
+parasite count in 2000 is $`r round(exp(coefs_c["Year2000"]), 3)`$
+$(= \exp(`r coefs_c["Year2000"]`))$ times of that in 1999.
+
+$\exp(\hat{\beta}_{\text{Year2001}})$ is the estimated rate ratio
+comparing Year 2001 to 1999 among susceptible fish, holding area and
+length fixed. With
+$\hat{\beta}_{\text{Year2001}} = `r coefs_c["Year2001"]`$, the expected
+parasite count in 2001 is $`r round(exp(coefs_c["Year2001"]), 3)`$
+$(= \exp(`r coefs_c["Year2001"]`))$ times of that in 1999.
+
+$\exp(\hat{\beta}_{\text{Length}})$ is the estimated rate ratio for a
+one-unit increase in length among susceptible fish, holding area and
+year fixed. With
+$\hat{\beta}_{\text{Length}} = `r coefs_c["Length"]`$, the expected
+parasite count is $`r round(exp(coefs_c["Length"]), 4)`$
+$(= \exp(`r coefs_c["Length"]`))$ times of that for a fish one unit
+shorter.
+
+*Zero-inflation model (logistic with logit link) — probability of being
+non-susceptible:*
+
+$\exp(\hat{\gamma}_0) / (1 + \exp(\hat{\gamma}_0)) = `r round(exp(coefs_z[1]) / (1 + exp(coefs_z[1])), 3)`$
+is the estimated probability of being non-susceptible for a fish in
+Area 1, Year 1999, at Length = 0.
+
+$\exp(\hat{\gamma}_{\text{Area2}})$ is the estimated odds ratio of being
+non-susceptible comparing Area 2 to Area 1, holding year and length
+fixed. With $\hat{\gamma}_{\text{Area2}} = `r coefs_z["Area2"]`$, the
+odds of being non-susceptible in Area 2 is
+$`r round(exp(coefs_z["Area2"]), 3)`$
+$(= \exp(`r coefs_z["Area2"]`))$ times of that in Area 1.
+
+$\exp(\hat{\gamma}_{\text{Area3}})$ is the estimated odds ratio of being
+non-susceptible comparing Area 3 to Area 1, holding year and length
+fixed. With $\hat{\gamma}_{\text{Area3}} = `r coefs_z["Area3"]`$, the
+odds of being non-susceptible in Area 3 is
+$`r round(exp(coefs_z["Area3"]), 3)`$
+$(= \exp(`r coefs_z["Area3"]`))$ times of that in Area 1.
+
+$\exp(\hat{\gamma}_{\text{Area4}})$ is the estimated odds ratio of being
+non-susceptible comparing Area 4 to Area 1, holding year and length
+fixed. With $\hat{\gamma}_{\text{Area4}} = `r coefs_z["Area4"]`$, the
+odds of being non-susceptible in Area 4 is
+$`r round(exp(coefs_z["Area4"]), 3)`$
+$(= \exp(`r coefs_z["Area4"]`))$ times of that in Area 1.
+
+$\exp(\hat{\gamma}_{\text{Year2000}})$ is the estimated odds ratio of
+being non-susceptible comparing Year 2000 to 1999, holding area and
+length fixed. With
+$\hat{\gamma}_{\text{Year2000}} = `r coefs_z["Year2000"]`$, the odds of
+being non-susceptible in 2000 is
+$`r round(exp(coefs_z["Year2000"]), 3)`$
+$(= \exp(`r coefs_z["Year2000"]`))$ times of that in 1999.
+
+$\exp(\hat{\gamma}_{\text{Year2001}})$ is the estimated odds ratio of
+being non-susceptible comparing Year 2001 to 1999, holding area and
+length fixed. With
+$\hat{\gamma}_{\text{Year2001}} = `r coefs_z["Year2001"]`$, the odds of
+being non-susceptible in 2001 is
+$`r round(exp(coefs_z["Year2001"]), 3)`$
+$(= \exp(`r coefs_z["Year2001"]`))$ times of that in 1999.
+
+$\exp(\hat{\gamma}_{\text{Length}})$ is the estimated odds ratio of
+being non-susceptible for a one-unit increase in length, holding area
+and year fixed. With
+$\hat{\gamma}_{\text{Length}} = `r coefs_z["Length"]`$, the odds of
+being non-susceptible is
+$`r round(exp(coefs_z["Length"]), 4)`$
+$(= \exp(`r coefs_z["Length"]`))$ times of that for a fish one unit
+shorter. The negative coefficient means longer fish are less likely to
+be from the non-susceptible strain (i.e., longer fish are more likely
+susceptible to parasites).

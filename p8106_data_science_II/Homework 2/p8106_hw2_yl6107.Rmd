@@ -1,0 +1,195 @@
+---
+title: "Data Science II Homework 2"
+author: "Yongyan Liu (yl6107)"
+date: "2026-03-06"
+output:
+  pdf_document:
+    latex_engine: xelatex
+header-includes:
+- \usepackage{fancyhdr}
+- \usepackage{lipsum}
+- \pagestyle{fancy}
+- \fancyhead[R]{\thepage}
+- \fancypagestyle{plain}{\pagestyle{fancy}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+Load the dataset and split the dataset for training and testing.
+
+```{r}
+library(tidyverse)
+library(rsample)
+library(caret)
+library(earth)
+library(mgcv)
+library(pdp)
+
+# Load data (first column is college name, use as row names)
+college <- read.csv("College.csv", row.names = 1)
+
+# Train/test split (80/20)
+set.seed(2026)
+data_split <- initial_split(college, prop = 0.8)
+train_data <- training(data_split)
+test_data <- testing(data_split)
+```
+
+# (a) Smoothing Splines
+
+```{r, fig.height=6, fig.width=8}
+# Range of degrees of freedom to explore
+df_values <- c(2, 3, 5, 8, 10, 15)
+
+# Set up plot
+x_grid <- seq(min(train_data$Top10perc), max(train_data$Top10perc), length = 200)
+
+par(mfrow = c(2, 3), mar = c(4, 4, 2, 1))
+for (df_val in df_values) {
+  fit_ss <- smooth.spline(train_data$Top10perc, train_data$Outstate, df = df_val)
+  pred_ss <- predict(fit_ss, x = x_grid)
+
+  plot(train_data$Top10perc, train_data$Outstate,
+       col = rgb(0.5, 0.5, 0.5, 0.4), pch = 19, cex = 0.6,
+       xlab = "Top10perc", ylab = "Outstate",
+       main = paste("df =", df_val))
+  lines(pred_ss, col = "blue", lwd = 2)
+}
+```
+
+As df increases, the curve becomes more flexible: df = 2 is nearly linear, df = 3--5 captures the increasing trend with moderate curvature, and df = 8--15 overfits with unnecessary wiggles. We select the optimal df using GCV.
+
+```{r, fig.height=4, fig.width=6}
+# Fit with GCV (automatic df selection)
+fit_opt <- smooth.spline(train_data$Top10perc, train_data$Outstate)
+optimal_df <- fit_opt$df
+
+# Plot the optimal fit
+pred_opt <- predict(fit_opt, x = x_grid)
+
+plot(train_data$Top10perc, train_data$Outstate,
+     col = rgb(0.5, 0.5, 0.5, 0.4), pch = 19, cex = 0.6,
+     xlab = "Top10perc", ylab = "Outstate",
+     main = paste0("Optimal Smoothing Spline (GCV, df = ", round(optimal_df, 2), ")"))
+lines(pred_opt, col = "red", lwd = 2)
+```
+
+The GCV-selected degrees of freedom is **`r round(optimal_df, 2)`**, which balances bias and variance automatically.
+
+# (b) MARS Model
+
+```{r, fig.height=4, fig.width=6}
+ctrl <- trainControl(method = "cv", number = 10, selectionFunction = "oneSE")
+
+# Tune MARS: degree (1 = additive, 2 = two-way interactions) and nprune
+mars_grid <- expand.grid(degree = 1:3,
+                         nprune = 2:15)
+
+set.seed(2026)
+mars_fit <- train(Outstate ~ .,
+                  data = train_data,
+                  method = "earth",
+                  tuneGrid = mars_grid,
+                  trControl = ctrl)
+
+ggplot(mars_fit) + theme_bw()
+mars_fit$bestTune
+```
+
+```{r}
+# Final model coefficients (regression function)
+coef(mars_fit$finalModel)
+# Show the regression function
+summary(mars_fit$finalModel)
+```
+
+Using the one-standard-error rule, the selected tuning parameters are degree = `r mars_fit$bestTune$degree` and nprune = `r mars_fit$bestTune$nprune`, which gives the simplest model whose CV error is within one SE of the minimum.
+
+```{r, fig.height=4, fig.width=6}
+# Partial dependence plot for Expend
+p1 <- pdp::partial(mars_fit, pred.var = "Expend", grid.resolution = 50) %>%
+  autoplot(train = train_data, rug = TRUE) +
+  ggtitle("PDP: Expend") +
+  theme_bw()
+p1
+```
+
+The PDP for `Expend` shows tuition increases sharply with expenditure up to a point, then levels off.
+
+```{r}
+# Test error
+mars_pred <- predict(mars_fit, newdata = test_data)
+mars_mse <- mean((mars_pred - test_data$Outstate)^2)
+cat("MARS Test RMSE:", round(sqrt(mars_mse), 2), "\n")
+```
+
+# (c) Generalized Additive Model (GAM)
+
+```{r, fig.height=8, fig.width=10}
+# Fit GAM with smooth terms for all predictors
+# select = TRUE adds extra shrinkage penalty to drop unimportant terms
+gam_fit <- gam(Outstate ~ s(Apps) + s(Accept) + s(Enroll) + s(Top10perc) +
+                 s(Top25perc) + s(F.Undergrad) + s(P.Undergrad) +
+                 s(Room.Board) + s(Books) + s(Personal) + s(PhD) +
+                 s(Terminal) + s(S.F.Ratio) + s(perc.alumni) +
+                 s(Expend) + s(Grad.Rate),
+               data = train_data, select = TRUE)
+
+summary(gam_fit)
+```
+
+```{r, fig.height=10, fig.width=10}
+# Identify significant nonlinear terms (edf > 1 and p-value < 0.05)
+gam_summary <- summary(gam_fit)
+edf <- gam_summary$s.table[, "edf"]
+pval <- gam_summary$s.table[, "p-value"]
+nonlinear_idx <- which(edf > 1 & pval < 0.05)
+nonlinear_names <- names(edf)[nonlinear_idx]
+
+# Plot only the nonlinear smooth terms
+par(mfrow = c(ceiling(length(nonlinear_idx) / 3), 3), mar = c(4, 4, 2, 1))
+for (idx in nonlinear_idx) {
+  plot(gam_fit, shade = TRUE, shade.col = "lightskyblue",
+       seWithMean = TRUE, select = idx)
+}
+```
+
+The plots above show the significant nonlinear smooth terms (edf > 1 and p-value < 0.05). Terms with edf close to 1 (essentially linear) or non-significant p-values are not shown.
+
+```{r}
+# Test error
+gam_pred <- predict(gam_fit, newdata = test_data)
+gam_mse <- mean((gam_pred - test_data$Outstate)^2)
+cat("GAM Test RMSE:", round(sqrt(gam_mse), 2), "\n")
+```
+
+# (d) MARS vs. Linear Model for This Dataset
+
+```{r}
+# Fit a linear model for comparison
+set.seed(2026)
+lm_fit <- train(Outstate ~ .,
+                data = train_data,
+                method = "lm",
+                trControl = ctrl)
+
+# Compare via resampling
+resamp <- resamples(list(MARS = mars_fit, Linear = lm_fit))
+summary(resamp)
+bwplot(resamp, metric = "RMSE")
+
+# Test errors
+lm_pred <- predict(lm_fit, newdata = test_data)
+lm_mse <- mean((lm_pred - test_data$Outstate)^2)
+
+cat("Linear Model Test RMSE:", round(sqrt(lm_mse), 2), "\n")
+cat("MARS Test RMSE:", round(sqrt(mars_mse), 2), "\n")
+```
+
+**Yes, we favor MARS over the linear model.** MARS achieves a lower test RMSE and captures the nonlinear relationships (e.g., `Expend`) that a linear model cannot. It also performs automatic variable selection while remaining interpretable.
+
+# (e) MARS vs. Linear Model in Practice
+
+**Neither is universally superior.** MARS is preferred when nonlinearity is present and the goal is prediction, as it captures threshold effects and performs automatic variable selection. A linear model is preferred when the goal is inference, the sample size is small, or the true relationship is approximately linear. In practice, one should compare both via cross-validation and choose based on the prediction--interpretability trade-off.
