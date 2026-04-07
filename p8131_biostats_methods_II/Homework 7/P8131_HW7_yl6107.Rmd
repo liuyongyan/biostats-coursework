@@ -1,0 +1,245 @@
+---
+title: "P8131 Homework 7"
+author: "Yongyan Liu (yl6107)"
+date: "2026-04-06"
+output:
+  pdf_document:
+    latex_engine: xelatex
+header-includes:
+  - \usepackage{amsmath}
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(nlme)
+library(lme4)
+```
+
+# Problem 1
+
+**In a pitch study, we are interested in the relationship between pitch
+and politeness. There are two levels of politeness (a formal register:
+pol, and an informal register: inf). On top of that, we also have an
+additional fixed effect, gender. Each subject was tested on several
+scenarios (e.g., asking a peer for a favor (informal condition) or
+asking a professor for a favor (formal condition)). The pitch
+measurements are typically correlated for the same subject and in the
+same scenario.**
+
+```{r}
+pitch <- read.csv("HW7_politeness_data.csv")
+pitch$subject <- factor(pitch$subject)
+pitch$gender <- factor(pitch$gender)
+pitch$attitude <- factor(pitch$attitude)
+pitch$scenario <- factor(pitch$scenario)
+```
+
+## (a) Exploratory analysis
+
+**Provide boxplots to show the relation between gender/attitude and
+pitch (ignoring different scenarios).**
+
+```{r, fig.width=7, fig.height=4}
+ggplot(pitch, aes(x = interaction(gender, attitude), y = frequency,
+                  fill = attitude)) +
+  geom_boxplot() +
+  labs(x = "Gender and Attitude", y = "Pitch (Hz)",
+       title = "Pitch by Gender and Attitude",
+       fill = "Attitude") +
+  scale_x_discrete(labels = c("Female\nInformal", "Male\nInformal",
+                               "Female\nPolite", "Male\nPolite")) +
+  theme_bw()
+```
+
+Females tend to have higher pitch than males across both attitude
+conditions. Within each gender, the polite condition tends to have
+slightly lower pitch than the informal condition, suggesting that
+speakers lower their pitch when being polite.
+
+## (b) Mixed effects model with random intercepts for subjects
+
+**Fit a mixed effects model with random intercepts for different
+subjects (gender and attitude being the fixed effects). What is the
+covariance matrix for a subject $Y_i$? What is the covariance matrix
+for the estimates of fixed effects (Hint: $3 \times 3$ matrix for
+intercept, gender and attitude)? What are the BLUPs for
+subject-specific intercepts? What are the residuals?**
+
+```{r}
+LMM1 <- lme(frequency ~ gender + attitude, random = ~ 1 | subject,
+            data = pitch, method = "REML")
+summary(LMM1)
+```
+
+### Covariance matrix for $Y_i$
+
+This is a random intercept model:
+$Y_{ij} = \beta_0 + \beta_1 \cdot \text{gender}_i + \beta_2 \cdot \text{attitude}_{ij} + b_i + \epsilon_{ij}$,
+where $b_i \sim N(0, \sigma_b^2)$ and
+$\epsilon_{ij} \sim N(0, \sigma^2)$, independently.
+
+From the random intercept model theory (Lecture 17, slide 6), the
+marginal covariance of $Y_i$ has compound symmetry structure:
+
+$$\text{Cov}(Y_i) = \begin{pmatrix} \sigma_b^2 + \sigma^2 & \sigma_b^2 & \cdots & \sigma_b^2 \\ \sigma_b^2 & \sigma_b^2 + \sigma^2 & \cdots & \sigma_b^2 \\ \vdots & \vdots & \ddots & \vdots \\ \sigma_b^2 & \sigma_b^2 & \cdots & \sigma_b^2 + \sigma^2 \end{pmatrix}_{14 \times 14}$$
+
+since each subject has $n_i = 14$ observations (7 scenarios $\times$ 2
+attitudes).
+
+```{r}
+sigma_b <- as.numeric(VarCorr(LMM1)[1, 2]) # SD of random intercept
+sigma_e <- as.numeric(VarCorr(LMM1)[2, 2]) # residual SD
+sigma_b_sq <- sigma_b^2
+sigma_e_sq <- sigma_e^2
+cat("sigma_b^2 (random intercept variance):", round(sigma_b_sq, 2), "\n")
+cat("sigma^2 (residual variance):", round(sigma_e_sq, 2), "\n")
+cat("Diagonal entries:", round(sigma_b_sq + sigma_e_sq, 2), "\n")
+cat("Off-diagonal entries:", round(sigma_b_sq, 2), "\n")
+```
+
+Plugging in the estimates, the $14 \times 14$ covariance matrix has
+diagonal entries $\hat{\sigma}_b^2 + \hat{\sigma}^2$ and off-diagonal
+entries $\hat{\sigma}_b^2$, with values shown above.
+
+### Covariance matrix for the fixed effects estimates
+
+The $3 \times 3$ covariance matrix of $\hat{\boldsymbol{\beta}} = (\hat{\beta}_0, \hat{\beta}_1, \hat{\beta}_2)^T$ is obtained via `vcov()`:
+
+```{r}
+vcov(LMM1)
+```
+
+### BLUPs for subject-specific intercepts
+
+The BLUPs $\hat{b}_i$ represent each subject's predicted deviation from
+the population mean intercept:
+
+```{r}
+random.effects(LMM1)
+```
+
+### Residuals
+
+The within-subject residuals $\hat{\epsilon}_{ij} = Y_{ij} - \hat{Y}_{ij}$, where $\hat{Y}_{ij}$ includes both fixed effects and random intercepts:
+
+```{r}
+LMM1$residuals
+```
+
+## (c) Model with interaction and likelihood ratio test
+
+**Fit a mixed effects model with intercepts for different subjects
+(gender, attitude and their interaction being the fixed effects). Use
+likelihood ratio test to compare this model with the model in part (b)
+to determine whether the interaction term is significantly associated
+with pitch.**
+
+For a valid likelihood ratio test comparing models with different fixed
+effects, both models must be fit using maximum likelihood (ML), not
+REML (Lecture 17, slide 20).
+
+```{r}
+# Refit both models with ML
+LMM1.ml <- lme(frequency ~ gender + attitude, random = ~ 1 | subject,
+               data = pitch, method = "ML")
+LMM2.ml <- lme(frequency ~ gender * attitude, random = ~ 1 | subject,
+               data = pitch, method = "ML")
+summary(LMM2.ml)
+```
+
+```{r}
+lrt_result <- anova(LMM1.ml, LMM2.ml)
+lrt_result
+```
+
+**Hypotheses:**
+
+- $H_0$: $\beta_3 = 0$ (no gender-by-attitude interaction)
+- $H_1$: $\beta_3 \neq 0$
+
+The likelihood ratio test statistic is `r round(lrt_result$L.Ratio[2], 4)` with `r lrt_result$df[2] - lrt_result$df[1]` degree of freedom and a p-value of `r round(lrt_result$"p-value"[2], 4)`. Based on the p-value from the test, the interaction between gender and attitude is
+not statistically significant at $\alpha = 0.05$, indicating that the
+effect of attitude on pitch does not differ significantly between
+genders.
+
+## (d) Crossed random effects model
+
+**Write out the mixed effects model with random intercepts for both
+subjects and scenarios (gender and attitude being the fixed effects).
+Fit the model using `lmer` in the `lme4` package. Write out the
+covariance matrix for a subject $Y_i$. What is the interpretation of
+the coefficient for the fixed effect term attitude?**
+
+### Model specification
+
+$$Y_{ijk} = \beta_0 + \beta_1 \cdot \text{gender}_i + \beta_2 \cdot \text{attitude}_{k} + b_i + c_j + \epsilon_{ijk},$$
+
+where:
+
+- $i = 1, \ldots, 6$ indexes subjects, $j = 1, \ldots, 7$ indexes
+  scenarios, $k$ indexes attitude level,
+- $b_i \sim N(0, \sigma_b^2)$ is the random intercept for subject $i$,
+- $c_j \sim N(0, \sigma_c^2)$ is the random intercept for scenario $j$,
+- $\epsilon_{ijk} \sim N(0, \sigma^2)$ is the residual error,
+- $b_i$, $c_j$, and $\epsilon_{ijk}$ are mutually independent.
+
+### Model fitting
+
+```{r}
+LMM3 <- lmer(frequency ~ gender + attitude + (1 | subject) + (1 | scenario),
+             data = pitch)
+summary(LMM3)
+```
+
+### Covariance matrix for $Y_i$
+
+For subject $i$, $Y_i$ is a $14 \times 1$ vector (7 scenarios $\times$
+2 attitudes). The covariance structure now depends on whether two
+observations share the same scenario:
+
+- **Diagonal entries:** $\text{Var}(Y_{ijk}) = \sigma_b^2 + \sigma_c^2 + \sigma^2$.
+- **Off-diagonal, same scenario** (same $j$, different attitude):
+  $\text{Cov}(Y_{ijk}, Y_{ijk'}) = \sigma_b^2 + \sigma_c^2$ (both
+  random effects shared).
+- **Off-diagonal, different scenario** (different $j$, same subject):
+  $\text{Cov}(Y_{ijk}, Y_{ij'k'}) = \sigma_b^2$ (only subject random
+  effect shared).
+
+```{r}
+vc <- as.data.frame(VarCorr(LMM3))
+sigma_b2 <- vc$vcov[vc$grp == "subject"]
+sigma_c2 <- vc$vcov[vc$grp == "scenario"]
+sigma_e2 <- vc$vcov[vc$grp == "Residual"]
+cat("sigma_b^2 (subject):", round(sigma_b2, 2), "\n")
+cat("sigma_c^2 (scenario):", round(sigma_c2, 2), "\n")
+cat("sigma^2 (residual):", round(sigma_e2, 2), "\n")
+cat("\nDiagonal entries:", round(sigma_b2 + sigma_c2 + sigma_e2, 2), "\n")
+cat("Off-diagonal (same scenario):", round(sigma_b2 + sigma_c2, 2), "\n")
+cat("Off-diagonal (different scenario):", round(sigma_b2, 2), "\n")
+```
+
+If we order the observations within subject $i$ by scenario
+(scenario 1: pol, inf; scenario 2: pol, inf; $\ldots$; scenario 7: pol,
+inf), the $14 \times 14$ covariance matrix has a block structure. Each
+$2 \times 2$ diagonal block (within a scenario) has diagonal
+$\sigma_b^2 + \sigma_c^2 + \sigma^2$ and off-diagonal
+$\sigma_b^2 + \sigma_c^2$. All entries in off-diagonal blocks (between
+different scenarios) equal $\sigma_b^2$.
+
+### Interpretation of the attitude coefficient
+
+```{r}
+fixef(LMM3)["attitudepol"]
+```
+
+The coefficient for attitude (polite vs. informal as reference) has a
+population-average (marginal) interpretation: holding gender constant,
+the mean pitch is estimated to change by this amount (in Hz) when
+switching from the informal register to the polite register, averaged
+across all subjects and scenarios. A negative value indicates that, on
+average, speakers use a lower pitch in polite settings compared to
+informal settings.

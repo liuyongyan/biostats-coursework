@@ -1,0 +1,247 @@
+---
+title: "P8131 Homework 6"
+author: "Yongyan Liu (yl6107)"
+date: "2026-04-06"
+output:
+  pdf_document:
+    latex_engine: xelatex
+header-includes:
+  - \usepackage{amsmath}
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(nlme)
+```
+
+# Problem 1
+
+**Suppose we have the following statistical model:
+$Y_{ij} = \mu + b_i + e_{ij}$, where $i = 1, \ldots, m$ and
+$j = 1, \ldots, n$, $b_i \sim N(0, \sigma_b^2)$,
+$e_{ij} \sim N(0, \sigma_e^2)$, $b_i$ and $e_{ij}$ are statistically
+independent for each $i$ and $j$, and $e_{ij}$ and $e_{ik}$ are
+statistically independent for any two values $j, k = 1, \ldots, n$ and
+$j \neq k$. Find the variance of $Y_{ij}$ and the covariance and
+correlation between any two values $Y_{ij}$ and $Y_{ik}$, $j \neq k$.
+Which one of the popular covariance patterns does this correspond to?**
+
+## Variance of $Y_{ij}$
+
+Since $\mu$ is a constant, it contributes zero variance. By the
+independence of $b_i$ and $e_{ij}$:
+
+$$\text{Var}(Y_{ij}) = \text{Var}(\mu + b_i + e_{ij}) = \text{Var}(b_i + e_{ij}) = \text{Var}(b_i) + \text{Var}(e_{ij}) = \sigma_b^2 + \sigma_e^2.$$
+
+## Covariance between $Y_{ij}$ and $Y_{ik}$, $j \neq k$
+
+$$\text{Cov}(Y_{ij}, Y_{ik}) = \text{Cov}(b_i + e_{ij},\; b_i + e_{ik}).$$
+$$= \text{Cov}(b_i, b_i) + \text{Cov}(b_i, e_{ik}) + \text{Cov}(e_{ij}, b_i) + \text{Cov}(e_{ij}, e_{ik}).$$
+
+By mutual independence: $\text{Cov}(b_i, e_{ik}) = 0$,
+$\text{Cov}(e_{ij}, b_i) = 0$, and $\text{Cov}(e_{ij}, e_{ik}) = 0$
+(since $j \neq k$). Therefore:
+
+$$\text{Cov}(Y_{ij}, Y_{ik}) = \text{Var}(b_i) = \sigma_b^2.$$
+
+## Correlation between $Y_{ij}$ and $Y_{ik}$, $j \neq k$
+
+Since $\text{Var}(Y_{ij}) = \text{Var}(Y_{ik}) = \sigma_b^2 + \sigma_e^2$
+for all $j$:
+
+$$\text{Corr}(Y_{ij}, Y_{ik}) = \frac{\text{Cov}(Y_{ij}, Y_{ik})}{\sqrt{\text{Var}(Y_{ij})\,\text{Var}(Y_{ik})}} = \frac{\sigma_b^2}{\sigma_b^2 + \sigma_e^2}.$$
+
+## Covariance pattern
+
+The correlation $\rho = \sigma_b^2 / (\sigma_b^2 + \sigma_e^2)$ is
+constant for all pairs $j \neq k$. The covariance matrix has the form:
+
+$$\text{Cov}(\mathbf{Y}_i) = (\sigma_b^2 + \sigma_e^2)\begin{pmatrix} 1 & \rho & \cdots & \rho \\ \rho & 1 & \cdots & \rho \\ \vdots & \vdots & \ddots & \vdots \\ \rho & \rho & \cdots & 1 \end{pmatrix}.$$
+
+This is the **compound symmetry** (also called exchangeable) covariance
+pattern.
+
+# Problem 2
+
+**A study was conducted involving 27 children, 16 boys and 11 girls. On
+each child, the distance (mm) from the center of the pituitary to the
+pterygomaxillary fissure was made at ages 8, 10, 12, and 14. The goal
+was to study how distance is affected by age and gender.**
+
+```{r}
+dental <- read.table("HW6-dental.txt", header = TRUE)
+dental$Gender <- factor(dental$Gender, levels = c(0, 1),
+                        labels = c("Girl", "Boy"))
+```
+
+## (a) Spaghetti plot
+
+```{r, fig.width=6, fig.height=4}
+ggplot(dental, aes(x = Age, y = Distance,
+                   group = Child, color = Gender)) +
+  geom_line() +
+  geom_point(size = 1) +
+  labs(x = "Age (years)", y = "Distance (mm)",
+       title = "Spaghetti Plot of Dental Distance by Age and Gender",
+       color = "Gender") +
+  theme_bw()
+```
+
+Distance generally increases with age for both boys and girls. Boys
+tend to have slightly larger distances and somewhat steeper growth
+trajectories than girls. There is considerable between-subject
+variability within each gender group.
+
+## (b) Marginal form of the mixed model
+
+**Assume the model:**
+$$Y_{ij} = \beta_0 + a_i + b_0 \cdot I(\text{sex}_i = 0) + b_1 \cdot I(\text{sex}_i = 1) + \beta_1 \cdot \text{age}_{ij} + e_{ij},$$
+**where $a_i \sim N(0, \sigma_a^2)$, $b_k \sim N(0, \sigma_b^2)$
+($k = 0, 1$) are random coefficients, and
+$e_{ij} \sim N(0, \sigma_e^2)$; all mutually independent.**
+
+### Marginal mean
+
+Taking the expectation of both sides:
+
+$$E(Y_{ij}) = \beta_0 + E(a_i) + E(b_0) \cdot I(\text{sex}_i = 0) + E(b_1) \cdot I(\text{sex}_i = 1) + \beta_1 \cdot \text{age}_{ij} + E(e_{ij}).$$
+
+Since $a_i$, $b_0$, $b_1$, and $e_{ij}$ are all zero-mean random
+variables:
+
+$$E(Y_{ij}) = \beta_0 + \beta_1 \cdot \text{age}_{ij}.$$
+
+### Marginal variance
+
+For a given subject $i$, exactly one of $I(\text{sex}_i = 0)$ or
+$I(\text{sex}_i = 1)$ equals 1. The random components contributing to
+$Y_{ij}$ are $a_i$, one of $b_0$ or $b_1$ (depending on sex), and
+$e_{ij}$. By mutual independence:
+
+- If $\text{sex}_i = 0$:
+  $\text{Var}(Y_{ij}) = \text{Var}(a_i) + \text{Var}(b_0) + \text{Var}(e_{ij}) = \sigma_a^2 + \sigma_b^2 + \sigma_e^2.$
+
+- If $\text{sex}_i = 1$:
+  $\text{Var}(Y_{ij}) = \text{Var}(a_i) + \text{Var}(b_1) + \text{Var}(e_{ij}) = \sigma_a^2 + \sigma_b^2 + \sigma_e^2.$
+
+Since $b_0$ and $b_1$ share the same variance $\sigma_b^2$:
+
+$$\text{Var}(Y_{ij}) = \sigma_a^2 + \sigma_b^2 + \sigma_e^2$$
+
+for all subjects regardless of gender.
+
+### Marginal covariance
+
+For two observations $j \neq k$ on the same subject $i$, stripping
+the constant terms (which do not contribute to covariance) and noting
+that for a given subject exactly one of $b_0$ or $b_1$ applies
+(denote it $b_{\text{sex}_i}$):
+
+$$\text{Cov}(Y_{ij}, Y_{ik}) = \text{Cov}(a_i + b_{\text{sex}_i} + e_{ij},\; a_i + b_{\text{sex}_i} + e_{ik}).$$
+
+By mutual independence of $a_i$, $b_{\text{sex}_i}$, $e_{ij}$, and
+$e_{ik}$: all cross-terms vanish. Therefore:
+
+$$\text{Cov}(Y_{ij}, Y_{ik}) = \text{Var}(a_i) + \text{Var}(b_{\text{sex}_i}) = \sigma_a^2 + \sigma_b^2, \quad j \neq k.$$
+
+The marginal covariance matrix is therefore:
+
+$$\text{Cov}(\mathbf{Y}_i) = \begin{pmatrix} \sigma_a^2 + \sigma_b^2 + \sigma_e^2 & \sigma_a^2 + \sigma_b^2 & \sigma_a^2 + \sigma_b^2 & \sigma_a^2 + \sigma_b^2 \\ \sigma_a^2 + \sigma_b^2 & \sigma_a^2 + \sigma_b^2 + \sigma_e^2 & \sigma_a^2 + \sigma_b^2 & \sigma_a^2 + \sigma_b^2 \\ \sigma_a^2 + \sigma_b^2 & \sigma_a^2 + \sigma_b^2 & \sigma_a^2 + \sigma_b^2 + \sigma_e^2 & \sigma_a^2 + \sigma_b^2 \\ \sigma_a^2 + \sigma_b^2 & \sigma_a^2 + \sigma_b^2 & \sigma_a^2 + \sigma_b^2 & \sigma_a^2 + \sigma_b^2 + \sigma_e^2 \end{pmatrix},$$
+
+which is a compound symmetry structure with correlation
+$\rho = (\sigma_a^2 + \sigma_b^2) / (\sigma_a^2 + \sigma_b^2 + \sigma_e^2)$.
+
+## (c) Fit marginal models with three covariance structures
+
+**Marginal model:**
+$E(Y_{ij}) = \beta_0 + \beta_1 \cdot \text{sex}_i + \beta_2 \cdot \text{age}_{ij}$,
+$\text{Var}(\mathbf{Y}_i) = \Sigma$.
+
+```{r}
+# Recode Gender as numeric for the marginal model
+dental$sex <- ifelse(dental$Gender == "Boy", 1, 0)
+```
+
+### (i) Compound symmetry
+
+```{r}
+fit_cs <- gls(Distance ~ sex + Age,
+              correlation = corCompSymm(form = ~ 1 | Child),
+              data = dental, method = "REML")
+summary(fit_cs)
+```
+
+### (ii) Exponential
+
+```{r}
+fit_exp <- gls(Distance ~ sex + Age,
+               correlation = corExp(form = ~ 1 | Child),
+               data = dental, method = "REML")
+summary(fit_exp)
+```
+
+### (iii) Autoregressive AR(1)
+
+```{r}
+fit_ar1 <- gls(Distance ~ sex + Age,
+               correlation = corAR1(form = ~ 1 | Child),
+               data = dental, method = "REML")
+summary(fit_ar1)
+```
+
+### Comparison of coefficient estimates
+
+```{r}
+coef_table <- data.frame(
+  CS   = round(coef(fit_cs), 4),
+  Exp  = round(coef(fit_exp), 4),
+  AR1  = round(coef(fit_ar1), 4)
+)
+rownames(coef_table) <- c("Intercept (beta_0)", "Sex (beta_1)",
+                           "Age (beta_2)")
+knitr::kable(coef_table, caption = "Fixed effect estimates across models")
+```
+
+The fixed effect estimates are very similar across all three covariance
+structures.
+
+### Comparison of covariance estimates
+
+```{r}
+# Compound symmetry
+cat("=== Compound Symmetry ===\n")
+cat("Residual sigma:", fit_cs$sigma, "\n")
+cat("Rho:", coef(fit_cs$modelStruct$corStruct, unconstrained = FALSE),
+    "\n")
+cs_cor <- corMatrix(fit_cs$modelStruct$corStruct)[[1]]
+cat("Correlation matrix:\n")
+print(round(cs_cor, 4))
+
+cat("\n=== Exponential ===\n")
+cat("Residual sigma:", fit_exp$sigma, "\n")
+cat("Range:", coef(fit_exp$modelStruct$corStruct, unconstrained = FALSE),
+    "\n")
+exp_cor <- corMatrix(fit_exp$modelStruct$corStruct)[[1]]
+cat("Correlation matrix:\n")
+print(round(exp_cor, 4))
+
+cat("\n=== AR(1) ===\n")
+cat("Residual sigma:", fit_ar1$sigma, "\n")
+cat("Phi:", coef(fit_ar1$modelStruct$corStruct, unconstrained = FALSE),
+    "\n")
+ar1_cor <- corMatrix(fit_ar1$modelStruct$corStruct)[[1]]
+cat("Correlation matrix:\n")
+print(round(ar1_cor, 4))
+```
+
+**Summary of covariance parameters:**
+
+For this dataset, the time points are equally spaced (ages 8, 10, 12,
+14 with spacing 2), so the AR(1) and exponential models can produce identical correlation structures. In contrast,
+compound symmetry assumes the same correlation regardless of time
+separation, which may be overly restrictive if correlations decay with
+increasing time lag.

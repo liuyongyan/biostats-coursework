@@ -1,0 +1,103 @@
+---
+title: "P8139 Homework 3"
+author: "Yongyan Liu (yl6107)"
+date: "2026-03-31"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    extra_dependencies: ["amsmath", "amssymb", "amsthm"]
+header-includes:
+  - \usepackage{bm}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# Problem 1
+
+**Read in the math/chem/bio scores data for PCA practice and answer the following questions.**
+
+```{r pca-setup}
+mydata = read.table(file = "PCA_data.csv", header = TRUE, row.names = 1, sep = ",")
+mydata.pca = prcomp(mydata, retx = TRUE, center = TRUE, scale = TRUE)
+
+sd = mydata.pca$sdev
+loadings = mydata.pca$rotation
+rownames(loadings) = colnames(mydata)
+scores = mydata.pca$x
+```
+
+(a) Calculate PCA scores using loadings and original math/chem/bio scores and compare to output PCA scores from the R package prcomp.
+
+```{r q1a}
+# Standardize the original data
+Z = scale(mydata, center = mydata.pca$center, scale = mydata.pca$scale)
+
+# Compute PCA scores manually
+manual_scores = Z %*% loadings
+manual_scores
+
+cat("\nMax absolute difference:", max(abs(manual_scores - scores)), "\n")
+```
+
+The manually computed scores are identical to the `prcomp` output, confirming that PCA scores = standardized data $\times$ loadings.
+
+(b) Calculate percent variance explained of each component.
+
+The variance explained by each PC equals its eigenvalue (square of sdev), and the percent is the eigenvalue divided by total variance.
+
+```{r q1b}
+eigenvalues = sd^2
+pct_var = eigenvalues / sum(eigenvalues) * 100
+
+var_table = data.frame(
+  Component = paste0("PC", 1:length(sd)),
+  Eigenvalue = round(eigenvalues, 4),
+  Pct_Variance = round(pct_var, 2),
+  Cumulative_Pct = round(cumsum(pct_var), 2)
+)
+print(var_table)
+```
+
+(c) Plot i) PC1 vs PC2, ii) PC1 vs PC3, and iii) PC2 vs PC3.
+
+```{r q1c, fig.width=12, fig.height=4}
+par(mfrow = c(1, 3))
+
+# i) PC1 vs PC2
+plot(scores[, 1], scores[, 2], xlab = "PC1", ylab = "PC2", main = "PC1 vs PC2",
+     xlim = range(scores[, 1:2]), ylim = range(scores[, 1:2]))
+text(scores[, 1], scores[, 2], rownames(scores), col = "blue", cex = 0.7, pos = 3)
+
+# ii) PC1 vs PC3
+plot(scores[, 1], scores[, 3], xlab = "PC1", ylab = "PC3", main = "PC1 vs PC3",
+     xlim = range(scores[, c(1,3)]), ylim = range(scores[, c(1,3)]))
+text(scores[, 1], scores[, 3], rownames(scores), col = "blue", cex = 0.7, pos = 3)
+
+# iii) PC2 vs PC3
+plot(scores[, 2], scores[, 3], xlab = "PC2", ylab = "PC3", main = "PC2 vs PC3",
+     xlim = range(scores[, 2:3]), ylim = range(scores[, 2:3]))
+text(scores[, 2], scores[, 3], rownames(scores), col = "blue", cex = 0.7, pos = 3)
+```
+
+The PC1 vs PC2 plot clearly separates three clusters of students: those strong in math only (students 1--10), those strong in bio/chem (students 11--20), and those strong in all subjects (students 21--30). PC1 captures overall academic ability, while PC2 distinguishes math-oriented vs. bio/chem-oriented students.
+
+
+# Problem 2
+
+Spielman et al. (1993) introduced the **Transmission Disequilibrium Test (TDT)**, a family-based method for testing linkage between a marker locus and a disease locus. The key innovation of the TDT is that it provides a valid test for *linkage* that is not confounded by population stratification, unlike conventional population-based association tests.
+
+**Background.** A population association between IDDM and "class 1" alleles of the 5'FP on chromosome 11p had been consistently observed, but earlier ASP-based linkage studies failed to find evidence for linkage. Since association alone cannot establish linkage (it may reflect population stratification), the authors developed a family-based test that directly tests for linkage.
+
+**The TDT Method.** The TDT focuses on **heterozygous parents** ($M_1M_2$) who have at least one affected offspring. It compares the number of times the associated marker allele ($M_1$) is transmitted ($b$) versus not transmitted ($c$) to affected offspring. The test statistic is McNemar's $\chi^2$:
+$$\chi^2_{td} = \frac{(b - c)^2}{b + c}$$
+which follows a $\chi^2$ distribution with 1 df under the null hypothesis of no linkage ($\theta = 1/2$). The authors demonstrated that the conventional $\chi^2$ comparing transmitted vs. nontransmitted allele frequencies (AFBAC method) is only valid for testing no association ($\delta = 0$), not for testing no linkage. The TDT is valid because, as the paper states, "only the data from heterozygous $M_1M_2$ parents should be used in the test," and the statistic depends on both linkage and linkage disequilibrium ($\delta > 0$). This design is inherently robust to population stratification because each heterozygous parent serves as their own control: under $H_0$, the probability of transmitting either allele is exactly $1/2$ regardless of population allele frequencies, so population-level differences in allele frequency do not enter the test.
+
+**Application to IDDM.** Applied to GAW5 data, the TDT yielded $\chi^2_{td} = 8.26$ ($p = .004$), providing strong evidence for linkage, whereas haplotype-sharing analysis of the same data found none ($\chi^2_{hs} = 0.20$). Note that the TDT requires LD to detect linkage --- *"even very close linkage will not be detected by the TDT if $\delta = 0$"* --- so it is best used when a population association has already been found.
+
+**Relevant Quotes.** Several passages clarify concepts from class:
+
+- On population stratification: *"Population association between a disease and a genetic marker can arise as an artifact of population structure, even in the absence of linkage."*
+- On LD: The paper parameterizes LD as $\delta = \text{freq}(M_1 D_1) - mp$, and Table 3 shows the TDT depends on both $\delta$ and $\theta$, formalizing LD as a population-level concept distinct from within-family linkage.
+- On samples for linkage studies: *"The distribution of 5'FP alleles in 33 affected sib pairs (ASPs) with IDDM... failed entirely to provide evidence for linkage."* This contrasts ASP studies (multiplex families) with the TDT (simplex families with heterozygous parents).

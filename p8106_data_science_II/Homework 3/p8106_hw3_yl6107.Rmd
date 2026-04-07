@@ -17,16 +17,6 @@ header-includes:
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
-In this problem, you will develop a model to predict whether a given car gets high or low gas mileage based on the dataset "auto.csv". The dataset contains 392 observations. The response variable is "mpg\_cat", which indicates whether the miles per gallon of a car is high or low. The predictors include both continuous and categorical variables:
-
-- cylinders: Number of cylinders between 4 and 8
-- displacement: Engine displacement (cu. inches)
-- horsepower: Engine horsepower
-- weight: Vehicle weight (lbs.)
-- acceleration: Time to accelerate from 0 to 60 mph (sec.)
-- year: Model year (modulo 100)
-- origin: Origin of car (1. American, 2. European, 3. Japanese)
-
 Split the dataset into two parts: training data (70%) and test data (30%).
 
 ```{r}
@@ -38,6 +28,7 @@ library(MASS)
 library(pROC)
 library(pdp)
 library(vip)
+library(corrplot)
 
 auto <- read.csv("auto.csv") %>%
   mutate(mpg_cat = factor(mpg_cat, levels = c("low", "high")),
@@ -55,8 +46,6 @@ ctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 5,
 
 # (a) Logistic Regression
 
-**(a)** Perform logistic regression analysis. Are there redundant predictors in your model? If so, identify them. If there are none, please provide an explanation.
-
 ```{r}
 glm.fit <- glm(mpg_cat ~ ., data = train_data, family = binomial(link = "logit"))
 summary(glm.fit)
@@ -72,17 +61,17 @@ model.glm <- train(mpg_cat ~ .,
                    trControl = ctrl)
 ```
 
-Several predictors are not statistically significant (p-value > 0.05), including `cylinders`, `displacement`, `horsepower`, and `acceleration`. These are likely redundant due to high multicollinearity among engine-related variables (e.g., displacement and horsepower are strongly correlated with cylinders and weight). We can verify this via VIF:
+We examine the correlation structure among numeric predictors:
 
-```{r}
-car::vif(glm.fit)
+```{r, fig.height=5, fig.width=6}
+num_vars <- train_data[, sapply(train_data, is.numeric)]
+corrplot(cor(num_vars), method = "circle", type = "full", addCoef.col = "black",
+         tl.cex = 0.8, number.cex = 0.7)
 ```
 
-Predictors with high VIF values (e.g., > 5) confirm multicollinearity. Although these predictors are redundant in the presence of other correlated variables, they may still be collectively informative, so we retain all predictors for comparison purposes.
+Yes, there are redundant predictors. The correlation plot shows that `cylinders`, `displacement`, `horsepower`, and `weight` are highly correlated with one another. In the logistic regression summary, `cylinders`, `displacement`, `horsepower`, and `acceleration` have large p-values (> 0.05), indicating they do not contribute significant additional information beyond the other predictors. These variables are redundant due to multicollinearity — they carry overlapping information about engine size and vehicle performance.
 
 # (b) MARS Model
-
-**(b)** Train a multivariate adaptive regression spline (MARS) model. Does the MARS model improve prediction performance compared to logistic regression?
 
 ```{r, fig.height=4, fig.width=6}
 mars_grid <- expand.grid(degree = 1:3, nprune = 2:20)
@@ -112,38 +101,41 @@ summary(res_ab)
 bwplot(res_ab, metric = "ROC")
 ```
 
-Based on the cross-validation ROC comparison, the MARS model achieves a comparable (or slightly higher) AUC relative to logistic regression. MARS can capture nonlinear relationships and interactions automatically, which may provide marginal improvement in prediction performance.
+```{r}
+# Compare test set performance
+glm.pred.b <- predict(model.glm, newdata = test_data, type = "prob")[, 2]
+mars.pred.b <- predict(model.mars, newdata = test_data, type = "prob")[, 2]
+roc.glm.b <- roc(test_data$mpg_cat, glm.pred.b)
+roc.mars.b <- roc(test_data$mpg_cat, mars.pred.b)
+auc.glm.b <- roc.glm.b$auc[1]
+auc.mars.b <- roc.mars.b$auc[1]
+cat("Test AUC - GLM:", round(auc.glm.b, 4), "\n")
+cat("Test AUC - MARS:", round(auc.mars.b, 4), "\n")
+```
+
+Based on both the cross-validation and test set AUC, the MARS model achieves a comparable (or slightly higher) AUC relative to logistic regression.
 
 # (c) Linear Discriminant Analysis
 
-**(c)** Perform linear discriminant analysis using the training data. Plot the linear discriminant(s).
-
 ```{r}
-lda.fit <- lda(mpg_cat ~ ., data = train_data)
-lda.fit
-```
-
-Since there are $K = 2$ classes, there is only one linear discriminant. We plot the histogram of the discriminant scores for each class:
-
-```{r, fig.height=4, fig.width=6}
-plot(lda.fit)
-```
-
-```{r}
-# Fit LDA using caret for model comparison
 set.seed(2026)
 model.lda <- train(mpg_cat ~ .,
                    data = train_data,
                    method = "lda",
                    metric = "ROC",
                    trControl = ctrl)
+model.lda$finalModel
 ```
 
-The plot shows the distribution of the linear discriminant scores $Z = \mathbf{a}^T \mathbf{x}$ for each class. The two groups are well separated, indicating that the linear discriminant effectively distinguishes between high and low mpg.
+Since there are $K = 2$ classes, there is only one linear discriminant. We plot the histogram of the discriminant scores for each class:
+
+```{r, fig.height=6, fig.width=6}
+x_train <- model.matrix(mpg_cat ~ ., data = train_data)[, -1]
+lda.scores <- predict(model.lda$finalModel, x_train)$x[, 1]
+ldahist(lda.scores, g = train_data$mpg_cat)
+```
 
 # (d) Model Comparison and ROC Curve
-
-**(d)** Which model will you choose to predict the response variable? Plot its ROC curve and report the AUC.
 
 ```{r}
 # Compare all three models via CV
@@ -173,26 +165,30 @@ ggroc(list(roc.glm, roc.mars, roc.lda), legacy.axes = TRUE) +
   theme_bw()
 ```
 
-Based on both cross-validation and test AUC, we select the model with the highest AUC. The chosen model's test AUC is reported in the legend above.
+```{r}
+cat("Selected model:", modelNames[which.max(auc)],
+    "with test AUC:", round(max(auc), 4), "\n")
+
+# Number of original predictors used by each model
+n_glm <- ncol(model.glm$finalModel$model) - 1
+n_mars <- length(evimp(model.mars$finalModel)[, 1])
+n_lda <- nrow(model.lda$finalModel$scaling)
+cat("\nNumber of predictors used:\n")
+cat("GLM:", n_glm, "\nMARS:", n_mars, "\nLDA:", n_lda, "\n")
+```
+
+The three models have comparable test AUC values, but differ in complexity. GLM and LDA use all predictors, while MARS performs automatic variable selection and retains fewer terms. Since the MARS model achieves the highest test AUC with a simpler model structure, it is preferred on the grounds of both predictive accuracy and parsimony. Therefore, we select MARS as our final model.
 
 # (e) Confusion Matrix
 
-**(e)** Select a probability threshold to classify observations and compute the confusion matrix for the final model you choose. Briefly interpret what the confusion matrix indicates about your model's performance.
+We use Youden's J statistic to select the optimal classification threshold, which maximizes the sum of sensitivity and specificity. 
 
 ```{r}
-# Use the best-performing model based on test AUC
-best_idx <- which.max(auc)
-best_pred_prob <- list(glm.pred, mars.pred, lda.pred)[[best_idx]]
-best_roc <- list(roc.glm, roc.mars, roc.lda)[[best_idx]]
-cat("Selected model:", modelNames[best_idx], "\n")
-
-# Use the threshold that maximizes sensitivity + specificity (Youden's J)
-threshold <- coords(best_roc, "best", ret = "threshold",
+threshold <- coords(roc.mars, "best", ret = "threshold",
                     best.method = "youden")$threshold
 cat("Optimal threshold (Youden's J):", round(threshold, 3), "\n")
 
-# Classify using the selected threshold
-test.pred <- factor(ifelse(best_pred_prob > threshold, "high", "low"),
+test.pred <- factor(ifelse(mars.pred > threshold, "high", "low"),
                     levels = c("low", "high"))
 
 confusionMatrix(data = test.pred,
@@ -200,4 +196,4 @@ confusionMatrix(data = test.pred,
                 positive = "high")
 ```
 
-The confusion matrix shows the model's classification performance at the selected threshold. The diagonal entries represent correct predictions (true negatives and true positives), while off-diagonal entries represent misclassifications. The high accuracy, sensitivity, and specificity indicate that the model effectively discriminates between cars with high and low gas mileage. The balanced accuracy suggests the model performs well for both classes without being biased toward the majority class.
+The confusion matrix indicates that our selected MARS model has strong predictive power. By applying the Youden-derived threshold, we achieved a high rate of correct classifications for both 'high' and 'low' mpg cars. The minimal number of misclassifications suggests the model generalizes well to new data, and the balanced accuracy proves it is reliable across both categories.
