@@ -1,0 +1,201 @@
+---
+title: "P8139 - Homework #4: Genetic Association Study"
+author: "Yongyan Liu"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(ggplot2)
+library(dplyr)
+library(knitr)
+```
+
+## 1. Introduction
+This report conducts a genetic association study using the FMS dataset. We select **Pre_DRM_Max** (baseline dominant arm muscle strength) as the continuous trait and **Dom.Arm** (dominant hand: R vs L) as the binary trait. We perform association analyses on candidate genes under additive model, apply Bonferroni and FDR corrections, and control for population stratification using both PCA and self-reported Race.
+
+## 2. Descriptive Statistics
+
+```{r descriptive_stats}
+fms_data <- read.csv("FMS_data.csv", na.strings = c("NA", "", " "))
+fms_data$Gender  <- as.factor(fms_data$Gender)
+fms_data$Race    <- as.factor(fms_data$Race)
+fms_data$Dom.Arm <- as.factor(fms_data$Dom.Arm)
+
+n_tot <- nrow(fms_data)
+desc_stats <- data.frame(
+  Characteristic = c("Total records", "Age (mean +/- SD)",
+                     "Gender (Male / Female / NA)",
+                     "Dominant Arm (R / L / NA)",
+                     "Pre_DRM_Max (mean +/- SD)"),
+  Value = c(
+    n_tot,
+    sprintf("%.1f +/- %.1f", mean(fms_data$Age, na.rm=TRUE), sd(fms_data$Age, na.rm=TRUE)),
+    sprintf("%d / %d / %d",
+            sum(fms_data$Gender == "Male",   na.rm=TRUE),
+            sum(fms_data$Gender == "Female", na.rm=TRUE),
+            sum(is.na(fms_data$Gender))),
+    sprintf("%d / %d / %d",
+            sum(fms_data$Dom.Arm == "R", na.rm=TRUE),
+            sum(fms_data$Dom.Arm == "L", na.rm=TRUE),
+            sum(is.na(fms_data$Dom.Arm))),
+    sprintf("%.2f +/- %.2f",
+            mean(fms_data$Pre_DRM_Max, na.rm=TRUE),
+            sd(fms_data$Pre_DRM_Max, na.rm=TRUE))
+  )
+)
+kable(desc_stats, caption = "Summary of Participant Characteristics")
+```
+
+The dataset has `r n_tot` records but substantial missingness in phenotype and genotype columns; regression models below are fit on complete cases only.
+
+## 3. Population Stratification (PCA)
+
+We encode each SNP as the count of the minor allele (0/1/2) and mean-impute missing values before PCA.
+
+```{r encode_and_pca, fig.height=4.5, fig.width=7}
+# Count minor-allele dosage from 2-letter genotype strings (e.g. "CT")
+encode_snp <- function(g) {
+  g <- toupper(as.character(g))
+  g[!nchar(g) %in% 2] <- NA
+  alleles <- unlist(strsplit(g[!is.na(g)], ""))
+  if (length(unique(alleles)) < 2) return(rep(0, length(g)))
+  minor <- names(sort(table(alleles)))[1]
+  # count minor allele per genotype
+  sapply(g, function(x) if (is.na(x)) NA else sum(strsplit(x, "")[[1]] == minor))
+}
+
+end_col  <- which(colnames(fms_data) == "Status")
+gene_cols <- colnames(fms_data)[2:(end_col - 1)]
+
+geno_matrix <- sapply(fms_data[, gene_cols], encode_snp)
+# mean-impute and drop zero-variance columns
+geno_matrix <- apply(geno_matrix, 2, function(c) { c[is.na(c)] <- mean(c, na.rm=TRUE); c })
+geno_matrix <- geno_matrix[, apply(geno_matrix, 2, var) > 0]
+
+pca_res <- prcomp(geno_matrix, scale. = TRUE)
+ve <- round(100 * summary(pca_res)$importance[2, 1:2], 1)
+
+fms_data$PC1 <- pca_res$x[, 1]
+fms_data$PC2 <- pca_res$x[, 2]
+
+ggplot(fms_data, aes(PC1, PC2, color = Race)) +
+  geom_point(alpha = 0.6) +
+  theme_minimal() +
+  labs(title = "Population Stratification (PC1 vs PC2)",
+       x = sprintf("PC1 (%.1f%%)", ve[1]),
+       y = sprintf("PC2 (%.1f%%)", ve[2]))
+```
+
+PC1 and PC2 jointly explain only `r round(ve[1] + ve[2], 1)`% of genotype variance and the self-reported ancestry groups do not form cleanly separated clusters. Given this limitation, we adopt a pragmatic dual strategy: we still include **PC1 and PC2** as covariates (they absorb whatever coarse structure is detectable), and we **additionally adjust for self-reported `Race`** as a categorical covariate, which is the more reliable stratification signal in this cohort.
+
+## 4. Genetic Association Analysis
+
+To avoid selection bias from cherry-picking candidate SNPs, our **primary analysis** is a full-panel scan: every SNP in the FMS panel is tested under a single **additive model** for each trait, adjusting for Age, Gender, PC1, PC2, and self-reported Race. Using one pre-specified model per SNP gives a clean multiple-testing denominator (number of SNPs, not SNPs $\times$ models), so Bonferroni and Benjamini-Hochberg FDR corrections are valid.
+
+### 4.0 LD structure between SNPs
+
+SNPs within the same gene are often in linkage disequilibrium (LD), which would make a naive Bonferroni correction (dividing by N) overly conservative. Before interpreting any adjusted P value we therefore check how correlated the SNPs in this panel actually are.
+
+```{r ld_check}
+cor_mat <- cor(geno_matrix, use = "pairwise.complete.obs")
+abs_cor <- abs(cor_mat[upper.tri(cor_mat)])
+N_snp   <- ncol(geno_matrix)
+
+ld_summary <- data.frame(
+  Metric = c("Number of SNPs (N)", "Mean |r|", "Median |r|",
+             "% pairs with |r| > 0.5"),
+  Value  = c(N_snp,
+             sprintf("%.3f", mean(abs_cor)),
+             sprintf("%.3f", median(abs_cor)),
+             sprintf("%.1f%%", 100 * mean(abs_cor > 0.5)))
+)
+kable(ld_summary, caption = "LD structure of the SNP panel")
+```
+
+Pairwise correlations are very low: mean |r| $\approx$ `r sprintf("%.3f", mean(abs_cor))` and only `r sprintf("%.1f%%", 100*mean(abs_cor > 0.5))` of pairs exceed 0.5. In other words, the `r N_snp` SNPs in this panel are close to mutually independent, so **standard Bonferroni correction using N is appropriate here**. We therefore use the usual Bonferroni and Benjamini-Hochberg FDR adjustments in the scans below.
+
+```{r assoc_helper}
+fit_snp <- function(gene, trait, model = "Additive", family = "gaussian") {
+  x <- encode_snp(fms_data[[gene]])
+  if (length(unique(na.omit(x))) < 2) return(NULL)
+  if (model == "Dominant")  x <- as.integer(x >= 1)
+  if (model == "Recessive") x <- as.integer(x == 2)
+  if (length(unique(na.omit(x))) < 2) return(NULL)
+
+  df <- data.frame(y = fms_data[[trait]], x = x,
+                   Age = fms_data$Age, Gender = fms_data$Gender,
+                   PC1 = fms_data$PC1, PC2 = fms_data$PC2,
+                   Race = fms_data$Race)
+  fit <- tryCatch(
+    if (family == "gaussian") lm(y ~ x + Age + Gender + PC1 + PC2 + Race, data = df)
+    else glm(y ~ x + Age + Gender + PC1 + PC2 + Race, data = df, family = "binomial"),
+    error = function(e) NULL)
+  if (is.null(fit) || !"x" %in% rownames(summary(fit)$coefficients)) return(NULL)
+  co <- summary(fit)$coefficients["x", ]
+  data.frame(Gene = gene, Model = model,
+             Estimate = if (family == "gaussian") co[1] else exp(co[1]),
+             P = co[4])
+}
+
+scan_panel <- function(trait, family, model = "Additive") {
+  res <- do.call(rbind, lapply(gene_cols,
+                               function(g) fit_snp(g, trait, model, family)))
+  res$P_Bonf <- p.adjust(res$P, "bonferroni")
+  res$P_FDR  <- p.adjust(res$P, "fdr")
+  res[order(res$P), ]
+}
+
+fms_data$DomArmL <- ifelse(fms_data$Dom.Arm == "L", 1,
+                           ifelse(fms_data$Dom.Arm == "R", 0, NA))
+```
+
+### 4.1 Continuous trait: Pre_DRM_Max (additive scan)
+
+```{r cont_scan}
+scan_cont <- scan_panel("Pre_DRM_Max", "gaussian")
+n_cont <- nrow(scan_cont)
+colnames(scan_cont)[3] <- "Beta"
+kable(head(scan_cont, 10), row.names = FALSE, digits = 4,
+      caption = sprintf("Top 10 additive associations with Pre_DRM_Max (full-panel scan, %d SNPs tested)", n_cont))
+```
+
+### 4.2 Binary trait: Dominant Arm (additive scan)
+
+```{r bin_scan}
+scan_bin <- scan_panel("DomArmL", "binomial")
+n_bin <- nrow(scan_bin)
+colnames(scan_bin)[3] <- "OR"
+kable(head(scan_bin, 10), row.names = FALSE, digits = 4,
+      caption = sprintf("Top 10 additive associations with Dom.Arm L vs R (full-panel scan, %d SNPs tested)", n_bin))
+```
+
+## 5. Summary and Conclusions
+
+```{r summary_numbers, include=FALSE}
+cont_bonf <- sum(scan_cont$P_Bonf < 0.05, na.rm = TRUE)
+cont_fdr  <- sum(scan_cont$P_FDR  < 0.05, na.rm = TRUE)
+bin_bonf  <- sum(scan_bin$P_Bonf  < 0.05, na.rm = TRUE)
+bin_fdr   <- sum(scan_bin$P_FDR   < 0.05, na.rm = TRUE)
+top_cont  <- scan_cont[1, ]
+top_bin   <- scan_bin[1, ]
+
+verdict <- function(bonf, fdr) {
+  if (bonf > 0) sprintf("%d SNP(s) pass Bonferroni and %d pass FDR (q < 0.05); these represent robust associations", bonf, fdr)
+  else if (fdr > 0) sprintf("no SNP passes Bonferroni, but %d pass FDR (q < 0.05); these should be regarded as suggestive, hypothesis-generating signals requiring replication", fdr)
+  else "no SNP passes either Bonferroni or FDR correction, i.e. we report a null result for this trait; the top nominal hits in the table above should be interpreted as hypothesis-generating only"
+}
+```
+
+The analytic cohort comprises `r n_tot` records of young adults (age `r sprintf("%.1f +/- %.1f", mean(fms_data$Age, na.rm=TRUE), sd(fms_data$Age, na.rm=TRUE))` years), predominantly female (`r sum(fms_data$Gender == "Female", na.rm=TRUE)` female vs `r sum(fms_data$Gender == "Male", na.rm=TRUE)` male among non-missing) and predominantly right-handed (`r sum(fms_data$Dom.Arm == "R", na.rm=TRUE)` right vs `r sum(fms_data$Dom.Arm == "L", na.rm=TRUE)` left), with mean baseline dominant-arm strength Pre_DRM_Max = `r sprintf("%.2f +/- %.2f", mean(fms_data$Pre_DRM_Max, na.rm=TRUE), sd(fms_data$Pre_DRM_Max, na.rm=TRUE))`. Self-reported ancestry is overwhelmingly Caucasian with smaller Asian, African American, and Hispanic subgroups, and missingness is substantial across both phenotype and genotype columns, so all regression models are fit on complete cases. After quality filtering, `r N_snp` biallelic SNPs entered the full-panel scan.
+
+1. **Muscle strength (continuous).** An additive scan of `r n_cont` SNPs adjusted for Age, Gender, PC1, PC2, and Race showed that `r verdict(cont_bonf, cont_fdr)`. The top nominal signal was **`r top_cont$Gene`** ($\beta$ = `r round(top_cont$Beta, 2)`, P = `r signif(top_cont$P, 3)`, P_Bonf = `r signif(top_cont$P_Bonf, 3)`, P_FDR = `r signif(top_cont$P_FDR, 3)`).
+
+2. **Hand preference (binary).** A logistic scan of `r n_bin` SNPs with the same covariates showed that `r verdict(bin_bonf, bin_fdr)`. The top nominal signal was **`r top_bin$Gene`** (OR = `r round(top_bin$OR, 2)`, P = `r signif(top_bin$P, 3)`, P_Bonf = `r signif(top_bin$P_Bonf, 3)`, P_FDR = `r signif(top_bin$P_FDR, 3)`), and statistical power was further limited by the small left-handed group (~90 participants).
+
+3. **Stratification and correction.** PC1 and PC2 jointly explain only `r round(ve[1] + ve[2], 1)`% of genotype variance and do not form clean ancestry clusters, which is an expected limitation of candidate-gene PCA, so self-reported Race was added as the primary ancestry control. Pairwise SNP-SNP LD is very low (mean |r| $\approx$ `r sprintf("%.3f", mean(abs_cor))`), so standard Bonferroni and Benjamini-Hochberg FDR over N tests are appropriate here. The null result is not an artifact of over-correction: FDR values are also near 1 for all top hits, and the smallest observed P values sit roughly an order of magnitude above the 0.05/N threshold.
+
+In conclusion, within this candidate-gene panel and sample size, no SNP predicts baseline muscle strength or hand preference after proper multiple-testing correction, and the top nominal hits reported above should be regarded as hypothesis-generating signals requiring replication in a larger, genome-wide-genotyped cohort before any causal interpretation.

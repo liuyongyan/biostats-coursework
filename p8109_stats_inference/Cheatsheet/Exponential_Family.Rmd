@@ -1,0 +1,194 @@
+---
+title: "Exponential Family Distributions"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    keep_tex: false
+header-includes:
+  - \usepackage{amsmath}
+  - \usepackage{amssymb}
+  - \usepackage{geometry}
+  - \geometry{margin=0.3in}
+  - \usepackage{multicol}
+  - \pagestyle{empty}
+  - \setlength{\parindent}{0pt}
+  - \setlength{\parskip}{2pt}
+  - \setlength{\columnsep}{0.25in}
+fontsize: 8pt
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+\begin{multicols}{2}
+
+\section*{Exponential Family - Standard Form}
+
+$$f(y|\theta, \phi) = \exp\left\{\frac{y\theta - b(\theta)}{\phi} + c(y, \phi)\right\}$$
+
+\textbf{Key Properties:}
+
+\begin{itemize}
+\setlength{\itemsep}{0pt}
+\item $\theta$: natural (canonical) parameter
+\item $\phi$: dispersion parameter
+\item $b(\theta)$: cumulant function (log-partition function)
+\item \textbf{Mean:} $E(Y) = \mu = b'(\theta)$
+\item \textbf{Variance:} $\text{Var}(Y) = \phi b''(\theta) = \phi V(\mu)$
+\item \textbf{Variance Function:} $V(\mu) = b''((b')^{-1}(\mu))$
+\item \textbf{MGF:} $M_Y(t) = \exp\left\{\frac{b(\theta + \phi t) - b(\theta)}{\phi}\right\}$
+\item \textbf{Natural link:} $g = (b')^{-1}$, gives $\theta = g(\mu)$
+\end{itemize}
+
+\section*{Normal Distribution $N(\mu, \sigma^2)$}
+
+\begin{itemize}
+\setlength{\itemsep}{0pt}
+\item PDF: $f(y) = \frac{1}{\sqrt{2\pi\sigma^2}}\exp\left\{-\frac{(y-\mu)^2}{2\sigma^2}\right\}$
+\item Support: $y \in (-\infty, \infty)$
+\item Mean: $E(Y) = \mu$, Variance: $\text{Var}(Y) = \sigma^2$
+\item MGF: $M(t) = \exp\left(\mu t + \frac{\sigma^2 t^2}{2}\right)$
+\end{itemize}
+
+\textbf{Exp Form:} $f(y|\mu,\sigma^2) = \exp\left\{\frac{y\mu - \mu^2/2}{\sigma^2} - \frac{y^2}{2\sigma^2} - \frac{1}{2}\log(2\pi\sigma^2)\right\}$
+
+\begin{itemize}
+\setlength{\itemsep}{0pt}
+\item $\theta = \mu$, $b(\theta) = \theta^2/2$, $\phi = \sigma^2$, $V(\mu) = 1$, Link = Identity
+\item Log-lik: $\ell(\mu) = -\frac{n}{2}\log(2\pi\sigma^2) - \frac{1}{2\sigma^2}\sum(y_i - \mu)^2$
+\item Score: $U(\mu) = \frac{n(\bar{y} - \mu)}{\sigma^2}$, Fisher: $\mathcal{I}(\mu) = \frac{n}{\sigma^2}$
+\end{itemize}
+
+\section*{Bernoulli Distribution $Ber(p)$}
+
+\begin{itemize}
+\setlength{\itemsep}{0pt}
+\item PMF: $f(y) = p^y(1-p)^{1-y}$, $y \in \{0, 1\}$
+\item Mean: $E(Y) = p$, Variance: $\text{Var}(Y) = p(1-p)$
+\item MGF: $M(t) = 1 - p + pe^t$
+\end{itemize}
+
+\textbf{Exp Form:} $f(y|p) = \exp\left\{y\log\frac{p}{1-p} + \log(1-p)\right\}$
+
+\begin{itemize}
+\setlength{\itemsep}{0pt}
+\item $\theta = \log\frac{p}{1-p}$ (log-odds), $p = \frac{e^\theta}{1+e^\theta}$
+\item $b(\theta) = \log(1 + e^\theta)$, $\phi = 1$, $V(\mu) = \mu(1-\mu)$, Link = Logit
+\item Log-lik: $\ell(p) = \sum\left[y_i\log p + (1-y_i)\log(1-p)\right]$
+\item Score: $U(p) = \frac{\sum y_i - np}{p(1-p)}$, Fisher: $\mathcal{I}(p) = \frac{n}{p(1-p)}$
+\end{itemize}
+
+\section*{Binomial Distribution $Bin(k, p)$}
+
+\begin{itemize}
+\setlength{\itemsep}{0pt}
+\item PMF: $f(y) = \binom{k}{y}p^y(1-p)^{k-y}$, $y \in \{0,1,...,k\}$
+\item Mean: $E(Y) = kp$, Variance: $\text{Var}(Y) = kp(1-p)$
+\item MGF: $M(t) = (1 - p + pe^t)^k$
+\end{itemize}
+
+\textbf{Exp Form:} $f(y|p) = \exp\left\{y\log\frac{p}{1-p} + k\log(1-p) + \log\binom{k}{y}\right\}$
+
+\begin{itemize}
+\setlength{\itemsep}{0pt}
+\item $\theta = \log\frac{p}{1-p}$, $b(\theta) = k\log(1 + e^\theta)$, $\phi = 1$
+\item $V(\mu) = \mu(1-\mu/k)$, Link = Logit
+\item For proportion $\hat{p} = Y/k$: $E(\hat{p}) = p$, $\text{Var}(\hat{p}) = \frac{p(1-p)}{k}$
+\item Log-lik: $\ell(p) = \sum y_i \log p + (nk - \sum y_i) \log(1-p) + \text{const}$
+\item Score: $U(p) = \frac{\sum y_i - nkp}{p(1-p)}$, Fisher: $\mathcal{I}(p) = \frac{nk}{p(1-p)}$
+\end{itemize}
+
+\section*{Poisson Distribution $Pois(\lambda)$}
+
+\begin{itemize}
+\setlength{\itemsep}{0pt}
+\item PMF: $f(y) = \frac{\lambda^y e^{-\lambda}}{y!}$, $y \in \{0,1,2,...\}$
+\item Mean: $E(Y) = \lambda$, Variance: $\text{Var}(Y) = \lambda$ (mean = var!)
+\item MGF: $M(t) = \exp\{\lambda(e^t - 1)\}$
+\end{itemize}
+
+\textbf{Exp Form:} $f(y|\lambda) = \exp\{y\log\lambda - \lambda - \log(y!)\}$
+
+\begin{itemize}
+\setlength{\itemsep}{0pt}
+\item $\theta = \log\lambda$, $\lambda = e^\theta$, $b(\theta) = e^\theta$, $\phi = 1$, $V(\mu) = \mu$, Link = Log
+\item Log-lik: $\ell(\lambda) = \sum y_i \log \lambda - n\lambda - \sum\log(y_i!)$
+\item Score: $U(\lambda) = \frac{n(\bar{y} - \lambda)}{\lambda}$, Fisher: $\mathcal{I}(\lambda) = \frac{n}{\lambda}$
+\end{itemize}
+
+\section*{Exponential Distribution $Exp(\lambda)$}
+
+Rate parameterization.
+
+\begin{itemize}
+\setlength{\itemsep}{0pt}
+\item PDF: $f(y) = \lambda e^{-\lambda y}$, $y > 0$
+\item Mean: $E(Y) = 1/\lambda = \mu$, Variance: $\text{Var}(Y) = \mu^2$
+\item CDF: $F(y) = 1 - e^{-\lambda y}$
+\item MGF: $M(t) = \frac{\lambda}{\lambda - t}$, $t < \lambda$
+\end{itemize}
+
+\textbf{Exp Form (mean $\mu = 1/\lambda$):} $f(y|\mu) = \exp\left\{-\frac{y}{\mu} - \log\mu\right\}$
+
+\begin{itemize}
+\setlength{\itemsep}{0pt}
+\item $\theta = -1/\mu = -\lambda$, $b(\theta) = -\log(-\theta) = \log\mu$
+\item $\phi = 1$, $V(\mu) = \mu^2$, Link = $-1/\mu$
+\item Log-lik: $\ell(\lambda) = n\log\lambda - \lambda \sum y_i$
+\item Score: $U(\lambda) = \frac{n}{\lambda} - \sum y_i$, Fisher: $\mathcal{I}(\lambda) = \frac{n}{\lambda^2}$
+\end{itemize}
+
+\section*{Gamma Distribution $Gamma(\alpha, \beta)$}
+
+Shape $\alpha$, rate $\beta$. Mean $\mu = \alpha/\beta$.
+
+\begin{itemize}
+\setlength{\itemsep}{0pt}
+\item PDF: $f(y) = \frac{\beta^\alpha}{\Gamma(\alpha)}y^{\alpha-1}e^{-\beta y}$, $y > 0$
+\item Mean: $E(Y) = \alpha/\beta = \mu$, Variance: $\text{Var}(Y) = \alpha/\beta^2$
+\item MGF: $M(t) = \left(\frac{\beta}{\beta - t}\right)^\alpha$, $t < \beta$
+\end{itemize}
+
+\textbf{Exp Form:}
+
+\begin{itemize}
+\setlength{\itemsep}{0pt}
+\item $\theta = -\beta = -\alpha/\mu$, $b(\theta) = -\log(-\theta)$
+\item $\phi = 1/\alpha$, $V(\mu) = \mu^2$, Link = $-1/\mu$
+\item Note: $\text{Var}(Y) = \phi V(\mu) = \frac{\mu^2}{\alpha}$
+\item Log-lik ($\alpha$ fixed): $\ell(\beta) = n\alpha\log\beta - \beta \sum y_i + \text{const}$
+\item Score: $U(\beta) = \frac{n\alpha}{\beta} - \sum y_i$, Fisher: $\mathcal{I}(\beta) = \frac{n\alpha}{\beta^2}$
+\end{itemize}
+
+\section*{Chi-square Distribution $\chi^2(k)$}
+
+Special case of Gamma with $\alpha = k/2, \beta = 1/2$.
+
+\begin{itemize}
+\setlength{\itemsep}{0pt}
+\item PDF: $f(y) = \frac{1}{2^{k/2}\Gamma(k/2)}y^{k/2-1}e^{-y/2}$, $y > 0$
+\item Mean: $E(Y) = k$, Variance: $\text{Var}(Y) = 2k$
+\item MGF: $M(t) = (1-2t)^{-k/2}$, $t < 1/2$
+\end{itemize}
+
+\textbf{Exp Form (fixed $k$):}
+
+\begin{itemize}
+\setlength{\itemsep}{0pt}
+\item $\theta = -1/2$ (fixed), $\phi = 2/k$
+\item $b(\theta) = -\log(-2\theta)$ (since $\mu = k = -1/\theta$)
+\item $\text{Var}(Y) = \phi \mu^2 = (2/k)k^2 = 2k$
+\item Log-lik: $\ell(k) = \frac{k-2}{2}\sum\log y_i - \frac{nk}{2}\log 2 - n\log\Gamma(\frac{k}{2}) + \text{const}$
+\item Score: $U(k) = \frac{1}{2}\sum\log y_i - \frac{n}{2}\log 2 - \frac{n}{2}\psi(\frac{k}{2})$
+\item Fisher: $\mathcal{I}(k) = \frac{n}{4}\psi'(\frac{k}{2})$
+\end{itemize}
+
+\section*{Key Formulas}
+
+\textbf{Score (single obs):} $U(\theta) = \frac{y - b'(\theta)}{\phi} = \frac{y - \mu}{\phi}$
+
+\textbf{Fisher Info (single obs):} $\mathcal{I}(\theta) = \frac{b''(\theta)}{\phi} = \frac{V(\mu)}{\phi}$
+
+\end{multicols}
+

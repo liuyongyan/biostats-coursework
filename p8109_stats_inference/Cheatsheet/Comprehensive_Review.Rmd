@@ -1,0 +1,289 @@
+---
+title: "P8109 Statistical Inference - Comprehensive Review"
+author: "Lectures 1-8: COMPLETE Theorems, Definitions, and Remarks"
+date: "Spring 2026"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+    toc: false
+geometry: margin=0.5in
+header-includes:
+  - \usepackage{amsmath}
+  - \usepackage{amssymb}
+  - \usepackage{bm}
+  - \usepackage{tcolorbox}
+  - \usepackage{enumerate}
+---
+
+\begin{tcolorbox}[colback=blue!5!white,colframe=blue!75!black,title=Essential Exam Strategy]
+
+1. **Identify the Support:** Always check if the support $\mathcal{X}$ depends on $\theta$ (e.g., $0 < x < \theta$). If it does, the regularity conditions for CRLB and Fisher Information often fail, and the distribution is NOT an Exponential Family. In such cases, MLE is typically an order statistic ($X_{(n)}$ or $X_{(1)}$).
+
+2. **Finding UMVUE (The Standard Procedure):** 
+
+   - **Step 1:** Find a sufficient statistic $T$ using the Fisher-Neyman Factorization Theorem.
+   
+   - **Step 2:** Show that $T$ is complete (typically by showing it is the natural sufficient statistic of a full-rank Exponential Family).
+
+   - **Step 3:** Either find a function $g(T)$ such that $E_\theta[g(T)] = \tau(\theta)$ (using Lehmann-Scheffé Theorem), OR take any unbiased estimator $d(\mathbf{X})$ and compute $E[d(\mathbf{X})|T]$ (Rao-Blackwellization).
+
+3. **Asymptotic Variance:** Before using the Delta Method, check if $g'(\theta)=0$. If it is, the first-order Delta Method yields a degenerate distribution (0 variance), and you must use the second-order Delta Method, which leads to a $\chi^2_1$ distribution.
+
+4. **Hypothesis Testing Strategy:**
+
+   - **Simple vs. Simple:** Use the **Neyman-Pearson Lemma**. The MP test is always a Likelihood Ratio Test.
+   - **One-Sided Composite:** Check for the **Monotone Likelihood Ratio (MLR)** property. If it exists (e.g., in Exponential Families), the UMP test is based on the sufficient statistic $T(\mathbf{X})$.
+   - **Discrete Distributions:** Remember to include the **randomization constant** $\gamma$ to achieve an exact size $\alpha$ test.
+
+\end{tcolorbox}
+
+# Lecture 1: Normal and Associated Distributions
+
+## 1.1 The Normal Distribution $N(\mu, \sigma^2)$
+- **Probability Density Function (1.1):** 
+  $$f(x; \mu, \sigma) = \frac{1}{\sqrt{2\pi}\sigma} \exp\left\{ -\frac{(x-\mu)^2}{2\sigma^2} \right\}, \quad -\infty < x < \infty, \quad -\infty < \mu < \infty, \quad \sigma > 0$$
+- **Moment-Generating Function (1.2):** $M_X(t) = E[e^{tX}] = \exp\left( \mu t + \frac{1}{2}\sigma^2 t^2 \right)$.
+- **Standardization:** If we define $Z = \frac{X-\mu}{\sigma}$, then $Z \sim N(0,1)$ with density $f_Z(z) = \frac{1}{\sqrt{2\pi}}e^{-z^2/2}$.
+- **Theorem 1.1:** If $X \sim N(\mu, \sigma^2)$, then for any constants $a$ and $b$, $aX + b \sim N(a\mu + b, a^2\sigma^2)$.
+- **Theorem 1.2:** Let $X_1, \dots, X_n$ be independent random variables with $X_i \sim N(\mu_i, \sigma_i^2)$. Let $W = \sum_{i=1}^n a_i X_i + b$ and $V = \sum_{i=1}^n c_i X_i + d$. Then:
+  - $W \sim N\left( \sum a_i \mu_i + b, \sum a_i^2 \sigma_i^2 \right)$.
+  - $W$ and $V$ are independent **if and only if** $\sum_{i=1}^n a_i c_i = 0$.
+  - **Remark:** The converse of the independence property is not true for non-normal distributions. This specific independence of linear combinations characterizes the normal distribution.
+
+## 1.2 Associated Distributions ($\chi^2, t, F$)
+- **The $\chi^2$ Distribution:** Let $Z_1, \dots, Z_k$ be i.i.d. $N(0,1)$ random variables. Then $U = \sum_{i=1}^k Z_i^2 \sim \chi^2_k$.
+  - $\chi^2_k$ is a special case of $Gamma(\alpha=k/2, \beta=2)$.
+  - $E[U] = k$, $Var(U) = 2k$.
+  - MGF: $M_U(t) = (1-2t)^{-k/2}$ for $t < 1/2$.
+- **The $t$-distribution:** Let $Z \sim N(0,1)$ and $V \sim \chi^2_k$ be independent random variables. Then:
+  $$T = \frac{Z}{\sqrt{V/k}} \sim t_k$$
+  - $E[T] = 0$ for $k > 1$; $Var(T) = \frac{k}{k-2}$ for $k > 2$.
+  - As $k \to \infty$, $t_k \xrightarrow{d} Z \sim N(0,1)$.
+- **The $F$-distribution:** If $U \sim \chi^2_m$ and $V \sim \chi^2_n$ are independent, then:
+  $$F = \frac{U/m}{V/n} \sim F_{m,n}$$
+  - **Result (a):** If $T \sim t_k$, then $T^2 \sim F_{1,k}$.
+  - **Result (b):** If $X \sim F_{m,n}$, then $1/X \sim F_{n,m}$.
+  - **Result (c):** If $X \sim F_{m,n}$, then $E[X] = \frac{n}{n-2}$ for $n > 2$.
+
+## 1.3 The Central Limit Theorem (CLT)
+- **Theorem 1.3 (Lindeberg-Lévy CLT):** Let $X_1, X_2, \dots, X_n$ be i.i.d. random variables with $E[X_i] = \mu$ and $Var(X_i) = \sigma^2 < \infty$. Define $S_n = X_1 + \dots + X_n$. Then, as $n \to \infty$:
+  $$\frac{S_n - n\mu}{\sigma\sqrt{n}} = \frac{\bar{X}_n - \mu}{\sigma/\sqrt{n}} \xrightarrow{d} Z \sim N(0, 1)$$
+
+## 1.4 Sampling from Normal Distributions
+- **Theorem 1.4:** Let $X_1, \dots, X_n$ be i.i.d. from $N(\mu, \sigma^2)$. Let $\bar{X}$ and $S^2$ be the sample mean and sample variance, respectively. Then:
+  - (a) $\bar{X}$ and $S^2$ are independent.
+  - (b) $\bar{X} \sim N(\mu, \sigma^2/n)$.
+  - (c) $\frac{(n-1)S^2}{\sigma^2} \sim \chi^2_{n-1}$.
+- **Corollary 1.1:**
+  - (a) $\frac{\bar{X}-\mu}{S/\sqrt{n}} \sim t_{n-1}$.
+  - (b) $E[S^2] = \sigma^2$, $Var(S^2) = \frac{2\sigma^4}{n-1}$.
+- **Remarks:**
+  - (i) $E(S^2) = \sigma^2$, which means $S^2$ is an unbiased estimator of $\sigma^2$.
+  - (ii) If $\sigma^2$ is estimated by the MLE $\hat{\sigma}^2 = \frac{1}{n}\sum(X_i-\bar{X})^2$, then $E(\hat{\sigma}^2) = \frac{n-1}{n}\sigma^2$, which is biased (it underestimates $\sigma^2$).
+  - (iii) Since $Var(S^2) = E(S^2) - [E(S)]^2 > 0$, it follows that $E(S) < \sigma$. Thus, $S$ is a biased estimator for $\sigma$ (by Jensen's inequality).
+
+## 1.5 The Weak Law of Large Numbers (WLLN)
+- **Theorem:** Let $X_1, \dots, X_n$ be i.i.d. random variables with finite mean $E[X_i] = \mu$ and finite variance $Var(X_i) = \sigma^2 < \infty$. Then, the sample mean $\bar{X}_n$ converges in probability to the population mean $\mu$:
+  $$\bar{X}_n = \frac{1}{n} \sum_{i=1}^n X_i \xrightarrow{P} \mu, \quad \text{as } n \to \infty$$
+- **Proof Hint (Markov's):** $P(|\bar{X}_n - \mu| > \epsilon) = P((\bar{X}_n - \mu)^2 > \epsilon^2) \leq \frac{E(\bar{X}_n - \mu)^2}{\epsilon^2} = \frac{Var(\bar{X}_n)}{\epsilon^2} = \frac{\sigma^2}{n\epsilon^2} \to 0$.
+
+# Lecture 2: Exponential Family & Asymptotics
+
+## 2.1 Exponential Family Distributions
+- **Definition:** A one-parameter family of densities $f(x|\theta)$ belongs to the exponential family if it can be expressed as:
+  $$f(x|\theta) = h(x) \exp\{ c(\theta)T(x) - A(\theta) \}$$
+  where $h, T$ are known functions of $x$, and $c, A$ are known functions of $\theta$.
+- **Natural Form (2.1):** Let $\eta = c(\theta)$ be the natural parameter. The density is:
+  $$f(x|\eta) = h(x) \exp\{ \eta T(x) - A(\eta) \}$$
+- **General Exponential Family:** If $\theta = (\theta_1, \dots, \theta_k)^T$, the distribution belongs to the EF if:
+  $$f(\mathbf{x}|\theta) = h(\mathbf{x}) \exp\left\{ \sum_{j=1}^k c_j(\theta) T_j(\mathbf{x}) - A(\theta) \right\}$$
+- **Full Rank vs Curved:** If the set $\{ \mathbf{c}(\theta) : \theta \in \Theta \}$ contains a $k$-dimensional open ball in $\mathbb{R}^k$, the distribution is said to have **full rank**. Otherwise, it is a curved exponential family.
+- **Theorem 2.1:** Let $\mathbf{X}$ follow the natural form distribution. Then:
+  1. $T(\mathbf{X})$ also belongs to the exponential family.
+  2. The MGF of $T$ is $M_T(\mathbf{t}) = \exp\{ A(\eta + \mathbf{t}) - A(\eta) \}$.
+  3. $E[T] = \nabla A(\eta)$ and $Var(T) = \nabla^2 A(\eta)$ (the Hessian).
+
+## 2.2 Common Probabilistic Inequalities
+1. **Jensen's Inequality:** Let $\varphi$ be a convex function. Then $\varphi(E[X]) \leq E[\varphi(X)]$. For strictly convex $\varphi$, equality holds iff $X = E[X]$ a.s.
+2. **Hölder's Inequality:** Let $p, q \in [1, \infty]$ such that $p^{-1} + q^{-1} = 1$. Then $E|XY| \leq (E|X|^p)^{1/p} (E|Y|^q)^{1/q}$.
+   - **Cauchy-Schwarz:** When $p=q=2$, $E|XY| \leq \sqrt{E[X^2] E[Y^2]}$.
+3. **Markov's Inequality:** Let $X$ be a random variable. For any $a > 0$ and $r > 0$:
+   $$P(|X| \geq a) \leq \frac{E|X|^r}{a^r}$$
+4. **Chebyshev's Inequality:** Let $X$ be a random variable with $E[X] = \mu$ and $Var(X) = \sigma^2$. For any $a > 0$:
+   $$P(|X - \mu| \geq a) \leq \frac{Var(X)}{a^2}$$
+
+## 2.3 Types of Convergence
+- **Definition 2.1:**
+  1. $X_n$ **converges in probability** to $X$ ($X_n \xrightarrow{P} X$) if for any $\epsilon > 0$, $P(|X_n - X| > \epsilon) \to 0$ as $n \to \infty$.
+  2. $X_n$ **converges in distribution** to $X$ ($X_n \xrightarrow{d} X$) if $F_{X_n}(x) \to F_X(x)$ at all continuity points $x$ of $F_X$.
+- **Theorem 2.2:**
+  1. $X_n \xrightarrow{P} X \implies X_n \xrightarrow{d} X$.
+  2. $X_n \xrightarrow{d} c$ (where $c$ is a constant) $\implies X_n \xrightarrow{P} c$.
+  3. $X_n \xrightarrow{d} X$ iff $E[g(X_n)] \to E[g(X)]$ for all bounded continuous functions $g$.
+  4. **Lévy's Continuity Theorem:** $X_n \xrightarrow{d} X$ iff $M_{X_n}(t) \to M_X(t)$ for all $t$ in a neighborhood of 0.
+- **Theorem 2.3 (Continuous Mapping Theorem):** Let $g$ be a continuous function.
+  1. If $X_n \xrightarrow{P} X$, then $g(X_n) \xrightarrow{P} g(X)$.
+  2. If $X_n \xrightarrow{d} X$, then $g(X_n) \xrightarrow{d} g(X)$.
+- **Theorem 2.4:** If $X_n \xrightarrow{P} X$ and $Y_n \xrightarrow{P} Y$, and $h(x,y)$ is a continuous function, then $h(X_n, Y_n) \xrightarrow{P} h(X, Y)$.
+- **Theorem 2.5 (Slutsky's Theorem):** Assume $X_n \xrightarrow{d} X$ and $Y_n \xrightarrow{P} c$ (constant). Then:
+  1. $X_n + Y_n \xrightarrow{d} X + c$
+  2. $X_n Y_n \xrightarrow{d} cX$
+  3. $X_n/Y_n \xrightarrow{d} X/c$, provided $c \neq 0$.
+
+## 2.4 Delta Method
+- **Theorem 2.6 (Delta Method):** Assume $a_n(\hat{\theta}_n - \theta) \xrightarrow{d} W$, where $a_n \to \infty$ (usually $a_n = \sqrt{n}$). This condition implies **$\hat{\theta}_n \xrightarrow{P} \theta$**. Let $g(t)$ be a differentiable function with $g'(\theta)$ existing.
+  - **1st Order:** If $g'(\theta) \neq 0$, then $a_n(g(\hat{\theta}_n) - g(\theta)) \xrightarrow{d} g'(\theta)W$.
+  - **2nd Order (Remark):** If $g'(\theta) = 0$ but $g''(\theta) \neq 0$, then $a_n^2(g(\hat{\theta}_n) - g(\theta)) \xrightarrow{d} \frac{g''(\theta)}{2}W^2$.
+  - **Example 2.6:** If $W \sim N(0, \sigma^2)$, then $a_n^2(g(\hat{\theta}_n) - g(\theta)) \xrightarrow{d} \frac{g''(\theta)}{2} \sigma^2 \chi^2_1$.
+
+# Lecture 3: Parameter Estimations
+
+## 3.1 Method of Moments (MoM)
+- **The Equation:** Setting the $r$-th sample moment $m_r = \frac{1}{n}\sum X_i^r$ equal to the $r$-th population moment $\mu_r = E[X^r]$. The MoM proceeds by setting $m_r = \mu_r$ for $r=1, \dots, k$ to solve for $k$ parameters.
+- **Justification:** $E(m_r) = \mu_r$.
+- **Remark 3.1:** MoM estimators can be biased. For $N(\mu, \sigma^2)$, MoM for $\sigma^2$ is $\frac{1}{n}\sum(X_i-\bar{X})^2$, which is biased.
+- **Remark 3.2:** MoM may not exist if population moments don't exist (e.g., Cauchy). However, if we allow $r$ to be a positive non-integer (e.g., $r=1/2$), a MoM estimator can sometimes be obtained.
+
+## 3.2 Maximum Likelihood Estimation (MLE)
+- **Likelihood Function (3.2):** $L(\theta|\mathbf{X}) = f(\mathbf{x};\theta)$. For i.i.d. samples, $L(\theta|\mathbf{X}) = \prod f(x_i;\theta)$.
+- **MLE Definition (3.3):** $\hat{\theta} = \arg \max_{\theta \in \Theta} L(\theta|\mathbf{X})$.
+- **Invariance Principle:** If $\hat{\theta}$ is the MLE of $\theta$, then for any function $\tau(\theta)$, the MLE of $\tau(\theta)$ is $\tau(\hat{\theta})$.
+- **Remark 3.3 (Important):** Differentiation may not work if the support of $X$ depends on $\theta$. Example: For $Uniform(0, \theta)$, $L(\theta|\mathbf{X}) = \theta^{-n} I(X_{(n)} \leq \theta)$. This is monotonically decreasing for $\theta \in [X_{(n)}, \infty)$, so $\hat{\theta} = X_{(n)}$.
+- **Remark 3.4:** MLE may not be unique. For $Uniform(\theta, \theta+1)$, any value in $[X_{(n)}-1, X_{(1)}]$ is an MLE.
+- **Remark 3.5:** MLE may not exist for some values of $X$ (e.g., Hypergeometric with $X=0$).
+
+# Lecture 4: Assessing the Performance of Estimators
+
+## 4.1 Unbiasedness and MSE
+- **Definition 4.1 (Bias):** Suppose $\tau(\theta)$ is a function of $\theta$, and let $T = T(\mathbf{X})$ be an estimator of $\tau(\theta)$. Then the bias of $T$ is defined by $Bias(T) = E[T] - \tau(\theta)$. $T$ is unbiased if $Bias(T) = 0$.
+- **Definition 4.2 (UMVUE):** $T^*$ is the Uniformly Minimum Variance Unbiased Estimator if $E[T^*] = \tau(\theta)$ and $Var(T^*) \leq Var(T)$ for all $\theta$, where $T$ is any other unbiased estimator.
+- **Theorem 4.1:** The UMVUE is unique.
+- **Mean Squared Error (4.2):** $MSE(T) = E[(T - \tau(\theta))^2] = Var(T) + [Bias(T)]^2$.
+
+## 4.2 Consistency
+- **Definition 4.3:** $T_n$ is a consistent estimator of $\tau(\theta)$ if $T_n \xrightarrow{P} \tau(\theta)$ as $n \to \infty$.
+- **Theorem 4.2:** If $Bias(T_n) \to 0$ and $Var(T_n) \to 0$ as $n \to \infty$, then $T_n$ is consistent.
+- **Remark to Theorem 4.2:** These conditions are sufficient but not necessary. (An estimator can have infinite variance and still be consistent).
+
+## 4.3 Fisher Information and CRLB
+- **Definition 4.4:** Let $\ell(\theta) = \log L(\theta|\mathbf{X})$. The Score function is $S(\theta) = \frac{\partial \ell(\theta)}{\partial \theta}$. The Fisher Information is $i(\theta) = Var(S(\theta))$.
+- **Theorem 4.3:** If derivatives and integrals can be switched:
+  (a) $E[S(\theta)] = 0$.
+  (b) $i(\theta) = E[S(\theta) S(\theta)^T] = -E\left[ \frac{\partial^2}{\partial \theta^2} \ell(\theta) \right]$.
+- **Theorem 4.4 (Cramér-Rao Inequality):** Let $T$ be an unbiased estimator of $\tau(\theta)$. Then:
+  $$Var(T) \geq \frac{[\tau'(\theta)]^2}{i(\theta)} = \frac{[\tau'(\theta)]^2}{n i_1(\theta)}$$
+  where $i(\theta)$ is the information in the whole sample $\mathbf{X}$ (i.e., $I_n$), and $i_1(\theta)$ is the information in a single observation.
+- **Definition (MVBU):** Estimators which achieve the CRLB are said to be **efficient** or **minimum variance bound unbiased (MVBU)**. An MVBUE is always a UMVUE, but the converse is not necessarily true (some UMVUEs have variances exceeding the CRLB).
+- **Equality Condition:** Equality holds iff $S(\theta) = a(\theta)[T(\mathbf{X}) - \tau(\theta)]$, which happens iff the distribution is in the Exponential Family.
+- **Asymptotic Efficiency (Definition 4.5/Theorem 4.5):** An estimator $\hat{\theta}$ is asymptotically efficient if:
+  $$\sqrt{n}(\hat{\theta} - \theta) \xrightarrow{d} N\left(0, \frac{1}{i_1(\theta)}\right)$$
+  This implies that for large $n$, $Var(\hat{\theta}) \approx \frac{1}{n i_1(\theta)} = \frac{1}{I_n(\theta)}$. Under regularity conditions, the MLE is asymptotically efficient.
+
+# Lecture 5: Data Reduction Principles: Sufficiency
+
+## 5.1 Sufficient Statistics
+- **Definition 5.1:** A statistic $T(\mathbf{X})$ is sufficient for $\theta$ if the conditional distribution of $\mathbf{X}$ given $T$ does not depend on $\theta$.
+- **Theorem 5.1 (Fisher-Neyman Factorization):** $T(\mathbf{X})$ is sufficient for $\theta$ if and only if the likelihood can be factored as:
+  $$L(\theta|\mathbf{x}) = g(T(\mathbf{x})|\theta) h(\mathbf{x})$$
+  where $g$ depends on $\mathbf{x}$ only through $T(\mathbf{x})$, and $h$ does not depend on $\theta$.
+- **Theorem 5.2:** If $T$ is sufficient and $T$ is a function of $S$ (i.e., $T = R(S)$), then $S$ is also sufficient. (Larger statistics preserve sufficiency).
+
+## 5.2 Rao-Blackwell Theorem
+- **Theorem 5.3:** Let $T$ be a sufficient statistic and $d(\mathbf{X})$ be an unbiased estimator of $\tau(\theta)$. Define $d^*(T) = E[d(\mathbf{X}) | T]$. Then:
+  (a) $d^*(T)$ is a statistic (does not depend on $\theta$).
+  (b) $d^*(T)$ is an unbiased estimator of $\tau(\theta)$.
+  (c) $Var(d^*(T)) \leq Var(d(\mathbf{X}))$ for all $\theta$. Equality holds iff $d(\mathbf{X}) = d^*(T)$ a.s.
+- **Theorem 5.4:** Any MLE is a function of a sufficient statistic.
+
+# Lecture 6: Minimal Sufficiency and Completeness
+
+## 6.1 Minimal Sufficiency
+- **Definition 6.1:** A sufficient statistic $T$ is minimal sufficient if it is a function of any other sufficient statistic $S$.
+- **Theorem 6.1 (Lehmann-Scheffé):** $T(\mathbf{x})$ is minimal sufficient if for any two sample points $\mathbf{x}$ and $\mathbf{y}$, the ratio $L(\theta|\mathbf{x})/L(\theta|\mathbf{y})$ is independent of $\theta$ **if and only if** $T(\mathbf{x}) = T(\mathbf{y})$.
+
+## 6.2 Completeness
+- **Definition 6.2:** A statistic $T$ is complete if $E_\theta[h(T)] = 0$ for all $\theta$ implies $P_\theta(h(T) = 0) = 1$ for all $\theta$. (Completeness means the only unbiased estimator of zero is zero itself).
+- **Theorem 6.2:** If $X_1, \dots, X_n$ are i.i.d. from a **full-rank Exponential Family** with the natural form:
+  $$f(x|\eta) = h(x) \exp\left\{ \eta T(x) - A(\eta) \right\}$$
+  The natual statistic $\mathbf{T(X)}$ is **complete and sufficient**. And, the joint density of the sample $\mathbf{X}$ is also an Exponential Family:
+  $$f(\mathbf{x}|\eta) = \left[ \prod_{i=1}^n h(x_i) \right] \exp\left\{ \eta \sum_{i=1}^n T(x_i) - n A(\eta) \right\}$$
+  The natural sufficient statistic $\mathbf{T(X) = \sum_{i=1}^n T(x_i)}$ is **complete and sufficient**.
+
+## 6.3 Lehmann-Scheffé Theorem (Finding UMVUE)
+- **Theorem 6.3:** If $T$ is a **complete sufficient** statistic and $g(T)$ is an **unbiased** estimator of $\tau(\theta)$, then $g(T)$ is the **unique UMVUE**.
+- **Remark:** This provides the "Gold Standard" for finding UMVUE:
+  1. Find a complete sufficient statistic $T$ (usually via EF).
+  2. Find a function $g(T)$ such that $E[g(T)] = \tau(\theta)$.
+
+# Lecture 7: Hypothesis Testing: Basic Concepts
+
+## 7.1 Statistical Hypotheses
+- **Null Hypothesis ($H_0$):** The statement being tested (usually status quo).
+- **Alternative Hypothesis ($H_1$):** The statement we hope to find evidence for.
+- **Simple Hypothesis:** Specifies the distribution completely (e.g., $H_0: \theta = \theta_0$).
+- **Composite Hypothesis:** Does not specify the distribution completely (e.g., $H_1: \theta > \theta_0$).
+
+## 7.2 Types of Errors
+- **Type I Error:** Rejecting $H_0$ when it is true. $P(\text{Type I Error}) = \alpha$.
+- **Type II Error:** Failing to reject $H_0$ when it is false. $P(\text{Type II Error}) = \beta$.
+- **Power Function $K(\theta)$:** $P_\theta(\text{Reject } H_0)$.
+  - For $\theta \in \Theta_0$, $K(\theta) = P(\text{Type I Error})$.
+  - For $\theta \in \Theta_1$, $K(\theta) = \text{Power of the test} = 1 - \beta(\theta)$.
+- **Size ($\alpha$):** The supremum of the Type I error probability: $\alpha = \sup_{\theta \in \Theta_0} K(\theta)$.
+- **Level:** A test is of level $\alpha$ if its size is $\leq \alpha$.
+
+## 7.3 Neyman-Pearson Lemma (Simple vs. Simple)
+- **Theorem 7.1:** For testing $H_0: \theta = \theta_0$ vs $H_1: \theta = \theta_1$, the most powerful (MP) test of size $\alpha$ is the Likelihood Ratio Test:
+  - Reject $H_0$ if $\frac{L(\theta_1|\mathbf{X})}{L(\theta_0|\mathbf{X})} > k$.
+  - Fail to reject if $\frac{L(\theta_1|\mathbf{X})}{L(\theta_0|\mathbf{X})} < k$.
+  - (Randomize if necessary for discrete cases).
+
+## 7.4 P-Value
+- **Definition:** The smallest level $\alpha$ at which the observed data would lead to rejection of $H_0$. 
+- **Property:** If the p-value $\leq \alpha$, reject $H_0$ at level $\alpha$.
+
+# Lecture 8: Composite Hypothesis Testing & MLR
+
+## 8.1 Randomized Tests
+- For discrete distributions, an exact size $\alpha$ might not be achievable with a simple threshold.
+- **Randomized Test Function:** $\phi(\mathbf{X}) = P(\text{Reject } H_0 | \mathbf{X})$.
+  - e.g., Reject if $T > c$, reject with probability $\gamma$ if $T = c$, fail to reject if $T < c$.
+
+## 8.2 Monotone Likelihood Ratio (MLR)
+- **Definition 8.1:** A family of PDFs $\{f(x|\theta)\}$ has MLR in a statistic $T(\mathbf{X})$ if for any $\theta_2 > \theta_1$, the ratio $L(\theta_2|\mathbf{X})/L(\theta_1|\mathbf{X})$ is a non-decreasing function of $T(\mathbf{X})$.
+- **Exponential Family:** If $f(x|\theta) = h(x) \exp[Q(\theta)T(x) - A(\theta)]$ and $Q(\theta)$ is strictly increasing, then the family has MLR in $T(\mathbf{X})$.
+
+## 8.3 Uniformly Most Powerful (UMP) Tests
+- **Theorem 8.1:** If a family has MLR in $T(\mathbf{X})$, then for testing $H_0: \theta \leq \theta_0$ vs $H_1: \theta > \theta_0$, there exists a UMP test of size $\alpha$ given by:
+  $$\phi(\mathbf{x}) = \begin{cases} 1 & \text{if } T(\mathbf{x}) > c \\ \gamma & \text{if } T(\mathbf{x}) = c \\ 0 & \text{if } T(\mathbf{x}) < c \end{cases}$$
+- **Remark:** UMP tests usually exist for one-sided alternatives in MLR families but rarely exist for two-sided alternatives ($H_1: \theta \neq \theta_0$).
+
+# Calculation Reference Examples
+
+- **Poisson($\lambda$):** $T = \sum X_i$ is complete sufficient. To estimate $\tau(\lambda) = e^{-\lambda} = P(X_1=0)$:
+  We use $d(\mathbf{X}) = I(X_1=0)$. Then $UMVUE = E[I(X_1=0) | \sum X_i = t] = P(X_1=0 | \sum X_i = t) = (1 - 1/n)^t$.
+- **Normal $(\mu, \sigma^2)$:** $(\bar{X}, S^2)$ are jointly complete and sufficient. $\bar{X} \perp S^2$ allows simple variance calculations for functions like $\bar{X}^2 S^2$.
+- **Uniform(0, $\theta$):** $X_{(n)}$ is complete and sufficient (even though not EF). $E[X_{(n)}] = \frac{n}{n+1}\theta \implies \frac{n+1}{n}X_{(n)}$ is the UMVUE of $\theta$.
+- **Non-completeness Example:** For $Uniform(\theta, \theta+1)$, $T = (X_{(1)}, X_{(n)})$ is minimal sufficient but NOT complete because $E[X_{(n)} - X_{(1)}] = \frac{n-1}{n+1}$, which is independent of $\theta$, so $X_{(n)} - X_{(1)} - \frac{n-1}{n+1}$ is a non-zero function with zero expectation.
+
+# Appendix: Mathematical Tools & Probability Identities
+
+## A.1 Probability Laws
+- **Conditional Probability:** $P(A|B) = \frac{P(A \cap B)}{P(B)}$.
+- **Law of Total Probability:** $P(A) = \sum_i P(A|B_i)P(B_i)$.
+- **Bayes' Rule:** $P(B_j|A) = \frac{P(A|B_j)P(B_j)}{\sum_i P(A|B_i)P(B_i)}$.
+- **Law of Total Expectation:** $E[X] = E[E[X|Y]]$.
+- **Law of Total Variance:** $Var(X) = E[Var(X|Y)] + Var(E[X|Y])$.
+
+## A.2 Calculus & Series
+- **Taylor Expansion (around $a$):** $g(x) = g(a) + g'(a)(x-a) + \frac{g''(a)}{2!}(x-a)^2 + \dots$
+  - Used in Delta Method and MLE asymptotic proofs.
+- **Leibniz Integral Rule:** $\frac{d}{dt} \int_{a(t)}^{b(t)} f(x,t)dx = f(b(t),t)b'(t) - f(a(t),t)a'(t) + \int_{a(t)}^{b(t)} \frac{\partial}{\partial t}f(x,t)dx$.
+  - Regularity conditions often assume $\frac{d}{d\theta} \int f = \int \frac{\partial}{\partial \theta} f$.
+
+## A.3 Common Integrals
+- **Gamma Function:** $\Gamma(\alpha) = \int_0^\infty x^{\alpha-1} e^{-x} dx$. Note $\Gamma(n) = (n-1)!$ and $\Gamma(1/2) = \sqrt{\pi}$.
+- **Gamma Integral:** $\int_0^\infty x^{\alpha-1} e^{-x/\beta} dx = \Gamma(\alpha)\beta^\alpha$.
+- **Beta Function:** $B(\alpha, \beta) = \int_0^1 x^{\alpha-1}(1-x)^{\beta-1} dx = \frac{\Gamma(\alpha)\Gamma(\beta)}{\Gamma(\alpha+\beta)}$.
+- **Normal Integral:** $\int_{-\infty}^\infty e^{-ax^2 + bx + c} dx = \sqrt{\frac{\pi}{a}} e^{\frac{b^2}{4a} + c}$.
+- **Integration by Parts:** $\int u dv = uv - \int v du$. Useful for finding moments.

@@ -1,246 +1,332 @@
 # P8109 Homework 3 -- Grading Rubric
 
-This rubric specifies **principle-based checking criteria** for each problem. The grader must independently verify the student's work against the stated principles; no pre-computed answers are provided.
+This rubric specifies **principle-based checking criteria** for each problem. It contains NO pre-computed answers or solutions. The grader must independently verify all derivations.
+
+All problems on this homework are **analytical only** -- no R code is required.
 
 ---
 
-## Problem 1: Poisson Sufficiency
+## Problem 1: Poisson with T = X1 + 2X2
 
-**Context:** X1, X2 iid Poisson(lambda), T = X1 + X2.
+**Context:** X1, X2 independent Poisson(lambda) -- same parameter lambda for both. T = X1 + 2X2 (note: the coefficient 2 on X2 is what makes T non-sufficient).
 
-### Part (a): Show T is NOT sufficient for lambda
+### Part (a): Show T is NOT sufficient for lambda (10 points)
 
-- **Type:** Analytical derivation leading to a specific conditional probability expression, then a conclusion.
-- **Required approach:** The student must compute P(X1=1, X2=2 | T=3) using the definition of conditional probability:
-  - Numerator: joint probability P(X1=1, X2=2) using the Poisson pmf.
-  - Denominator: P(T=3), recognizing that T = X1+X2 follows Poisson(2*lambda) (sum of independent Poissons).
-- **Key criterion for the sufficiency conclusion:** The student must evaluate the resulting conditional probability and observe whether it depends on lambda. According to Definition 5.1 (Lecture 5, slide 2), T is sufficient only if the conditional distribution f(x | T) does not depend on the parameter. The student must clearly state whether their computed expression depends on lambda and draw the correct conclusion about sufficiency.
-- **Relevant lecture material:** Definition 5.1 (Lecture 5, slide 2); Example 5.1 (slides 3-4) for the method of checking sufficiency via conditional distributions.
-- **Common mistakes to watch for:**
-  - Incorrectly computing P(T=3) -- e.g., using Poisson(lambda) instead of Poisson(2*lambda).
-  - Failing to simplify the conditional probability fully before concluding.
-  - Stating the wrong conclusion about dependence on lambda.
-  - Confusing "not sufficient" with "sufficient" (the problem says "show that T is NOT sufficient" -- but the grader should verify the student's algebra independently to confirm whether the conclusion follows from the computation).
+- **Requires a specific answer:** Yes -- an explicit expression for P(X1=1, X2=1 | T=3), then a conclusion.
+- **Type:** Analytical derivation.
+- **Level of detail:** All intermediate steps must be shown -- the joint probability, the marginal P(T=3), and the ratio.
 
-### Part (b): Find a sufficient statistic via the factorization theorem
+**Relevant lecture material:** Definition 5.1 (Lecture 5, slide 2); Example 5.1 (slides 3-4) for the method of checking sufficiency via conditional distributions.
 
+**Required steps:**
+
+1. **(2 pts)** Identify the event {T=3} = {X1 + 2X2 = 3}. Enumerate all pairs (X1, X2) of non-negative integers satisfying X1 + 2X2 = 3. The student must find all feasible combinations. (Key observation: since the coefficient on X2 is 2, the feasible set is different from X1 + X2 = 3.)
+2. **(2 pts)** Compute the numerator P(X1=1, X2=1) using the Poisson pmf for each variable and independence: P(X1=1) * P(X2=1).
+3. **(3 pts)** Compute P(T=3) by summing joint probabilities P(X1=a, X2=b) over all feasible pairs from step 1. Each such probability uses the Poisson pmf and independence.
+4. **(3 pts)** Form the ratio to get P(X1=1, X2=1 | T=3), simplify, and observe that the result **depends on lambda**. Conclude that by Definition 5.1, T is not sufficient.
+
+**Common mistakes to watch for:**
+- Misreading T as X1 + X2 instead of X1 + 2X2. If the student uses T = X1 + X2, the entire solution is based on the wrong statistic.
+- Failing to enumerate all (X1, X2) pairs satisfying X1 + 2X2 = 3, or including invalid pairs.
+- Not simplifying the conditional probability enough to see that it depends on lambda.
+- Concluding non-sufficiency without explicitly showing the lambda-dependence in the final expression.
+- Algebra errors when manipulating Poisson pmf products (especially with factorial terms).
+
+---
+
+### Part (b): Sufficient statistic via the factorization theorem (8 points)
+
+- **Requires a specific answer:** Yes -- must state the sufficient statistic for lambda.
 - **Type:** Analytical derivation using the factorization theorem.
-- **Required approach:** The student must write the joint likelihood L(lambda | X1, X2) = product of two Poisson pmfs, then factor it into g_lambda(T(X)) * h(X) per Theorem 5.1 (Lecture 5, slide 5).
-- **Key criteria:**
-  - The joint likelihood must be written out correctly as a product of two Poisson pmfs.
-  - The factorization must explicitly identify which part is g_theta(T(X)) (depends on lambda only through the statistic) and which part is h(X) (does not depend on lambda).
-  - The student must clearly state what the sufficient statistic is, based on the factorization.
-- **Relevant lecture material:** Theorem 5.1 (Lecture 5, slide 5); Example 5.2 (slide 7) is directly analogous (Poisson case with n observations).
-- **Common mistakes to watch for:**
-  - Not explicitly identifying the g and h components.
-  - Proposing a statistic that is not consistent with their own factorization.
-  - Note: the student's answer to (a) and (b) should be logically consistent -- the sufficient statistic found in (b) should differ from T = X1 + X2 if (a) correctly shows T is not sufficient, OR the student should reconcile any apparent contradiction. The grader must check this consistency independently.
+- **Level of detail:** The joint likelihood must be written out, factored explicitly into g_lambda(T(X)) * h(X), with both parts identified.
+
+**Relevant lecture material:** Theorem 5.1 (Lecture 5, slide 5); Example 5.2 (slide 7) -- the Poisson factorization example, which is directly applicable here.
+
+**Required steps:**
+
+1. **(2 pts)** Write the joint likelihood L(lambda | X1, X2) as the product of two independent Poisson(lambda) pmfs.
+2. **(3 pts)** Combine and factor the likelihood. The student must separate terms that depend on lambda (potentially through T(X)) from terms that depend only on the data but not lambda. The student should identify the natural sufficient statistic that emerges from the exponential family structure of the Poisson.
+3. **(2 pts)** Explicitly identify g_lambda(T) and h(X), cite the factorization theorem, and state the sufficient statistic.
+4. **(1 pt)** Cross-check consistency: the sufficient statistic found here should NOT be T = X1 + 2X2 (which was just shown to be non-sufficient in part (a)).
+
+**Common mistakes to watch for:**
+- Proposing T = X1 + 2X2 as sufficient after just showing it is not.
+- Not clearly labeling the g_lambda and h components in the factorization.
+- Proposing a statistic that is not consistent with the factored form.
+- Confusion about why the natural sufficient statistic for two iid Poisson variables works but X1 + 2X2 does not (the weights matter).
 
 ---
 
-## Problem 2: Discrete Distribution Sufficiency
+## Problem 2: Discrete Distribution and Sufficiency
 
-**Context:** Discrete X with given pmf table; T = 0 if x odd, 1 if x even.
+**Context:** Discrete X with pmf table (x=1,2,3; theta = theta1, theta2, theta3); T = 0 if x odd, 1 if x even.
 
-### Part (a): Conditional distribution tables
+### Part (a): Conditional distribution tables (10 points)
 
-- **Type:** Direct computation; the answer is a table of conditional probabilities.
-- **Required approach:** For each value of T (0 and 1), compute p(x | T; theta) = P(X=x, T=t) / P(T=t) for each x and each theta.
-  - When T=0 (x is odd): the relevant x values are 1 and 3. Sum the probabilities for x=1 and x=3 to get P(T=0; theta), then divide each by this sum.
-  - When T=1 (x is even): the relevant x value is 2. Since x=2 is the only even value, P(X=2 | T=1; theta) should be computed.
-- **Key criteria:**
-  - The conditional probabilities must be computed correctly from the given pmf table using the definition of conditional probability.
-  - Two separate tables should be presented (one for T=0, one for T=1), each showing the conditional distribution across all relevant x values for all three theta values.
-  - The conditional probabilities within each table (for a given theta) must sum to 1.
-- **Relevant lecture material:** Definition 5.1 (Lecture 5, slide 2) for the concept of conditioning.
-- **Common mistakes to watch for:**
-  - Conditioning on the wrong set of x values for a given T.
-  - Arithmetic errors in dividing probabilities.
-  - Not presenting results for all three theta values.
+- **Requires a specific answer:** Yes -- two tables of conditional probabilities, one for T=0 and one for T=1.
+- **Type:** Direct computation from the given pmf table.
+- **Level of detail:** Intermediate steps (marginal probabilities P(T=0; theta) and P(T=1; theta)) should be shown before forming the ratios.
 
-### Part (b): Comment on the nature of T
+**Relevant lecture material:** Definition 5.1 (Lecture 5, slide 2); Example 5.1 (slides 3-4) for the conditional distribution approach.
 
-- **Type:** Conceptual interpretation based on the result of part (a).
-- **Required approach:** The student must examine the conditional distributions from part (a) and determine whether they depend on theta. Per Definition 5.1, if the conditional distribution p(x | T; theta) does not depend on theta, then T is sufficient.
-- **Key criteria:**
-  - The student must explicitly state whether the conditional distributions depend on theta or not.
-  - The conclusion about sufficiency (or lack thereof) must be logically consistent with the tables computed in part (a).
-  - The student should reference the definition of sufficiency to justify their conclusion.
-- **Common mistakes to watch for:**
-  - Drawing a conclusion that contradicts their own computed tables.
-  - Not clearly linking the observation to the definition of sufficiency.
+**Required steps:**
+
+1. **(2 pts)** Identify which x values correspond to T=0 (odd x: x=1, x=3) and T=1 (even x: x=2).
+2. **(4 pts)** For T=0: compute P(T=0; theta_i) = p(1; theta_i) + p(3; theta_i) for each theta. Then compute p(x | T=0; theta_i) = p(x; theta_i) / P(T=0; theta_i) for x = 1 and x = 3, for all three theta values. Present as a table.
+3. **(2 pts)** For T=1: since x=2 is the only even value, p(x=2 | T=1; theta) = 1 for all theta. The student should recognize and state this. Present as a (trivial) table.
+4. **(2 pts)** Verify internal consistency: conditional probabilities within each table (for a given theta) must sum to 1.
+
+**Common mistakes to watch for:**
+- Conditioning on the wrong set of x values for a given T.
+- Arithmetic errors when summing probabilities from the table.
+- Not presenting results for all three theta values in each table.
+- Omitting the T=1 table because it seems trivial.
 
 ---
 
-## Problem 3: Sufficient Statistic for Uniform-like Distribution
+### Part (b): Comment on the nature of T (5 points)
 
-**Context:** X1,...,Xn iid from f(x; theta) = theta^{-1} for |theta| < x < 2*theta, 0 elsewhere.
+- **Requires a specific answer:** Yes -- must state whether T is sufficient or not, with justification.
+- **Type:** Conceptual interpretation based on part (a).
 
-### Requirements
+**Relevant lecture material:** Definition 5.1 (Lecture 5, slide 2).
 
+**Required steps:**
+
+1. **(3 pts)** Examine whether the conditional distribution p(x | T; theta) depends on theta. The student must check BOTH the T=0 and T=1 cases. For T=1 the conditional is degenerate and free of theta. For T=0, the student must inspect their table to see whether the conditional probabilities for x=1 and x=3 change across the three theta values.
+2. **(2 pts)** State the conclusion about sufficiency. T is sufficient if and only if the conditional distribution given T does not depend on theta for ANY value of T. If even one conditional table depends on theta, T is not sufficient. The student must connect their observation to Definition 5.1.
+
+**Common mistakes to watch for:**
+- Drawing a conclusion that contradicts their own computed tables.
+- Checking only the T=1 table and claiming sufficiency, while ignoring that the T=0 table might depend on theta.
+- Not referencing the definition of sufficiency.
+
+---
+
+## Problem 3: Sufficient Statistic for f(x; theta) = theta^{-1} on (|theta|, 2*theta)
+
+**(12 points)**
+
+- **Requires a specific answer:** Yes -- must state the sufficient statistic.
 - **Type:** Analytical derivation using the factorization theorem.
-- **Required approach:**
-  - Write the joint likelihood as a product of the individual densities.
-  - Crucially, handle the support constraint |theta| < x_i < 2*theta for all i. This translates into indicator functions that constrain theta based on the data.
-  - The student must recognize that the support depends on theta, so the indicator functions are part of g_theta and contribute to identifying the sufficient statistic.
-  - Apply the factorization theorem (Theorem 5.1) to identify g_theta(T(X)) and h(X).
-- **Key criteria:**
-  - The student must correctly express the support constraints in terms of order statistics or min/max of the sample.
-  - The constraint |theta| < x_i < 2*theta must be translated into conditions on theta involving the sample minimum X_(1) and/or maximum X_(n).
-  - The factorization must correctly separate the theta-dependent part (including the indicator/support constraints) from the theta-free part.
-  - The proposed sufficient statistic must be consistent with the factorization.
-- **Relevant lecture material:** Theorem 5.1 (Lecture 5, slide 5); Example 5.7 (slide 18) for a case where the support depends on theta and the sufficient statistic involves an order statistic. Also Example 6.1 (Lecture 6, slides 3-4) for the Uniform case with theta-dependent support.
-- **Common mistakes to watch for:**
-  - Ignoring the indicator functions / support constraints entirely.
-  - Incorrectly converting the constraint |theta| < x < 2*theta into conditions on order statistics. Note the absolute value: |theta| means the constraint depends on the sign of theta. The student should carefully handle the case theta > 0 (where |theta| = theta, so theta < x < 2*theta). Grader should verify whether the problem implicitly restricts theta > 0 (since f is a valid density only when theta > 0, because the support length is 2*theta - |theta| = theta when theta > 0, matching the normalizing constant theta^{-1}).
-  - Proposing only a single order statistic when the sufficient statistic may need to be a pair (or vice versa) -- the grader should verify independently based on the factorization.
-  - Not recognizing that this distribution's support depends on theta, making it non-exponential-family-like.
+- **Level of detail:** Joint likelihood with indicator functions, conversion to order-statistic conditions, explicit factorization.
+
+**Relevant lecture material:** Theorem 5.1 (Lecture 5, slide 5); Example 5.7 (slide 18) for Uniform(0, theta) where the support depends on theta; Example 6.1 (Lecture 6, slides 3-4) for Uniform(theta, theta+1) where (X_(1), X_(n)) is sufficient.
+
+**Required steps:**
+
+1. **(2 pts)** Write the joint likelihood as a product of individual densities, each with indicator function enforcing |theta| < x_i < 2*theta.
+2. **(2 pts)** Address the parameter space. Since the support (|theta|, 2*theta) must be non-empty, we need |theta| < 2*theta, which forces theta > 0. The student should note this (or at least work consistently with theta > 0).
+3. **(3 pts)** Convert the indicator constraints to order statistics. The constraints |theta| < x_i for all i and x_i < 2*theta for all i translate to conditions on the sample minimum X_(1) and sample maximum X_(n). The student must correctly determine which order statistic enforces which bound.
+4. **(3 pts)** Factor the joint likelihood into g_theta(T) * h(X), identifying the theta-dependent part (involving theta^{-n} and the indicator conditions) and the theta-free part.
+5. **(2 pts)** State the sufficient statistic, citing the factorization theorem. Since both bounds depend on theta, the sufficient statistic should capture information from both tails of the sample.
+
+**Common mistakes to watch for:**
+- Ignoring the indicator functions entirely and treating this as if it were an exponential family.
+- Ignoring the absolute value |theta| in the lower bound.
+- Getting the direction of inequalities wrong when converting to order statistics (e.g., confusing min vs. max).
+- Proposing the sample mean or sample sum as sufficient (these are NOT sufficient when the support depends on theta and the density is flat).
+- Not recognizing that both bounds of the support depend on theta (unlike Uniform(0, theta) where only the upper bound depends on theta).
 
 ---
 
-## Problem 4: Rao-Blackwell Theorem Application
+## Problem 4: Rao-Blackwell with N(theta, 1)
 
 **Context:** X1, X2 iid N(theta, 1); d = (X1+X2)/2; d* = E(d | X1).
 
-### Part (a): Expectations of d and d*
+### Part (a): Expectations of d and d* (5 points)
 
-- **Type:** Direct computation of expectations.
-- **Required approach:**
-  - E(d): Compute E[(X1+X2)/2] using linearity of expectation and the fact that E(Xi) = theta.
-  - E(d*): Apply the tower property (law of iterated expectations): E[d*] = E[E(d | X1)] = E(d).
-- **Key criteria:**
-  - Both expectations must be computed and stated explicitly.
-  - The tower property must be used (at least implicitly) for E(d*).
-  - Both results should be clearly stated.
-- **Relevant lecture material:** Theorem 5.3 part (b) (Lecture 5, slide 19) -- that d* = E(d|T) is unbiased if d is unbiased; Proof on slide 21.
-- **Common mistakes to watch for:**
-  - Not recognizing or applying the tower property for E(d*).
-  - Unnecessary computation when the tower property gives the answer directly.
+- **Requires a specific answer:** Yes -- explicit values for E(d) and E(d*).
+- **Type:** Analytical computation.
 
-### Part (b): Show Var(d*) < Var(d)
+**Relevant lecture material:** Theorem 5.3 part (b) (Lecture 5, slide 19); proof on slide 21 showing E[d*] = E[E(d|T)] = E[d].
 
-- **Type:** Analytical proof of strict variance inequality.
-- **Required approach:** The student should either:
-  - (Option 1) Compute d* = E(d | X1) explicitly by evaluating E[(X1+X2)/2 | X1], then compute Var(d*) and Var(d) separately and compare.
-  - (Option 2) Use the variance decomposition formula: Var(d) = Var(E(d|X1)) + E(Var(d|X1)) = Var(d*) + E(Var(d|X1)), and show that E(Var(d|X1)) > 0, giving strict inequality.
-- **Key criteria:**
-  - The student must show strict inequality (not just <=).
-  - If using direct computation, both variances must be correctly derived.
-  - If using the variance decomposition (as in the proof of Theorem 5.3, Lecture 5, slides 21-22), the student must verify that the remainder term E[Var(d|X1)] is strictly positive (not just non-negative).
-- **Relevant lecture material:** Theorem 5.3 part (c) and its proof (Lecture 5, slides 19, 21-22). The variance decomposition Var(d) = Var(d*) + E[Var(d|T)] is the key identity.
-- **Common mistakes to watch for:**
-  - Only showing Var(d*) <= Var(d) without establishing strictness.
-  - Incorrectly computing E(d | X1) -- this requires computing E(X2 | X1), and the student must use the independence of X1 and X2.
-  - Confusing conditioning on X1 (not sufficient) with conditioning on a sufficient statistic.
+**Required steps:**
 
-### Part (c): Why d* cannot be used as improved estimator
+1. **(2 pts)** Compute E(d) = E[(X1+X2)/2] using linearity of expectation and E(Xi) = theta.
+2. **(3 pts)** Compute E(d*). Two valid approaches:
+   - **Tower property:** E[d*] = E[E(d | X1)] = E[d] by the law of iterated expectations. The student must invoke this property.
+   - **Direct approach:** First compute d* = E[(X1+X2)/2 | X1] explicitly (using independence of X1 and X2), then take E[d*].
 
-- **Type:** Conceptual explanation.
-- **Required approach:** The student must explain why, despite having lower variance, d* is not a useful "improved" estimator of theta. The key issue is that X1 alone is NOT a sufficient statistic for theta (the sufficient statistic for N(theta,1) with n=2 is X1+X2, not X1 alone). The Rao-Blackwell theorem (Theorem 5.3) guarantees improvement only when conditioning on a SUFFICIENT statistic. Conditioning on a non-sufficient statistic (X1) loses information and produces an estimator (d*) that depends only on X1, discarding X2 entirely. The resulting d* is simply a function of X1 alone and thus ignores half the data.
-- **Key criteria:**
-  - The student must identify that X1 is NOT a sufficient statistic for theta.
-  - The student must connect this to the Rao-Blackwell theorem's requirement of conditioning on a sufficient statistic.
-  - The student should note that d* is effectively just a function of X1, meaning it throws away the information in X2.
-  - The student should recognize that while Var(d*) < Var(d), the estimator d* is inferior to d in the sense that d uses all the data while d* does not (and there exist other estimators based on all the data that dominate d*).
-- **Relevant lecture material:** Theorem 5.3 and Remarks (Lecture 5, slides 19-20). The Rao-Blackwell theorem specifically requires T to be sufficient.
-- **Common mistakes to watch for:**
-  - Failing to mention sufficiency as the key issue.
-  - Incorrectly claiming that d* is biased (it is unbiased by the tower property).
-  - Vague answers that do not precisely identify why the Rao-Blackwell framework does not apply here.
+**Common mistakes to watch for:**
+- Not using or citing the tower property for E(d*).
+- When computing E(d | X1), forgetting that X1 is fixed in the conditional expectation while X2 retains its marginal distribution (by independence).
 
 ---
 
-## Problem 5: Incompleteness of Uniform(theta, theta+1)
+### Part (b): Show Var(d*) < Var(d) (7 points)
 
-### Requirements
+- **Requires a specific answer:** Yes -- must prove the strict inequality.
+- **Type:** Analytical derivation.
 
-- **Type:** Proof by exhibiting a counterexample -- find a non-zero function h(T) of a sufficient statistic T such that E[h(T)] = 0 for all theta.
-- **Required approach:** Per Definition 6.2 (Lecture 6, slide 9), to show incompleteness one must find a function h(T) that is not identically zero but has E[h(T)] = 0 for all theta. The student must:
-  1. Identify or propose a sufficient statistic T for this family (see Example 6.1 in Lecture 6 for the Uniform(theta, theta+1) case -- the sufficient statistic is (X_(1), X_(n))).
-  2. Construct a non-trivial function h of T (or of X) such that its expectation is zero for all theta.
-  3. Verify that E[h(T)] = 0 for all theta by computing the expectation under the Uniform(theta, theta+1) distribution.
-  4. Verify that h is not identically zero.
-- **Key criteria:**
-  - The student must produce an explicit function h and show it satisfies both conditions (expectation zero for all theta; function not identically zero).
-  - The computation of E[h(T)] = 0 must be valid for ALL theta (not just specific values).
-  - The function h must be a function of a sufficient statistic (or equivalently, the student can work with any statistic and note that completeness of the family implies completeness of any sufficient statistic).
-- **Relevant lecture material:** Definition 6.2 (Lecture 6, slide 9); Example 6.4 part (i) (slide 10) for a demonstration of showing a statistic is NOT complete by exhibiting a counterexample. Example 6.1 (slides 3-4) for the sufficient statistic of the Uniform(theta, theta+1) family.
-- **Common mistakes to watch for:**
-  - Failing to verify that E[h(T)] = 0 for ALL theta (not just one value).
-  - Choosing a function h that is actually identically zero (trivial).
-  - Not working with a sufficient statistic (though one can also show the family itself is not complete, which implies no complete sufficient statistic exists).
-  - Confusing "not complete" with "not sufficient."
-  - A common and valid approach involves a function of X_(n) - X_(1) (the range), since for Uniform(theta, theta+1) the range has a distribution that does not depend on theta in a way that "fills up" the parameter space enough for completeness.
+**Relevant lecture material:** Theorem 5.3 part (c) (Lecture 5, slides 19, 21-22) and its proof using the variance decomposition (Eve's law).
+
+**Required steps (two valid approaches):**
+
+**Option 1 -- Direct computation:**
+1. **(2 pts)** Compute d* = E(d | X1) explicitly. This requires E[(X1+X2)/2 | X1], which uses independence (E(X2 | X1) = E(X2) = theta).
+2. **(3 pts)** Compute Var(d) and Var(d*) separately from the explicit expressions.
+3. **(2 pts)** Compare and show strict inequality.
+
+**Option 2 -- Eve's law / variance decomposition:**
+1. **(3 pts)** Apply Var(d) = Var(E(d|X1)) + E(Var(d|X1)) = Var(d*) + E(Var(d|X1)).
+2. **(2 pts)** Show E(Var(d|X1)) > 0 strictly. Compute Var(d|X1) = Var((X1+X2)/2 | X1) = Var(X2/2 | X1) = Var(X2)/4 (by independence), which is strictly positive.
+3. **(2 pts)** Conclude Var(d*) = Var(d) - E(Var(d|X1)) < Var(d).
+
+**Common mistakes to watch for:**
+- Only showing Var(d*) <= Var(d) without establishing **strict** inequality.
+- When computing E(X2 | X1), not using independence correctly.
+- Incorrectly applying the Rao-Blackwell theorem here (the theorem requires a sufficient statistic -- X1 is NOT sufficient, but the variance inequality still holds by Eve's law; the issue comes up in part (c)).
+
+---
+
+### Part (c): Why d* cannot be used as improved estimator of theta (6 points)
+
+- **Requires a specific answer:** Yes -- must give a clear conceptual explanation.
+- **Type:** Conceptual reasoning.
+
+**Relevant lecture material:** Theorem 5.3 and Remarks (Lecture 5, slides 19-20). The Rao-Blackwell theorem specifically requires T to be a SUFFICIENT statistic.
+
+**Required content:**
+
+1. **(3 pts)** Identify the key issue: X1 alone is NOT a sufficient statistic for theta in the N(theta, 1) model with two observations. The sufficient statistic is the sum (or mean) of both observations (by the factorization theorem / exponential family, see Lecture 5, Example 5.5). Since d* = E(d | X1) conditions on a non-sufficient statistic, the Rao-Blackwell theorem does not apply.
+2. **(3 pts)** Explain the practical consequence: d* is a function of X1 alone, effectively discarding X2. It ignores information about theta contained in X2. While Var(d*) < Var(d), this does not make d* a superior estimator because there exist other estimators (based on the sufficient statistic) that have even lower variance. The sample mean d itself, when viewed as a function of the sufficient statistic, already uses all the data optimally in a different sense.
+
+**Common mistakes to watch for:**
+- Failing to identify that X1 is not sufficient as the core reason.
+- Incorrectly claiming d* is biased (it IS unbiased, as shown in part (a)).
+- Claiming the problem is that Var(d*) is not actually smaller (it IS smaller, as shown in part (b) -- that is not the issue).
+- Vague answers that do not specifically mention sufficiency or the Rao-Blackwell conditions.
+
+---
+
+## Problem 5: Show Uniform(theta, theta+1) Family Is Not Complete
+
+**(15 points)**
+
+- **Requires a specific answer:** Yes -- must exhibit a specific non-zero function h with E[h] = 0 for all theta.
+- **Type:** Proof by construction (counterexample to completeness).
+- **Level of detail:** The function must be exhibited, E[h] = 0 verified for all theta, and h shown to be non-zero.
+
+**Relevant lecture material:** Definition 6.2 (Lecture 6, slide 9); Example 6.4 part (i) (slide 10) for the strategy of exhibiting a counterexample. Also Example 6.1 (slides 3-4) for the Uniform(theta, theta+1) distribution and its sufficient statistics.
+
+**Required steps:**
+
+1. **(3 pts)** State the definition of completeness (Definition 6.2): T is complete for theta if E[h(T)] = 0 for all theta implies h(T) = 0 a.s. To show the family is NOT complete, one must find a function h that is not identically zero but has zero expectation for all theta.
+2. **(3 pts)** Exhibit a specific non-zero function h(x). The student has freedom in choice. Valid approaches include:
+   - Periodic functions with period 1 and zero integral over one period (e.g., h(x) = sin(2*pi*x), or h(x) = x - floor(x) - 1/2).
+   - Any function satisfying: integral from theta to theta+1 of h(x) dx = 0 for all theta. Differentiating this in theta gives h(theta+1) - h(theta) = 0, so h must be periodic with period 1. Thus any non-constant function with period 1 and zero mean over one period works.
+3. **(5 pts)** Verify that E[h(X)] = 0 for ALL theta. This requires computing the integral from theta to theta+1 of h(x) * 1 dx and showing it equals zero for every theta in the parameter space.
+4. **(2 pts)** Verify that h is not identically zero (exhibit specific values where h is nonzero, or argue from the form of h).
+5. **(2 pts)** Conclude: since a non-zero function h exists with E[h(X)] = 0 for all theta, the Uniform(theta, theta+1) family is not complete by the definition of completeness.
+
+**Common mistakes to watch for:**
+- Proposing a function that works for some but not all theta.
+- Choosing a function that is actually identically zero.
+- Not verifying E[h] = 0 for ALL theta (only checking finitely many values is insufficient).
+- Attempting to use Theorem 6.2 (exponential family completeness) -- Uniform(theta, theta+1) is NOT an exponential family, so that theorem does not apply. However, the non-applicability of Theorem 6.2 does not prove non-completeness; a constructive counterexample is required.
+- Confusing "not complete" with "not sufficient" -- these are different concepts.
+- Working with n > 1 observations and a sufficient statistic like (X_(1), X_(n)) is acceptable, but the student must handle the more complex joint distribution.
 
 ---
 
 ## Problem 6: UMVUE of p^r * q^s for Binomial
 
-**Context:** X1,...,Xn iid Binomial(m, p); estimate p^r * q^s where q = 1-p, r+s < mn.
+**Context:** X1, ..., Xn iid Binomial(m, p); T = X1 + ... + Xn; estimate p^r * q^s where q = 1-p, r and s are known positive integers with r + s < mn.
 
-### Part (a): Distribution of T = X1 + ... + Xn
+### Part (a): Distribution of T (6 points)
 
-- **Type:** Derivation using moment generating functions (or convolution).
-- **Required approach:** The student must derive the distribution of the sum of n independent Binomial(m, p) random variables. The standard approach is:
-  - Write the mgf of a single Binomial(m, p) variable.
-  - Use independence to write the mgf of T as the product of n such mgfs.
-  - Recognize the resulting mgf as that of a known distribution.
-  - Alternatively, argue via the reproductive property of the Binomial: the sum of independent Binomial(m, p) variables is Binomial(nm, p).
-- **Key criteria:**
-  - The mgf (or other method) must be correctly computed.
-  - The final distribution of T must be clearly identified with its parameters.
-  - The derivation should be complete, not just stated as a fact.
-- **Relevant lecture material:** This draws on probability prerequisites (mgf techniques). The result is used in the subsequent parts.
-- **Common mistakes to watch for:**
-  - Incorrect mgf formula for the Binomial distribution.
-  - Claiming the sum is Binomial without justification (the problem says "by using mgfs or otherwise," so some derivation is expected).
+- **Requires a specific answer:** Yes -- must state the distribution of T with correct parameters.
+- **Type:** Derivation using MGFs (as suggested) or another valid method.
+- **Level of detail:** The derivation must be shown, not just the result.
 
-### Part (b): Show U(T) is unbiased for p^r * q^s
+**Relevant lecture material:** Lecture 5, slide 10 (exponential family sufficient statistics); general probability theory on sums of independent Binomials.
 
-- **Type:** Algebraic verification that E[U(T)] = p^r * q^s.
-- **Required approach:** The student must compute E[U(T)] using the distribution of T found in part (a) and show it equals p^r * q^s. This involves:
-  - Writing out E[U(T)] = sum over T from r to mn-s of U(T) * P(T=t).
-  - Substituting the given formula for U(T) = C(mn-s-r, T-r) / C(mn, T).
-  - Substituting the Binomial(mn, p) pmf for P(T=t).
-  - Performing algebraic manipulations involving binomial coefficients (such as Vandermonde's identity or the technique of splitting binomial coefficients) to show the sum equals p^r * q^s.
-- **Key criteria:**
-  - The expectation must be written out explicitly as a sum.
-  - The algebraic manipulation of binomial coefficients must be clearly shown.
-  - The key identity or technique used to evaluate the sum must be stated or derived (e.g., recognizing a hypergeometric-type sum, using the identity C(mn, T) = C(mn, r) * ... or the Vandermonde convolution, or splitting the Binomial(mn, p) pmf into components).
-  - The final result E[U(T)] = p^r * q^s must be clearly established.
-- **Relevant lecture material:** Example 6.6 (Lecture 6, slide 18) for a similar computation of conditioning to find an unbiased estimator based on a sufficient statistic.
-- **Common mistakes to watch for:**
-  - Errors in binomial coefficient algebra.
-  - Not accounting for the range of summation (T = r to mn-s) correctly.
-  - Skipping critical steps in the combinatorial argument.
-  - Not verifying that U(T) is indeed a function of the sufficient statistic T only.
+**Required steps:**
 
-### Part (c): Argue U(T) is the UMVUE
+1. **(2 pts)** Write the MGF of a single Xi ~ Binomial(m, p).
+2. **(2 pts)** Use independence to write the MGF of T = X1 + ... + Xn as the product of n individual MGFs.
+3. **(2 pts)** Recognize the resulting MGF as that of a known distribution and state the distribution of T clearly with both parameters. (Alternatively, argue via the interpretation of each Binomial(m, p) as a sum of m independent Bernoulli(p) trials, so T is the sum of nm Bernoulli(p) trials.)
 
-- **Type:** Brief conceptual argument invoking the Lehmann-Scheffe theorem.
-- **Required approach:** The student must argue that:
-  1. T = X1 + ... + Xn is a sufficient statistic for p (from the factorization theorem applied to the Binomial family).
-  2. T is a complete statistic (because the Binomial(mn, p) family is a one-parameter exponential family with full rank -- invoke Theorem 6.2, Lecture 6, slide 13).
-  3. U(T) is an unbiased estimator of p^r * q^s that is a function of the complete sufficient statistic T.
-  4. By the Lehmann-Scheffe theorem (Theorem 6.3, Lecture 6, slide 14), U(T) is the UMVUE.
-- **Key criteria:**
-  - Sufficiency of T must be established or referenced.
-  - Completeness of T must be established, citing the exponential family result (Theorem 6.2) or proving it directly (as in Example 6.4(ii), Lecture 6, slides 11-12).
-  - The Lehmann-Scheffe theorem must be explicitly invoked by name or theorem number.
-  - The argument must clearly connect all three ingredients: complete, sufficient, and unbiased.
-- **Relevant lecture material:** Theorem 6.2 (Lecture 6, slide 13) for completeness of exponential family; Theorem 6.3 (Lecture 6, slide 14) for Lehmann-Scheffe; Example 6.4(ii) (slides 11-12) for completeness of the Binomial sum.
-- **Common mistakes to watch for:**
-  - Claiming UMVUE without establishing completeness.
-  - Not mentioning sufficiency.
-  - Invoking Rao-Blackwell alone (which gives minimum variance among Rao-Blackwellized estimators, but not UMVUE without completeness).
-  - Confusing sufficiency with completeness.
-  - Failing to verify that the Binomial family is an exponential family (or failing to establish completeness by another route).
+**Common mistakes to watch for:**
+- Incorrect MGF formula for the Binomial.
+- Incorrectly computing the parameters of the resulting distribution (e.g., getting Binomial(nm, np) instead of Binomial(nm, p) -- the p parameter does NOT get multiplied by n).
+- Claiming the result without showing any derivation or justification.
+- If using the Bernoulli decomposition argument, not justifying why the sum of independent Bernoullis is Binomial.
 
 ---
 
-## General Grading Notes
+### Part (b): Show U(T) is unbiased for p^r * q^s (10 points)
 
-- **Notation and rigor:** Students should use proper notation and clearly define any symbols introduced. Steps should be logically connected.
-- **Referencing theorems:** Students should cite relevant definitions and theorems (by name or number) when applying them. Simply writing a formula without identifying the theorem is insufficient for full credit.
-- **Logical consistency:** Within multi-part problems, answers across sub-parts should be mutually consistent. Flag contradictions.
-- **All derivations are analytical** unless otherwise noted -- no R code is required for any problem on this homework.
+- **Requires a specific answer:** Yes -- must derive the given formula for U(T) by solving E[U(T)] = p^r * q^s.
+- **Type:** Algebraic derivation involving combinatorial identities.
+- **Level of detail:** All key combinatorial manipulations must be shown explicitly.
+
+**Relevant lecture material:** Example 6.6 (Lecture 6, slide 18) for a similar technique of finding an unbiased estimator as a function of a complete sufficient statistic.
+
+**Required steps:**
+
+1. **(2 pts)** Write E[U(T)] using the pmf of T (from part (a)): E[U(T)] = sum over t of U(t) * C(mn, t) * p^t * q^{mn-t}, and set this equal to p^r * q^s.
+2. **(3 pts)** Manipulate the right-hand side p^r * q^s to express it in a form compatible with the left-hand side. A standard approach: write p^r * q^s = p^r * q^s * 1 = p^r * q^s * (p + q)^{mn-r-s}, then expand (p + q)^{mn-r-s} using the binomial theorem.
+3. **(3 pts)** Match the resulting expansion with the left-hand side term by term. This involves re-indexing the sum and comparing coefficients of p^t * q^{mn-t} on both sides. The key combinatorial identity step is to relate C(mn, t) * U(t) to C(mn-r-s, t-r) (or equivalent manipulations).
+4. **(2 pts)** Arrive at the formula U(t) = C(mn-r-s, t-r) / C(mn, t) for t = r, r+1, ..., mn-s, and U(t) = 0 otherwise. Justify the range: the binomial coefficient C(mn-r-s, t-r) requires 0 <= t-r <= mn-r-s, i.e., r <= t <= mn-s.
+
+**Common mistakes to watch for:**
+- Errors in binomial coefficient algebra or re-indexing sums.
+- Not correctly determining the range of T for which U(T) is nonzero.
+- Skipping the key combinatorial step without justification.
+- Circular reasoning: simply plugging in the given U(T) and verifying is acceptable (the problem says "show that"), but the student must still carry out the verification rigorously.
+
+---
+
+### Part (c): Argue U(T) is the UMVUE (6 points)
+
+- **Requires a specific answer:** Yes -- must provide a brief but complete argument.
+- **Type:** Conceptual argument citing appropriate theorems.
+
+**Relevant lecture material:** Theorem 6.2 (Lecture 6, slide 13) on completeness for exponential families; Theorem 6.3 / Lehmann-Scheffe (slide 14); Example 6.4(ii) (slides 10-12) for completeness of the Binomial sum.
+
+**Required steps:**
+
+1. **(2 pts)** Establish that T is a sufficient statistic for p. This follows from the factorization theorem applied to the joint Binomial likelihood, or from the exponential family structure (Lecture 5, slide 10, Example 5.3).
+2. **(2 pts)** Establish that T is a complete statistic. The student should argue that the Binomial(mn, p) family (with p in (0,1)) is a one-parameter exponential family of full rank, so by Theorem 6.2, T is complete. Alternatively, the student may cite or reproduce the polynomial argument from Example 6.4(ii) (Lecture 6, slides 10-12): E[h(T)] = 0 for all p implies a polynomial in p/(1-p) is identically zero, forcing all coefficients (and hence h) to be zero.
+3. **(2 pts)** Apply the Lehmann-Scheffe Theorem (Theorem 6.3): U(T) is an unbiased estimator of p^r * q^s (shown in part (b)) that is a function of the complete sufficient statistic T, hence U(T) is the UMVUE.
+
+**Common mistakes to watch for:**
+- Claiming UMVUE from sufficiency alone, without establishing completeness.
+- Invoking only the Rao-Blackwell theorem without Lehmann-Scheffe -- Rao-Blackwell gives variance reduction but does not by itself guarantee UMVUE or uniqueness.
+- Confusing sufficiency with completeness.
+- Not mentioning the Lehmann-Scheffe theorem (by name or statement).
+- Failing to identify the exponential family structure or otherwise justify completeness.
+
+---
+
+## Point Allocation Summary
+
+| Problem | Points | Key Concept |
+|---------|--------|-------------|
+| 1(a) | 10 | Conditional distribution, sufficiency definition |
+| 1(b) | 8 | Factorization theorem |
+| 2(a) | 10 | Conditional distribution (discrete) |
+| 2(b) | 5 | Sufficiency assessment |
+| 3 | 12 | Factorization with indicator functions, order statistics |
+| 4(a) | 5 | Iterated expectation / tower property |
+| 4(b) | 7 | Variance comparison, Eve's law |
+| 4(c) | 6 | Rao-Blackwell requires sufficient statistic |
+| 5 | 15 | Completeness definition, constructive counterexample |
+| 6(a) | 6 | MGF / reproductive property of Binomial |
+| 6(b) | 10 | Unbiased estimator derivation via combinatorics |
+| 6(c) | 6 | Lehmann-Scheffe theorem |
+| **Total** | **100** | |
+
+---
+
+## General Grading Principles
+
+1. **Notation and rigor:** Deduct 1 point per problem for sloppy or undefined notation (e.g., using the same symbol for different quantities, not defining new variables).
+2. **Theorem citations:** Students should cite relevant definitions and theorems (by name or number) when applying them. Deduct 1 point if a major theorem is applied without identification.
+3. **Logical flow:** Each derivation should proceed in a clear, logical sequence. Gaps in reasoning (skipped steps that are not obvious) should result in partial credit rather than full credit.
+4. **Correct but different approaches:** Accept any mathematically valid approach, even if it differs from the lecture method, provided the reasoning is complete and correct.
+5. **Partial credit:** Award partial credit for correct intermediate steps even if the final conclusion is wrong, provided the student demonstrates understanding of the relevant concepts.
+6. **Cross-part consistency:** Within multi-part problems, answers across sub-parts must be mutually consistent. Flag and deduct for contradictions (e.g., finding a statistic is not sufficient in one part but claiming it is in another).
+7. **All derivations are analytical** -- no R code is required or expected for any problem on this homework.

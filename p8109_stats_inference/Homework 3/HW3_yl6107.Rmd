@@ -1,7 +1,7 @@
 ---
 title: "P8109 Statistical Inference -- Homework 3"
 author: "Yongyan Liu (yl6107)"
-date: "2026-04-07"
+date: "2026-04-08"
 output:
   pdf_document:
     latex_engine: xelatex
@@ -19,180 +19,113 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Problem 1
 
-**Let $X_1$ and $X_2$ be two independent Poisson random variables with parameter $\lambda$. Let $T = X_1 + X_2$.**
+**Let $X_1$ and $X_2$ be two independent Poisson random variables with parameter $\lambda$. Let $T = X_1 + 2X_2$.**
 
-## (a) By finding an expression for $P(X_1 = 1, X_2 = 2 \mid T = 3)$, show that $T$ is not sufficient for $\lambda$.
+## (a) By finding an expression for $P(X_1 = 1, X_2 = 1 \mid T = 3)$, show that $T$ is not sufficient for $\lambda$.
 
-Let $X_1 \sim \text{Poisson}(\lambda_1)$ and $X_2 \sim \text{Poisson}(\lambda_2)$ independently, with $\lambda = (\lambda_1, \lambda_2)$. By the definition of conditional probability,
-$$P(X_1 = 1, X_2 = 2 \mid T = 3) = \frac{P(X_1 = 1, X_2 = 2)}{P(T = 3)}.$$
-
-The numerator is (by independence):
-$$P(X_1=1,X_2=2) = \frac{e^{-\lambda_1}\lambda_1}{1!}\cdot\frac{e^{-\lambda_2}\lambda_2^2}{2!} = \frac{e^{-(\lambda_1+\lambda_2)}\lambda_1\lambda_2^2}{2}.$$
-
-Since $T = X_1+X_2$, where $X_1 \sim \text{Poisson}(\lambda_1)$ and $X_2 \sim \text{Poisson}(\lambda_2)$ independently, we have $T \sim \text{Poisson}(\lambda_1+\lambda_2)$. The denominator is:
-$$P(T=3) = \frac{e^{-(\lambda_1+\lambda_2)}(\lambda_1+\lambda_2)^3}{3!}.$$
+Since $X_1, X_2 \iid \text{Poisson}(\lambda)$, by independence,
+$$P(X_1 = x_1, X_2 = x_2) = \frac{e^{-\lambda}\lambda^{x_1}}{x_1!}\cdot\frac{e^{-\lambda}\lambda^{x_2}}{x_2!} = \frac{e^{-2\lambda}\lambda^{x_1+x_2}}{x_1!\,x_2!}.$$
 
 Therefore,
-$$P(X_1=1,X_2=2\mid T=3) = \frac{e^{-(\lambda_1+\lambda_2)}\lambda_1\lambda_2^2/2}{e^{-(\lambda_1+\lambda_2)}(\lambda_1+\lambda_2)^3/6} = \frac{3\lambda_1\lambda_2^2}{(\lambda_1+\lambda_2)^3}.$$
-
-This expression depends on $\lambda_1$ and $\lambda_2$ (not just through $\lambda_1+\lambda_2$). For example, if $\lambda_1 = \lambda_2 = 1$, the probability is $3/(2^3) = 3/8$; if $\lambda_1 = 1, \lambda_2 = 2$, it is $3\cdot1\cdot4/27 = 12/27 = 4/9$. Since the conditional distribution $P(X_1=1, X_2=2 \mid T=3)$ depends on the parameter $\lambda = (\lambda_1,\lambda_2)$, by Definition 5.1, $T = X_1 + X_2$ is **not** sufficient for $\lambda = (\lambda_1,\lambda_2)$.
+$$P(X_1 = 1, X_2 = 1 \mid T = 3) = \frac{P(X_1 = 1, X_2 = 1)}{P(X_1 = 1, X_2 = 1) + P(X_1 = 3, X_2 = 0)} = \frac{e^{-2\lambda}\lambda^2}{e^{-2\lambda}\lambda^2\!\left(\frac{\lambda}{6}+1\right)} = \frac{1}{\frac{\lambda}{6}+1} = \frac{6}{\lambda + 6}.$$
+Since the expression depends on $\lambda$, we conclude that $T = X_1 + 2X_2$ is **not** sufficient for $\lambda$.
 
 ## (b) By using the factorization theorem, obtain a sufficient statistic for $\lambda$.
 
-The joint likelihood is
-$$L(\lambda_1,\lambda_2 \mid x_1,x_2) = \frac{e^{-\lambda_1}\lambda_1^{x_1}}{x_1!}\cdot\frac{e^{-\lambda_2}\lambda_2^{x_2}}{x_2!} = \underbrace{e^{-(\lambda_1+\lambda_2)}\lambda_1^{x_1}\lambda_2^{x_2}}_{g_\lambda(x_1,x_2)}\cdot\underbrace{\frac{1}{x_1!\,x_2!}}_{h(x_1,x_2)}.$$
-
-The function $g_\lambda$ depends on the data only through $(x_1, x_2)$ individually (not through a lower-dimensional summary). By the Fisher-Neyman Factorization Theorem (Theorem 5.1), the sufficient statistic for $\lambda = (\lambda_1, \lambda_2)$ is
-$$T(X_1, X_2) = (X_1, X_2).$$
-
-That is, the entire sample $(X_1, X_2)$ is sufficient for the two-dimensional parameter $(\lambda_1, \lambda_2)$, and no further reduction is possible.
+The joint likelihood of $(X_1, X_2)$ is
+$$L(\lambda \mid x_1, x_2) = \prod_{i=1}^{2}\frac{e^{-\lambda}\lambda^{x_i}}{x_i!} = \frac{e^{-2\lambda}\lambda^{x_1+x_2}}{x_1!\,x_2!} = \underbrace{e^{-2\lambda}\lambda^{x_1 + x_2}}_{g_\lambda(S)} \cdot \underbrace{\frac{1}{x_1!\,x_2!}}_{h(x_1,x_2)},$$
+By the Fisher--Neyman Factorization Theorem (Theorem 5.1),
+$$S = X_1 + X_2$$
+is a sufficient statistic for $\lambda$.
 
 # Problem 2
 
-**Consider a discrete random variable $X$ with pmf $p(x;\theta)$, where $x=1,2,3$ and $\theta = \theta_1,\theta_2,\theta_3$. The pmf values are:**
+**Consider a discrete random variable $X$ with pmf $p(x;\theta)$, $x=1,2,3$, $\theta = \theta_1,\theta_2,\theta_3$, given by:**
 
 | $x$ | $\theta_1$ | $\theta_2$ | $\theta_3$ |
-|:---:|:---:|:---:|:---:|
-| 1 | 0.1 | 0.2 | 0.3 |
-| 2 | 0.7 | 0.4 | 0.1 |
-| 3 | 0.2 | 0.4 | 0.6 |
+|-----|-----------|-----------|-----------|
+| 1   | 0.1       | 0.2       | 0.3       |
+| 2   | 0.7       | 0.4       | 0.1       |
+| 3   | 0.2       | 0.4       | 0.6       |
 
-**Consider the statistic $T = 0$ if $x$ is odd, $T = 1$ if $x$ is even.**
+**Let $T = 0$ if $x$ is odd, $T = 1$ if $x$ is even.**
 
-## (a) Obtain the conditional distribution $p(x \mid T; \theta)$ in tabular form for $T=0$ and for $T=1$.
+## (a) Obtain $p(x \mid T; \theta)$ in tabular form for $T = 0$ and $T = 1$.
 
-**Case $T = 0$ (i.e., $x$ is odd, so $x \in \{1,3\}$):**
+Using $p(x \mid T;\theta) = p(x;\theta)/P(T;\theta)$, with $P(T=0;\theta) = p(1;\theta)+p(3;\theta)$:
 
-First compute $P(T=0;\theta) = P(X=1;\theta) + P(X=3;\theta)$:
-
-- $\theta_1$: $P(T=0) = 0.1 + 0.2 = 0.3$
-- $\theta_2$: $P(T=0) = 0.2 + 0.4 = 0.6$
-- $\theta_3$: $P(T=0) = 0.3 + 0.6 = 0.9$
-
-Then $p(x \mid T=0;\theta) = p(x;\theta)/P(T=0;\theta)$:
+**$T = 0$** ($x \in \{1,3\}$):
 
 | $x$ | $\theta_1$ | $\theta_2$ | $\theta_3$ |
-|:---:|:---:|:---:|:---:|
-| 1 | $0.1/0.3 = 1/3$ | $0.2/0.6 = 1/3$ | $0.3/0.9 = 1/3$ |
-| 3 | $0.2/0.3 = 2/3$ | $0.4/0.6 = 2/3$ | $0.6/0.9 = 2/3$ |
+|-----|-----------|-----------|-----------|
+| 1   | $0.1/0.3 = 1/3$ | $0.2/0.6 = 1/3$ | $0.3/0.9 = 1/3$ |
+| 3   | $0.2/0.3 = 2/3$ | $0.4/0.6 = 2/3$ | $0.6/0.9 = 2/3$ |
 
-**Case $T = 1$ (i.e., $x$ is even, so $x = 2$):**
-
-Since $x=2$ is the only even value, $P(T=1;\theta) = P(X=2;\theta)$, and
-
-$$p(X=2 \mid T=1;\theta) = 1 \quad \text{for all } \theta.$$
+**$T = 1$** ($x = 2$ is the only even value, so trivially):
 
 | $x$ | $\theta_1$ | $\theta_2$ | $\theta_3$ |
-|:---:|:---:|:---:|:---:|
-| 2 | 1 | 1 | 1 |
+|-----|-----------|-----------|-----------|
+| 2   | 1         | 1         | 1         |
 
-## (b) Comment on the nature of the statistic $T$.
+## (b) Comment on the nature of $T$.
 
-For both $T=0$ and $T=1$, the conditional distribution $p(x \mid T;\theta)$ does **not** depend on $\theta$. By Definition 5.1 (sufficiency), a statistic $T$ is sufficient for $\theta$ if the conditional distribution of the data given $T$ does not depend on $\theta$. Since this condition is satisfied, $T$ is a **sufficient statistic** for $\theta$.
+Both conditional tables in (a) are free of $\theta$. By Definition 5.1, $T$ **is sufficient** for $\theta$.
 
 # Problem 3
 
 **Let $X_1,\ldots,X_n$ be i.i.d. with pdf $f(x;\theta) = \theta^{-1}$ for $|\theta| < x < 2\theta$, and $0$ elsewhere. Obtain a sufficient statistic for $\theta$.**
 
-First, note that for the density to be valid we need $\theta > 0$: the support is $(|\theta|, 2\theta) = (\theta, 2\theta)$ when $\theta > 0$, which has length $\theta$, and $\int_\theta^{2\theta}\theta^{-1}\,dx = 1$. (If $\theta \le 0$, the support would be empty or have non-positive length.)
-
-The joint likelihood for a sample $(x_1,\ldots,x_n)$ is
-$$L(\theta \mid \mathbf{x}) = \prod_{i=1}^n \frac{1}{\theta}\,\mathbf{1}(\theta < x_i < 2\theta) = \theta^{-n}\prod_{i=1}^n \mathbf{1}(\theta < x_i < 2\theta).$$
-
-The constraint $\theta < x_i < 2\theta$ for all $i$ is equivalent to:
-$$\theta < x_{(1)} \quad\text{and}\quad x_{(n)} < 2\theta,$$
-where $x_{(1)} = \min_i x_i$ and $x_{(n)} = \max_i x_i$. That is, $x_{(n)}/2 < \theta < x_{(1)}$.
-
-So
-$$L(\theta \mid \mathbf{x}) = \underbrace{\theta^{-n}\,\mathbf{1}\!\left(\frac{x_{(n)}}{2} < \theta < x_{(1)}\right)}_{g_\theta(x_{(1)}, x_{(n)})} \cdot \underbrace{1}_{h(\mathbf{x})}.$$
-
-By the Fisher-Neyman Factorization Theorem (Theorem 5.1), since $g_\theta$ depends on $\mathbf{x}$ only through $(X_{(1)}, X_{(n)})$, a sufficient statistic for $\theta$ is
-$$T = (X_{(1)}, X_{(n)}).$$
+The support $(|\theta|, 2\theta)$ is non-empty only if $\theta > 0$, so $|\theta| = \theta$ and the support is $(\theta, 2\theta)$. The joint likelihood is
+$$L(\theta \mid \mathbf{x}) = \theta^{-n}\prod_{i=1}^n \mathbf{1}(\theta < x_i < 2\theta) = \underbrace{\theta^{-n}\,\mathbf{1}\!\left(\frac{x_{(n)}}{2} < \theta < x_{(1)}\right)}_{g_\theta(x_{(1)},\, x_{(n)})} \cdot \underbrace{1}_{h(\mathbf{x})},$$
+since $\theta < x_i$ for all $i$ iff $\theta < x_{(1)}$, and $x_i < 2\theta$ for all $i$ iff $x_{(n)} < 2\theta$. By the Factorization Theorem, $\mathbf{T} = (X_{(1)}, X_{(n)})$ is sufficient for $\theta$.
 
 # Problem 4
 
-**Let $X_1, X_2 \iid N(\theta, 1)$. Let $d = (X_1+X_2)/2$ and $d^* = \E(d \mid X_1)$.**
+**Let $X_1, X_2 \iid N(\theta, 1)$. Let $d = (X_1 + X_2)/2$ and $d^* = \E(d \mid X_1)$.**
 
 ## (a) Obtain the expectations of $d$ and $d^*$.
 
-By linearity of expectation:
-$$\E(d) = \E\!\left[\frac{X_1+X_2}{2}\right] = \frac{\theta + \theta}{2} = \theta.$$
+By linearity, $\E(d) = (\theta+\theta)/2 = \theta$. 
 
-By the tower property (law of iterated expectations):
-$$\E(d^*) = \E[\E(d \mid X_1)] = \E(d) = \theta.$$
+Since $X_1 \perp X_2$, we have $\E(X_2 \mid X_1) = \theta$, so
+$$d^* = \E(d \mid X_1) = \frac{X_1 + \E(X_2 \mid X_1)}{2} = \frac{X_1+\theta}{2}.$$
+By the tower property, $\E(d^*) = \E[\E(d \mid X_1)] = \E(d) = \theta$.
 
 ## (b) Show that $\Var(d^*) < \Var(d)$.
 
-First compute $d^*$ explicitly. Since $X_1$ and $X_2$ are independent:
-$$d^* = \E(d \mid X_1) = \E\!\left[\frac{X_1+X_2}{2}\;\Big|\;X_1\right] = \frac{X_1 + \E(X_2 \mid X_1)}{2} = \frac{X_1 + \theta}{2},$$
-where $\E(X_2 \mid X_1) = \E(X_2) = \theta$ by independence.
-
-Now compute the variances:
-$$\Var(d) = \Var\!\left(\frac{X_1+X_2}{2}\right) = \frac{\Var(X_1)+\Var(X_2)}{4} = \frac{1+1}{4} = \frac{1}{2}.$$
-
-$$\Var(d^*) = \Var\!\left(\frac{X_1+\theta}{2}\right) = \frac{\Var(X_1)}{4} = \frac{1}{4}.$$
-
-Since $\frac{1}{4} < \frac{1}{2}$, we have $\Var(d^*) < \Var(d)$.
+$$\Var(d) = \frac{\Var(X_1)+\Var(X_2)}{4} = \frac{1}{2}, \qquad \Var(d^*) = \frac{\Var(X_1)}{4} = \frac{1}{4} < \frac{1}{2} = \Var(d).$$
 
 ## (c) Explain why $d^*$ cannot be used as an improved estimator of $\theta$.
 
-Although $d^* = (X_1+\theta)/2$ is unbiased for $\theta$ and has smaller variance than $d$, it **cannot** be used as an estimator because it depends on the unknown parameter $\theta$. An estimator must be a function of the observed data only; since $d^* = (X_1+\theta)/2$ contains $\theta$, it is not a valid statistic.
-
-Moreover, from a Rao-Blackwell perspective, the theorem (Theorem 5.3) guarantees an improved estimator only when conditioning on a **sufficient** statistic. Here we conditioned on $X_1$ alone, which is **not** a sufficient statistic for $\theta$ (the sufficient statistic for $N(\theta,1)$ with $n=2$ is $X_1+X_2$). Conditioning on a non-sufficient statistic results in $d^* = (X_1+\theta)/2$, which depends on $\theta$ and hence is not a legitimate estimator. In effect, $d^*$ discards the information in $X_2$ and replaces it with the unknown parameter, making it unusable in practice.
+$d^* = (X_1+\theta)/2$ depends on the unknown $\theta$, so it is **not a valid statistic** and cannot be computed from data. Moreover, $X_1$ is not sufficient for $\theta$ (the sufficient statistic is $X_1+X_2$ by the factorization theorem), so this does not constitute a Rao--Blackwell improvement (Theorem 5.3).
 
 # Problem 5
 
 **Show that the $\text{Uniform}(\theta, \theta+1)$ family is not complete.**
 
-For $n \ge 2$ observations $X_1,\ldots,X_n \iid \text{Uniform}(\theta,\theta+1)$, by Example 6.1 (Lecture 6), the sufficient statistic is $\mathbf{T} = (X_{(1)}, X_{(n)})$. Consider the function
-$$h(\mathbf{T}) = X_{(n)} - X_{(1)} - \frac{n-1}{n+1}.$$
-
-We need to show $\E_\theta[h(\mathbf{T})] = 0$ for all $\theta$. The range $R = X_{(n)} - X_{(1)}$ for $n$ i.i.d. $\text{Uniform}(\theta, \theta+1)$ random variables has the same distribution as the range from $\text{Uniform}(0,1)$, since a location shift does not affect differences. The distribution of $R$ is well known: $f_R(r) = n(n-1)r^{n-2}(1-r)$ for $0 < r < 1$, which is $\text{Beta}(n-1, 2)$. Therefore,
-$$\E[R] = \E[X_{(n)} - X_{(1)}] = \frac{n-1}{n+1}.$$
-
-Hence,
-$$\E_\theta[h(\mathbf{T})] = \E_\theta[X_{(n)} - X_{(1)}] - \frac{n-1}{n+1} = \frac{n-1}{n+1} - \frac{n-1}{n+1} = 0 \quad \text{for all } \theta.$$
-
-But $h(\mathbf{T}) = X_{(n)} - X_{(1)} - \frac{n-1}{n+1}$ is **not** identically zero (the range $R = X_{(n)} - X_{(1)}$ is a non-degenerate random variable taking values in $(0,1)$).
-
-Since we have found a non-zero function of the sufficient statistic $\mathbf{T} = (X_{(1)}, X_{(n)})$ whose expectation is zero for all $\theta$, by Definition 6.2 (completeness), $\mathbf{T}$ is **not** complete. Therefore, the $\text{Uniform}(\theta, \theta+1)$ family is not complete.
+Let $h(x) = \sin(2\pi x)$, which is not identically zero. For $X \sim \text{Uniform}(\theta, \theta+1)$:
+$$\E_\theta[h(X)] = \int_\theta^{\theta+1}\sin(2\pi x)\,dx = \left[-\frac{\cos(2\pi x)}{2\pi}\right]_\theta^{\theta+1} = \frac{\cos(2\pi\theta) - \cos(2\pi(\theta+1))}{2\pi} = 0,$$
+since $\cos(2\pi(\theta+1)) = \cos(2\pi\theta)$. We have exhibited a non-zero $h$ with $\E_\theta[h(X)] = 0$ for all $\theta$, so by Definition 6.2 the family is **not complete**.
 
 # Problem 6
 
 **Let $X_1,\ldots,X_n \iid \text{Binomial}(m,p)$. We wish to obtain the UMVUE of $p^r q^s$, where $q = 1-p$ and $r,s$ are known positive integers with $r+s < mn$.**
 
-## (a) By using moment-generating functions or otherwise, obtain the distribution of $T = X_1 + \cdots + X_n$.
+## (a) Obtain the distribution of $T = X_1 + \cdots + X_n$.
 
-The mgf of a single $X_i \sim \text{Binomial}(m,p)$ is
-$$M_{X_i}(t) = (1 - p + pe^t)^m = (q + pe^t)^m.$$
+The MGF of $X_i \sim \text{Binomial}(m,p)$ is $M_{X_i}(t) = (q + pe^t)^m$. By independence,
+$$M_T(t) = \prod_{i=1}^n M_{X_i}(t) = (q + pe^t)^{mn},$$
+which is the MGF of $\text{Binomial}(mn, p)$. By uniqueness, $T \sim \text{Binomial}(mn, p)$.
 
-Since $X_1,\ldots,X_n$ are independent, the mgf of $T = \sum_{i=1}^n X_i$ is
-$$M_T(t) = \prod_{i=1}^n M_{X_i}(t) = \left[(q + pe^t)^m\right]^n = (q + pe^t)^{mn}.$$
+## (b) Show that $U(T) = \binom{mn-r-s}{T-r}\Big/\binom{mn}{T}$ for $T = r, \ldots, mn-s$ is unbiased for $p^r q^s$.
 
-This is the mgf of a $\text{Binomial}(mn, p)$ distribution. Since the mgf uniquely determines the distribution,
-$$T = X_1 + \cdots + X_n \sim \text{Binomial}(mn, p).$$
+Expand the right-hand side using $(p+q)^{mn-r-s} = 1$:
+$$p^r q^s = \sum_{j=0}^{mn-r-s}\binom{mn-r-s}{j}p^{j+r} q^{mn-(j+r)}.$$
+Substituting $t = j+r$:
+$$p^r q^s = \sum_{t=r}^{mn-s}\binom{mn-r-s}{t-r}p^t q^{mn-t}.$$
+Since $T \sim \text{Binomial}(mn,p)$, we need $\sum_{t} U(t)\binom{mn}{t}p^t q^{mn-t} = p^r q^s$. Matching coefficients of $p^t q^{mn-t}$ gives
+$$U(t) = \frac{\binom{mn-r-s}{t-r}}{\binom{mn}{t}}, \quad t = r,\ldots, mn-s, \qquad U(t) = 0 \text{ otherwise.}$$
 
-## (b) Show that $U(T) = \binom{mn-r-s}{T-r}\Big/\binom{mn}{T}$ for $T = r, r+1, \ldots, mn-s$, and $0$ otherwise, is the unbiased estimator of $p^r q^s$.
+## (c) Argue briefly that $U(T)$ is the UMVUE of $p^r q^s$.
 
-We need $\E[U(T)] = p^r q^s$. Since $T \sim \text{Binomial}(mn, p)$:
-$$\E[U(T)] = \sum_{t=r}^{mn-s} \frac{\binom{mn-r-s}{t-r}}{\binom{mn}{t}} \binom{mn}{t} p^t q^{mn-t} = \sum_{t=r}^{mn-s} \binom{mn-r-s}{t-r} p^t q^{mn-t}.$$
-
-Let $j = t - r$, so $j$ ranges from $0$ to $mn - s - r$. Then:
-$$\E[U(T)] = \sum_{j=0}^{mn-r-s} \binom{mn-r-s}{j} p^{j+r} q^{mn-j-r} = p^r q^{mn-r} \sum_{j=0}^{mn-r-s} \binom{mn-r-s}{j} p^j q^{mn-r-s-j}.$$
-
-Note that $q^{mn-r} = q^s \cdot q^{mn-r-s}$, so
-$$\E[U(T)] = p^r q^s \sum_{j=0}^{mn-r-s} \binom{mn-r-s}{j} p^j q^{mn-r-s-j}.$$
-
-By the binomial theorem, $\sum_{j=0}^{mn-r-s}\binom{mn-r-s}{j}p^j q^{mn-r-s-j} = (p+q)^{mn-r-s} = 1$.
-
-Therefore, $\E[U(T)] = p^r q^s$, confirming that $U(T)$ is unbiased for $p^r q^s$.
-
-## (c) By considering the family of distributions, argue briefly that $U(T)$ is the UMVUE of $p^r q^s$.
-
-We argue as follows:
-
-1. **Sufficiency:** By the factorization theorem, $T = \sum_{i=1}^n X_i$ is sufficient for $p$. Indeed, the joint pmf is $\prod_{i=1}^n \binom{m}{x_i} p^{x_i}q^{m-x_i} = p^{\sum x_i}q^{mn - \sum x_i}\prod_{i=1}^n \binom{m}{x_i}$, which factors as $g_p(T)\cdot h(\mathbf{x})$.
-
-2. **Completeness:** The distribution of $T \sim \text{Binomial}(mn, p)$ belongs to the one-parameter exponential family (with natural parameter $\eta = \log(p/q)$), and the parameter space $p \in (0,1)$ contains an open interval, so it has full rank. By Theorem 6.2, $T$ is a complete sufficient statistic for $p$.
-
-3. **UMVUE:** $U(T)$ is an unbiased estimator of $p^r q^s$ (shown in part (b)) and is a function of the complete sufficient statistic $T$. By the Lehmann-Scheff\'e Theorem (Theorem 6.3), $U(T)$ is the unique UMVUE of $p^r q^s$.
+The Binomial$(m,p)$ family is a one-parameter exponential family of full rank, so by the Factorization Theorem $T = \sum X_i$ is sufficient, and by Theorem 6.2 $T$ is complete. Since $U(T)$ is unbiased for $p^r q^s$ (part (b)) and is a function of the complete sufficient statistic $T$, the Lehmann--Scheff\'e Theorem (Theorem 6.3) implies $U(T)$ is the UMVUE of $p^r q^s$.
