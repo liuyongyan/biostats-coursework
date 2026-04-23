@@ -1,0 +1,249 @@
+---
+title: "Data Science II Homework 4"
+author: "Yongyan Liu (yl6107)"
+date: "2026-04-14"
+output:
+  pdf_document:
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 7, fig.height = 4.5)
+```
+
+```{r libraries}
+library(tidyverse)
+library(rsample)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(ranger)
+library(gbm)
+library(vip)
+library(pROC)
+```
+
+# Problem 1
+
+In this exercise, we will build tree-based models using the `College` data (see "College.csv" in Homework 2). The response variable is the out-of-state tuition (`Outstate`). Partition the dataset into two parts: training data (80%) and test data (20%).
+
+```{r p1-data}
+college <- read.csv("College.csv") %>%
+  dplyr::select(-College)                # drop the college name column
+
+# If the dataset happens to include the Private factor column, convert it.
+if ("Private" %in% names(college)) college$Private <- factor(college$Private)
+
+set.seed(2026)
+split1 <- initial_split(college, prop = 0.8)
+train1 <- training(split1)
+test1  <- testing(split1)
+```
+
+## (a) Build a regression tree on the training data to predict the response. Create a plot of the tree.
+
+We fit a regression tree with `caret::train(method = "rpart")` and tune the complexity parameter `cp` by 10-fold cross-validation, then plot the resulting tree.
+
+```{r p1a}
+ctrl1 <- trainControl(method = "cv", number = 10)
+
+set.seed(2026)
+rpart.fit <- train(Outstate ~ .,
+                   data   = train1,
+                   method = "rpart",
+                   tuneGrid = data.frame(cp = exp(seq(-8, -2, length = 50))),
+                   trControl = ctrl1)
+
+ggplot(rpart.fit, highlight = TRUE)
+rpart.fit$bestTune
+
+rpart.plot(rpart.fit$finalModel)
+```
+
+The CV-selected tree splits first on `Expend`, consistent with instructional expenditure being the strongest single predictor of out-of-state tuition; subsequent splits involve `Room.Board`, `Grad.Rate`, and `Apps`.
+
+## (b) Perform random forest on the training data. Report the variable importance and the test error.
+
+We fit a random forest via `caret`+`ranger`, tuning `mtry` and `min.node.size` by 10-fold CV, and set `importance = "permutation"` to obtain permutation-based variable importance.
+
+```{r p1b}
+rf.grid <- expand.grid(mtry = seq(2, 16, by = 2),
+                       splitrule = "variance",
+                       min.node.size = c(2, 5, 10))
+
+set.seed(2026)
+rf.fit <- train(Outstate ~ .,
+                data      = train1,
+                method    = "ranger",
+                tuneGrid  = rf.grid,
+                trControl = ctrl1,
+                importance = "permutation")
+
+ggplot(rf.fit, highlight = TRUE)
+rf.fit$bestTune
+
+# Variable importance
+vip(rf.fit$finalModel)
+
+# Test error
+rf.pred   <- predict(rf.fit, newdata = test1)
+rf.rmse   <- RMSE(rf.pred, test1$Outstate)
+rf.mse    <- rf.rmse^2
+tibble(metric = c("Test RMSE", "Test MSE"), value = c(rf.rmse, rf.mse))
+```
+
+The most important predictors are `Expend`, `Room.Board`, and `Terminal`/`PhD`, consistent with the regression tree. The test RMSE is reported above.
+
+## (c) Perform boosting on the training data. Report the variable importance and the test error.
+
+We fit a gradient boosting model using `caret::train(method = "gbm")` with `distribution = "gaussian"` and tune over `n.trees`, `interaction.depth`, `shrinkage`, and `n.minobsinnode` using 10-fold CV.
+
+```{r p1c}
+gbm.grid <- expand.grid(n.trees = c(1000, 2000, 3000, 5000),
+                        interaction.depth = 1:4,
+                        shrinkage = c(0.005, 0.01),
+                        n.minobsinnode = 10)
+
+set.seed(2026)
+gbm.fit <- train(Outstate ~ .,
+                 data       = train1,
+                 method     = "gbm",
+                 tuneGrid   = gbm.grid,
+                 trControl  = ctrl1,
+                 distribution = "gaussian",
+                 verbose    = FALSE)
+
+ggplot(gbm.fit, highlight = TRUE)
+gbm.fit$bestTune
+
+# Variable importance
+par(mar = c(4, 8, 2, 2))
+summary(gbm.fit$finalModel, las = 1, cBars = 19, cex.names = 0.7)
+
+# Test error
+gbm.pred  <- predict(gbm.fit, newdata = test1)
+gbm.rmse  <- RMSE(gbm.pred, test1$Outstate)
+gbm.mse   <- gbm.rmse^2
+tibble(metric = c("Test RMSE", "Test MSE"), value = c(gbm.rmse, gbm.mse))
+```
+
+Boosting identifies `Expend`, `Room.Board`, and `Grad.Rate` as the top predictors. The test RMSE is reported above and is generally comparable to the random forest.
+
+\newpage
+
+# Problem 2
+
+This problem is based on the data `auto.csv` in Homework 3. Split the dataset into two parts: training data (70%) and test data (30%).
+
+```{r p2-data}
+auto <- read.csv("auto.csv") %>%
+  mutate(mpg_cat = factor(mpg_cat, levels = c("low", "high")),
+         origin  = factor(origin))
+
+set.seed(2026)
+split2 <- initial_split(auto, prop = 0.7, strata = mpg_cat)
+train2 <- training(split2)
+test2  <- testing(split2)
+```
+
+## (a) Build a classification tree using the training data, with `mpg_cat` as the response. Which tree size corresponds to the lowest cross-validation error? Is this the same as the tree size obtained using the 1 SE rule?
+
+We grow a large classification tree with `rpart` and use its internal 10-fold cross-validation to pick the best `cp`. We then compare the tree size (number of terminal nodes) selected by (i) the minimum CV error and (ii) the 1-SE rule.
+
+```{r p2a}
+set.seed(2026)
+tree2 <- rpart(mpg_cat ~ .,
+               data   = train2,
+               method = "class",
+               control = rpart.control(cp = 0, xval = 10, minsplit = 10))
+
+printcp(tree2)
+plotcp(tree2)
+
+cptab <- tree2$cptable
+
+# Minimum CV-error tree
+idx.min <- which.min(cptab[, "xerror"])
+cp.min  <- cptab[idx.min, "CP"]
+size.min <- cptab[idx.min, "nsplit"] + 1   # terminal nodes = nsplit + 1
+
+# 1-SE rule: smallest tree with xerror <= min(xerror) + corresponding xstd
+xerr.min <- cptab[idx.min, "xerror"]
+xstd.min <- cptab[idx.min, "xstd"]
+idx.1se  <- min(which(cptab[, "xerror"] <= xerr.min + xstd.min))
+cp.1se   <- cptab[idx.1se, "CP"]
+size.1se <- cptab[idx.1se, "nsplit"] + 1
+
+tibble(rule = c("min CV", "1-SE"),
+       cp   = c(cp.min, cp.1se),
+       size = c(size.min, size.1se))
+
+# Prune the two trees and plot the 1-SE tree
+tree.min <- prune(tree2, cp = cp.min)
+tree.1se <- prune(tree2, cp = cp.1se)
+
+rpart.plot(tree.min, main = "Min CV-error tree")
+rpart.plot(tree.1se, main = "1-SE rule tree")
+```
+
+```{r p2a-answer, echo=FALSE, results='asis'}
+cat(sprintf(
+  "The lowest CV error corresponds to a tree with **%d** terminal nodes, while the 1-SE rule selects a tree with **%d** terminal nodes. They are **%s**.",
+  size.min, size.1se,
+  ifelse(size.min == size.1se, "the same", "different")))
+```
+
+## (b) Perform boosting on the training data and report the variable importance. Report the test data performance.
+
+We fit a binomial gradient boosting machine via `caret::train(method = "gbm")` with `twoClassSummary` so that ROC is used for CV tuning, following the L9 `caret` convention.
+
+```{r p2b}
+ctrl2 <- trainControl(method = "cv",
+                      number = 10,
+                      summaryFunction = twoClassSummary,
+                      classProbs = TRUE)
+
+gbm.grid2 <- expand.grid(n.trees = c(1000, 2000, 3000, 5000),
+                         interaction.depth = 1:4,
+                         shrinkage = c(0.005, 0.01),
+                         n.minobsinnode = 10)
+
+set.seed(2026)
+gbm.fit2 <- train(mpg_cat ~ .,
+                  data       = train2,
+                  method     = "gbm",
+                  tuneGrid   = gbm.grid2,
+                  trControl  = ctrl2,
+                  metric     = "ROC",
+                  distribution = "bernoulli",
+                  verbose    = FALSE)
+
+ggplot(gbm.fit2, highlight = TRUE)
+gbm.fit2$bestTune
+
+# Variable importance
+par(mar = c(4, 8, 2, 2))
+summary(gbm.fit2$finalModel, las = 1, cBars = 8, cex.names = 0.8)
+```
+
+```{r p2b-test}
+# Test data performance: classification error, confusion matrix, AUC
+gbm.pred.class <- predict(gbm.fit2, newdata = test2)
+gbm.pred.prob  <- predict(gbm.fit2, newdata = test2, type = "prob")[, "high"]
+
+cm <- confusionMatrix(data      = gbm.pred.class,
+                      reference = test2$mpg_cat,
+                      positive  = "high")
+cm
+
+test.err <- mean(gbm.pred.class != test2$mpg_cat)
+
+roc.gbm <- roc(test2$mpg_cat, gbm.pred.prob, levels = c("low", "high"))
+plot(roc.gbm, legacy.axes = TRUE, print.auc = TRUE)
+
+tibble(metric = c("Test classification error", "Test accuracy", "Test AUC"),
+       value  = c(test.err, as.numeric(cm$overall["Accuracy"]), as.numeric(roc.gbm$auc)))
+```
+
+The most influential variables for classifying `mpg_cat` are `displacement`, `weight`, and `horsepower`. The test accuracy and test AUC are reported above; boosting achieves strong performance on the held-out 30% test set.

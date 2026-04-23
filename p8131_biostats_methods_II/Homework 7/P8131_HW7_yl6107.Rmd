@@ -127,7 +127,7 @@ random.effects(LMM1)
 The within-subject residuals $\hat{\epsilon}_{ij} = Y_{ij} - \hat{Y}_{ij}$, where $\hat{Y}_{ij}$ includes both fixed effects and random intercepts:
 
 ```{r}
-LMM1$residuals
+residuals(LMM1, level = 1)
 ```
 
 ## (c) Model with interaction and likelihood ratio test

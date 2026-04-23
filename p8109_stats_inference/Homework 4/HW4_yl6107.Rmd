@@ -1,0 +1,121 @@
+---
+title: "P8109 Statistical Inference -- Homework 4"
+author: "Yongyan Liu (yl6107)"
+date: "2026-04-15"
+output:
+  pdf_document:
+    latex_engine: xelatex
+header-includes:
+  - \usepackage{amsmath,amssymb,amsthm}
+  - \DeclareMathOperator{\Var}{Var}
+  - \DeclareMathOperator{\Cov}{Cov}
+  - \DeclareMathOperator{\E}{E}
+  - \newcommand{\iid}{\overset{\text{iid}}{\sim}}
+  - \newcommand{\ind}{\overset{\text{ind}}{\sim}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem 1
+
+**Consider sampling from the parent population with density**
+$$f(x\mid\theta) = \theta x^{\theta-1}, \qquad 0 < x < 1,\; \theta > 0.$$
+**Based on a random sample $X_1$ of size $n=1$ from this parent population, what is the power of the most powerful (MP) test of $H_0: \theta = 1$ vs. $H_1: \theta = 2$ if $P(\text{Type I error}) = \alpha = 0.05$?**
+
+Under $H_0$, $f(x\mid 1) = 1$ (so $X_1 \sim \text{Uniform}(0,1)$); under $H_1$, $f(x\mid 2) = 2x$. By the Neyman--Pearson Lemma, the MP test rejects $H_0$ when the likelihood ratio
+$$\Lambda(x_1) \;=\; \frac{f(x_1\mid 2)}{f(x_1\mid 1)} \;=\; 2x_1$$
+is large. Since $\Lambda$ is strictly increasing in $x_1$, the rejection region is of the form
+$$R = \{x_1 : x_1 \ge c\}$$
+for some constant $c \in (0,1)$.
+
+Under $H_0$, $X_1 \sim \text{Uniform}(0,1)$, so
+$$\alpha \;=\; P_{\theta=1}(X_1 \ge c) \;=\; 1 - c \;=\; 0.05 \;\Longrightarrow\; c = 0.95.$$
+Under $H_1$, $f(x\mid 2) = 2x$, so
+$$\text{Power} \;=\; P_{\theta = 2}(X_1 \ge 0.95) \;=\; \int_{0.95}^{1} 2x\,dx \;=\; \bigl[x^2\bigr]_{0.95}^{1} \;=\; 1 - 0.9025 \;=\; 0.0975.$$
+
+# Problem 2
+
+**Consider sampling from the parent population with density**
+$$f(x\mid\theta) = \theta x^{\theta - 1}, \qquad 0 < x < 1,\; \theta > 0.$$
+**If $X_1$ and $X_2$ constitute a random sample of size $n=2$, show that the rejection region of size $\alpha$ for the MP test of $H_0: \theta = 1$ vs.\ $H_1: \theta = 2$ is $X_1 X_2 \ge k^{*}$, where $k^{*} - k^{*}\log k^{*} = 1 - \alpha$.**
+
+Under independence the joint densities are
+$$L(1\mid x_1,x_2) = 1, \qquad L(2\mid x_1,x_2) = 4 x_1 x_2.$$
+Hence
+$$\Lambda(x_1,x_2) \;=\; \frac{L(2\mid x_1,x_2)}{L(1\mid x_1,x_2)} \;=\; 4\,x_1 x_2,$$
+which is a strictly increasing function of the sufficient-like statistic $T = X_1 X_2$. By the Neyman--Pearson Lemma, the MP rejection region has the form
+$$R \;=\; \{(x_1,x_2) : x_1 x_2 \ge k^{*}\}.$$
+
+Under $\theta = 1$, $X_1,X_2 \iid \text{Uniform}(0,1)$, so $-\log X_i \iid \text{Exponential}(1)$ and
+$$W \;=\; -\log X_1 - \log X_2 \;\sim\; \text{Gamma}(2,1),$$
+with density $f_W(w) = w e^{-w}$, $w > 0$, and (by the Erlang tail / Poisson relationship)
+$$P(W \ge w) \;=\; e^{-w}(1 + w), \qquad w \ge 0.$$
+
+The event $\{X_1 X_2 \ge k^{*}\}$ is equivalent to $\{W \le -\log k^{*}\}$. Setting the size equal to $\alpha$,
+$$\alpha \;=\; P_{H_0}(X_1 X_2 \ge k^{*}) \;=\; 1 - P(W \ge -\log k^{*}) \;=\; 1 - e^{\log k^{*}}\bigl(1 - \log k^{*}\bigr) \;=\; 1 - \bigl(k^{*} - k^{*}\log k^{*}\bigr),$$
+so $k^{*}$ satisfies
+$$k^{*} - k^{*}\log k^{*} \;=\; 1 - \alpha,$$
+which is the stated form.
+
+# Problem 3
+
+**Let $Y_1,\ldots,Y_n$ be a random sample from the density**
+$$f(y\mid\theta) \;=\; \tfrac{1}{2}(1 + \theta y), \qquad -1 < y < 1,\; \theta > -1.$$
+
+(a) Under $H_0$, $f(y\mid 0) = 1/2$ on $(-1,1)$ (so the $Y_i$ are $\text{Uniform}(-1,1)$); under $H_1$, $f(y\mid 1) = (1+y)/2$. By the NP Lemma the MP test rejects for large values of
+$$\Lambda(\mathbf{y}) \;=\; \frac{\prod_{i=1}^{n}\tfrac{1}{2}(1+y_i)}{\prod_{i=1}^{n}\tfrac{1}{2}} \;=\; \prod_{i=1}^{n}(1+y_i).$$
+Because each factor $(1 + y_i) > 0$ on the support, $\Lambda$ is strictly monotone increasing in the statistic $T(\mathbf{Y}) = \prod_{i=1}^{n}(1 + Y_i)$ (equivalently in $\sum_{i=1}^{n}\log(1 + Y_i)$). Hence the MP rejection region is
+$$R \;=\; \left\{\mathbf{y} : \prod_{i=1}^{n}(1 + y_i) \ge c\right\},$$
+with the constant $c$ determined by $P_{\theta=0}\!\left(\prod_{i=1}^{n}(1+Y_i) \ge c\right) = \alpha$.
+
+(b) With $n = 1$ the region reduces to $\{Y_1 \ge c\}$ (since $1 + y$ is monotone in $y$). Under $H_0$, $Y_1 \sim \text{Uniform}(-1,1)$ with density $1/2$, so
+$$0.05 \;=\; P_{\theta = 0}(Y_1 \ge c) \;=\; \int_{c}^{1} \tfrac{1}{2}\,dy \;=\; \tfrac{1 - c}{2}.$$
+Solving, $1 - c = 0.10$, so
+$$c \;=\; 0.90.$$
+
+(c) Under $H_1$ the density is $f(y\mid 1) = (1+y)/2$, so
+$$\text{Power} \;=\; P_{\theta=1}(Y_1 \ge 0.9) \;=\; \int_{0.9}^{1} \tfrac{1+y}{2}\,dy \;=\; \left[\frac{y}{2} + \frac{y^{2}}{4}\right]_{0.9}^{1} \;=\; \left(\tfrac{1}{2} + \tfrac{1}{4}\right) - \left(0.45 + 0.2025\right).$$
+That is,
+$$\text{Power} \;=\; 0.75 - 0.6525 \;=\; 0.0975.$$
+
+# Problem 4
+
+**Suppose $X \sim \text{Poisson}(\lambda)$. A sample of size $n = 10$ is used to test $H_0: \lambda = 0.1$ vs.\ $H_1: \lambda > 0.1$. Construct the randomized MP test of size $\alpha = 0.05$.**
+
+Let $T = \sum_{i=1}^{10} X_i$. Since $X_1,\ldots,X_{10} \iid \text{Poisson}(\lambda)$ form a one-parameter exponential family with natural statistic $T$, the sum $T$ is sufficient for $\lambda$, and moreover $T \sim \text{Poisson}(n\lambda)$. Under $H_0$,
+$$T \;\sim\; \text{Poisson}(n\lambda_0) \;=\; \text{Poisson}(1).$$
+
+For any fixed $\lambda_1 > 0.1$, the joint pmf ratio
+$$\frac{L(\lambda_1 \mid \mathbf{x})}{L(\lambda_0 \mid \mathbf{x})} \;=\; \exp\!\bigl(-n(\lambda_1 - \lambda_0)\bigr)\left(\frac{\lambda_1}{\lambda_0}\right)^{T}$$
+is strictly increasing in $T$ (since $\lambda_1/\lambda_0 > 1$). Hence the Poisson family has monotone likelihood ratio (MLR) in $T$, and by Theorem 8.1 (Lecture 8) a test that rejects for large values of $T$ is UMP for the composite alternative $H_1: \lambda > 0.1$ at its size. Since $T$ is discrete, an exact size-$\alpha$ test requires randomization at the boundary.
+
+We seek the integer $k$ such that
+$$P_{H_0}(T \ge k+1) \;\le\; \alpha \;<\; P_{H_0}(T \ge k).$$
+Using $T \sim \text{Poisson}(1)$:
+
+```{r p4-poisson}
+alpha <- 0.05
+k_vals <- 0:6
+tail_ge <- ppois(k_vals - 1, lambda = 1, lower.tail = FALSE)  # P(T >= k)
+pmf    <- dpois(k_vals, lambda = 1)                           # P(T = k)
+data.frame(k = k_vals,
+           P_T_ge_k  = round(tail_ge, 6),
+           P_T_eq_k  = round(pmf,    6))
+```
+
+From the table,
+$$P_{H_0}(T \ge 4) \;\approx\; 0.01899, \qquad P_{H_0}(T \ge 3) \;\approx\; 0.08030,$$
+so $P_{H_0}(T \ge 4) < 0.05 < P_{H_0}(T \ge 3)$. Therefore we take $k = 3$ and randomize on the boundary $\{T = 3\}$.
+
+We require
+$$P_{H_0}(T > 3) \;+\; \gamma\, P_{H_0}(T = 3) \;=\; \alpha,$$
+i.e.,
+$$0.018988 + \gamma\cdot 0.061313 \;=\; 0.05 \;\Longrightarrow\; \gamma \;=\; \frac{0.05 - 0.018988}{0.061313} \;\approx\; 0.5058 \in [0,1].$$
+
+The randomized MP (UMP) test is, writing $T = \sum_{i=1}^{10} X_i$,
+$$\phi(\mathbf{x}) \;=\; \begin{cases} 1, & T > 3, \\[2pt] \gamma \approx 0.5058, & T = 3, \\[2pt] 0, & T < 3. \end{cases}$$
+Operationally: compute $T$; if $T \ge 4$ reject $H_0$; if $T \le 2$ do not reject; if $T = 3$, draw $U \sim \text{Uniform}(0,1)$ independently of the data and reject iff $U < \gamma$.
+
+By construction $\E_{H_0}[\phi(\mathbf X)] = P_{H_0}(T \ge 4) + \gamma\, P_{H_0}(T = 3) = \alpha$, so the test has size exactly $0.05$. By the Neyman--Pearson Lemma and the MLR property of the Poisson family, this randomized test is the uniformly most powerful (and hence MP) test of size $0.05$ for $H_0: \lambda = 0.1$ against $H_1: \lambda > 0.1$.

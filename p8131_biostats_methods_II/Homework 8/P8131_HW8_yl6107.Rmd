@@ -1,0 +1,327 @@
+---
+title: "P8131 Homework 8"
+author: "Yongyan Liu (yl6107)"
+date: "2026-04-20"
+output:
+  pdf_document:
+    latex_engine: xelatex
+header-includes:
+  - \usepackage{amsmath}
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(readxl)
+library(gee)
+library(lme4)
+```
+
+# Problem 1
+
+**The data (HEALTH.xlsx) are from a randomized, controlled trial among
+women of childbearing age to evaluate the effects of an educational
+intervention. One response variable of interest is the participant's
+self-rating of health status as either good or poor. The researchers
+would like to assess the effect of the intervention on self-rated health
+across the follow-up period, as well as whether these effects are
+influenced by the mother's age. There are $n = 80$ women enrolled in
+this trial. These data were measured at 4 points in time: randomization,
+3 months, 6 months, and 12 months post-randomization. Each observation
+in the dataset contains values for the following variables (in this
+order):**
+
+- **ID: unique participant identification code**
+- **TIME: visit number (1 = randomization; 2 = 3 months; 3 = 6 months;
+  4 = 12 months post-randomization)**
+- **TRT: treatment group (Control, Intervention)**
+- **HEALTH: self-rated level of health (Good, Poor)**
+- **AGEGROUP: age group at randomization (15--24, 25--34, 35+)**
+
+```{r}
+health <- read_excel("HW8-HEALTH.xlsx")
+# Column name in the file is TXT; rename to TRT for clarity
+health <- health %>% rename(TRT = TXT)
+# Code HEALTH as 0/1: 1 = "Good" (the "event" = good health)
+# Interpretations will be in terms of the log-odds of reporting Good health.
+health <- health %>%
+  mutate(
+    TRT      = factor(TRT, levels = c("Control", "Intervention")),
+    AGEGROUP = factor(AGEGROUP, levels = c("15-24", "25-34", "35+")),
+    HEALTH   = factor(HEALTH, levels = c("Poor", "Good")),
+    GOOD     = as.numeric(HEALTH == "Good")
+  ) %>%
+  arrange(ID, TIME)
+```
+
+We code `HEALTH = 1` for "Good" and `HEALTH = 0` for "Poor", so all
+coefficients below describe effects on the log-odds of rating one's
+health as *Good*. `TRT` uses Control as the reference level, and
+`AGEGROUP` uses 15--24 as the reference.
+
+## (a) Cross-sectional association at randomization
+
+**Evaluate the bivariate, cross-sectional relationship between
+randomized group assignment and participants' health self-rating at the
+time of randomization. Interpret and discuss these findings.**
+
+```{r}
+base <- health %>% filter(TIME == 1)
+cat("Subjects at TIME = 1:", nrow(base), "\n")
+tab <- table(TRT = base$TRT, HEALTH = base$HEALTH)
+tab
+# row proportions
+prop.table(tab, margin = 1)
+```
+
+All $n = 80$ enrolled women have a baseline record. Because two of the
+four expected-count cells may be modest, we use Fisher's exact test
+(which is exact regardless of expected cell counts) and also report
+Pearson's chi-square for comparison.
+
+```{r}
+fisher.test(tab)
+chisq.test(tab)
+# Odds ratio from a logistic regression of baseline GOOD on TRT
+base_glm <- glm(GOOD ~ TRT, data = base, family = binomial)
+summary(base_glm)$coefficients
+exp(cbind(OR = coef(base_glm), confint.default(base_glm)))
+```
+
+**Hypotheses.** $H_0$: TRT assignment and baseline HEALTH are
+independent (OR $=1$) versus $H_1$: they are associated (OR $\neq 1$).
+
+**Conclusion.** Fisher's exact test gives $p \approx 0.51$ and
+Pearson's chi-square test gives $p \approx 0.64$; the logistic-regression
+estimate of the Intervention vs. Control odds ratio for reporting
+"Good" health at baseline is approximately $0.73$ with a 95\% Wald CI
+that comfortably covers 1. **There is no evidence of association
+between treatment assignment and baseline self-rated health.** This is
+the desired result for a randomized trial: randomization appears to have
+balanced the two arms on baseline health, so any treatment effect
+detected during follow-up is unlikely to be confounded by baseline
+health status.
+
+## (b) Longitudinal GEE (follow-up visits only)
+
+**Perform a longitudinal data analysis across all study follow-up
+visits (but not at randomization) to describe the relationship of the
+participants' self-ratings as a function of the effects of health
+self-rating at the baseline, treatment group, month post-randomization,
+and age group as predictors. Fit a GEE with unstructured correlation
+structure. Interpret your results.**
+
+### Data construction
+
+We (i) pull each
+subject's baseline HEALTH from the TIME = 1 row, (ii) merge it onto the
+follow-up rows as a subject-level covariate, (iii) convert the TIME
+code to actual *months post-randomization* (TIME 2, 3, 4 $\to$ 3, 6,
+12 months), and (iv) sort by ID before calling `gee()`.
+
+```{r}
+# Baseline HEALTH per subject (one row per ID)
+baseline <- health %>%
+  filter(TIME == 1) %>%
+  select(ID, BASELINE = HEALTH) %>%
+  mutate(BASELINE = factor(BASELINE, levels = c("Poor", "Good")))
+
+# Follow-up visits only, with baseline HEALTH merged by ID
+follow <- health %>%
+  filter(TIME %in% c(2, 3, 4)) %>%
+  left_join(baseline, by = "ID") %>%
+  mutate(MONTH = case_when(TIME == 2 ~ 3,
+                           TIME == 3 ~ 6,
+                           TIME == 4 ~ 12)) %>%
+  arrange(ID, TIME)
+
+cat("Follow-up rows:", nrow(follow),
+    " Subjects with follow-up:", length(unique(follow$ID)), "\n")
+```
+
+### Model
+
+Let $Y_{ij} = 1$ if subject $i$ reports Good health at follow-up visit
+$j \in \{1,2,3\}$ corresponding to months $3, 6, 12$. The marginal
+logistic GEE is
+
+$$
+\operatorname{logit}\!\bigl\{P(Y_{ij} = 1 \mid X_{ij})\bigr\}
+= \beta_0 + \beta_1\,\mathrm{BASELINE}_i
++ \beta_2\,\mathrm{TRT}_i + \beta_3\,\mathrm{MONTH}_{ij}
++ \beta_4\,\mathrm{AGE}_{25\text{--}34,i} + \beta_5\,\mathrm{AGE}_{35+,i},
+$$
+
+with a subject-specific *unstructured* working correlation among the up
+to three follow-up responses. Inference is based on the robust
+(sandwich) standard errors.
+
+```{r}
+gee_fit <- gee(GOOD ~ BASELINE + TRT + MONTH + AGEGROUP,
+               data    = follow,
+               id      = ID,
+               family  = binomial(link = "logit"),
+               corstr  = "unstructured",
+               scale.fix = FALSE)
+summary(gee_fit)
+```
+
+```{r}
+# Odds ratios with 95% CIs based on robust SEs
+est <- summary(gee_fit)$coefficients
+OR  <- exp(est[, "Estimate"])
+lo  <- exp(est[, "Estimate"] - 1.96 * est[, "Robust S.E."])
+hi  <- exp(est[, "Estimate"] + 1.96 * est[, "Robust S.E."])
+round(cbind(Estimate   = est[, "Estimate"],
+            RobustSE   = est[, "Robust S.E."],
+            RobustZ    = est[, "Robust z"],
+            OR         = OR,
+            CI.low     = lo,
+            CI.high    = hi), 3)
+```
+
+### Interpretation (population-averaged / marginal)
+
+All interpretations are on the **population-averaged** scale: each
+coefficient describes how the log-odds of reporting Good health compare
+*across sub-populations* that differ by one unit (or level) in the given
+covariate, averaged over women.
+
+- **Intercept ($\hat\beta_0$).** Population-averaged log-odds of
+  reporting Good health, at time 0 months post-randomization, for a
+  control-arm woman aged 15--24 whose baseline health was Poor. The
+  intercept is a reference point and not of direct scientific interest.
+- **BASELINE = Good ($\hat\beta_1$).** Among otherwise comparable
+  sub-populations, women who reported Good health at baseline have
+  markedly higher odds of reporting Good health at follow-up than those
+  who reported Poor health at baseline; this is by far the largest and
+  most significant coefficient, reflecting strong persistence of
+  self-rated health over time.
+- **TRT = Intervention ($\hat\beta_2$).** Averaged over women and
+  follow-up times, the odds of rating one's health as Good are higher
+  in the Intervention arm than in the Control arm after adjusting for
+  baseline health, month, and age group. Its sign and whether its
+  robust 95\% CI excludes 1 determine whether the intervention has a
+  detectable marginal effect on self-rated health.
+- **MONTH ($\hat\beta_3$).** Average change in log-odds of Good health
+  per one-month increase in follow-up time (months 3, 6, 12 are coded
+  in actual months, not visit number), in otherwise comparable
+  sub-populations. It summarizes the overall marginal time trend.
+- **AGEGROUP = 25--34 ($\hat\beta_4$) and 35+ ($\hat\beta_5$).**
+  Marginal log-odds differences in reporting Good health for women in
+  these age groups relative to women aged 15--24, averaged over time
+  and arm.
+
+**Treatment and age.** The Intervention coefficient is significantly
+positive ($|\text{Robust }z| > 1.96$), indicating a detectable
+population-averaged benefit of the intervention after adjustment. The
+month coefficient is near zero and not significant (no marginal linear
+trend over 3--12 months). The 25--34 vs. 15--24 contrast is significant
+and positive; the 35+ contrast is in the same direction but less
+precisely estimated. The treatment effect remains substantial after
+age-group adjustment.
+
+## (c) GLMM with subject-specific random intercepts
+
+**Fit a generalized linear mixed effects model with subject-specific
+random intercepts. Interpret your estimates. How are the interpretations
+different from the GEE model?**
+
+### Model
+
+With a random intercept $b_i \sim N(0, \sigma_b^2)$ per subject, the
+conditional logistic mixed model is
+
+$$
+\operatorname{logit}\!\bigl\{P(Y_{ij} = 1 \mid b_i, X_{ij})\bigr\}
+= \beta_0 + b_i + \beta_1\,\mathrm{BASELINE}_i
++ \beta_2\,\mathrm{TRT}_i + \beta_3\,\mathrm{MONTH}_{ij}
++ \beta_4\,\mathrm{AGE}_{25\text{--}34,i} + \beta_5\,\mathrm{AGE}_{35+,i}.
+$$
+
+We fit with `lme4::glmer`, `family = binomial`, using the default
+Laplace approximation, on the same follow-up data frame built for
+part (b).
+
+```{r}
+glmm_fit <- glmer(GOOD ~ BASELINE + TRT + MONTH + AGEGROUP + (1 | ID),
+                  data   = follow,
+                  family = binomial(link = "logit"))
+summary(glmm_fit)
+```
+
+```{r}
+# Fixed-effect odds ratios with Wald 95% CIs (conditional scale)
+fe  <- summary(glmm_fit)$coefficients
+OR2 <- exp(fe[, "Estimate"])
+lo2 <- exp(fe[, "Estimate"] - 1.96 * fe[, "Std. Error"])
+hi2 <- exp(fe[, "Estimate"] + 1.96 * fe[, "Std. Error"])
+round(cbind(Estimate = fe[, "Estimate"],
+            SE       = fe[, "Std. Error"],
+            z        = fe[, "z value"],
+            OR       = OR2,
+            CI.low   = lo2,
+            CI.high  = hi2), 3)
+
+# Random-intercept variance
+vc <- as.data.frame(VarCorr(glmm_fit))
+vc
+```
+
+### Interpretation (subject-specific / conditional)
+
+Each fixed-effect coefficient below describes the change in the
+log-odds of reporting Good health **for the same woman** (i.e.,
+conditional on her random intercept $b_i$), for a one-unit (or
+one-level) change in the covariate. For subject-level covariates
+(BASELINE, TRT, AGEGROUP), the "same-subject" interpretation is
+hypothetical — these do not vary within a subject — so the comparison
+is between two subjects who share the same random intercept $b_i$.
+
+- **Intercept ($\hat\beta_0$).** Log-odds of Good health for a
+  "typical" woman ($b_i = 0$) in the control arm, aged 15--24, with
+  baseline Poor health, at month 0 of follow-up.
+- **BASELINE = Good ($\hat\beta_1$).** Conditional on $b_i$, the
+  log-odds of reporting Good health at follow-up for a woman who was
+  Good at baseline versus Poor at baseline. Again, this is the
+  dominant effect.
+- **TRT = Intervention ($\hat\beta_2$).** Conditional log-odds increase
+  in reporting Good health for a woman assigned to the Intervention
+  arm versus a woman with the same $b_i$ assigned to Control, adjusted
+  for baseline health, month, and age group.
+- **MONTH ($\hat\beta_3$).** Within the same woman, the change in log-odds
+  of Good health per additional month of follow-up.
+- **AGEGROUP = 25--34 ($\hat\beta_4$), 35+ ($\hat\beta_5$).** Conditional
+  log-odds differences relative to a 15--24 year-old woman with the
+  same $b_i$.
+- **Random-intercept variance $\hat\sigma_b^2$.** Measures between-woman
+  heterogeneity in the baseline propensity to report Good health that
+  is not captured by the fixed covariates. A large value indicates
+  that, even after adjusting for baseline health, treatment, month,
+  and age, women differ substantially in their underlying log-odds of
+  reporting Good health.
+
+### How do the interpretations differ from the GEE model?
+
+1. **Estimand.** GEE coefficients are *marginal*: comparisons of
+   **average** responses between sub-populations. GLMM coefficients are
+   *conditional on $b_i$*: comparisons **within the same individual**
+   (or between individuals sharing the same random intercept).
+
+2. **Magnitude (attenuation).** Because the logit link is non-linear,
+   averaging the conditional mean over the random-intercept
+   distribution shrinks effects on the marginal scale, so marginal log-odds
+   are generally smaller in absolute value than conditional ones. Our
+   GLMM estimates are indeed larger in magnitude than their GEE
+   counterparts, consistent with $\hat\sigma_b^2 > 0$.
+
+3. **Correlation.** GEE models within-subject correlation through a
+   *working* correlation matrix (with robust SE as protection); GLMM
+   *induces* it through the shared random intercept $b_i$.
+
+4. **Scientific question.** GEE answers "what is the average
+   intervention effect in the population?"; GLMM answers "how does the
+   intervention change a given woman's own odds?"
