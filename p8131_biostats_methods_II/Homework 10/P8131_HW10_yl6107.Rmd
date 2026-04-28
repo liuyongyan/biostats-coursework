@@ -1,0 +1,261 @@
+---
+title: "P8131 Homework 10"
+author: "Yongyan Liu (yl6107)"
+date: "2026-04-25"
+output:
+  pdf_document:
+    latex_engine: xelatex
+header-includes:
+  - \usepackage{amsmath}
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 6, fig.height = 4)
+library(survival)
+library(KMsurv)
+```
+
+# Problem 1
+
+**Suppose we have the following data:**
+
+- **Group 1: 4, 12+, 15, 21+, 23**
+- **Group 2: 2, 6+, 8+, 10, 19**
+
+**($+$ denotes right-censoring.)
+Test $H_{0}\!:\,h_{1}(t)=h_{2}(t)\;\forall t$ versus
+$H_{1}\!:\,h_{1}(t)\neq h_{2}(t)$ for some $t$, using the log-rank test.**
+
+**Hypotheses (Lec 22, slide 6).**
+$$
+H_{0}: S_{1}(t)=S_{2}(t)\ \text{for all }t
+\quad\Bigl(\Leftrightarrow\ h_{1}(t)=h_{2}(t)\Bigr)
+\qquad\text{vs.}\qquad
+H_{1}: S_{1}(t)\neq S_{2}(t)\ \text{for some }t.
+$$
+
+At each *uncensored* pooled event time $t_{i}$, expected count and hypergeometric variance under $H_{0}$ are
+$$
+E(d_{1,i}) \;=\; \frac{m_{D,i}\,n_{1,i}}{n_{i}},
+\qquad
+\mathrm{Var}(d_{1,i}) \;=\; \frac{n_{1,i}\,n_{2,i}\,m_{D,i}\,m_{\bar D,i}}
+                                  {n_{i}^{2}\,(n_{i}-1)}.
+$$
+
+The pooled uncensored event times are $\{2,4,10,15,19,23\}$.
+The per-event-time table is
+
+\begin{center}
+\begin{tabular}{ccccccccc}
+\hline
+$t_{i}$ & $n_{1,i}$ & $n_{2,i}$ & $n_{i}$ & $d_{1,i}$ & $d_{2,i}$ & $m_{D,i}$ & $E(d_{1,i})$ & $\mathrm{Var}(d_{1,i})$ \\
+\hline
+ 2 & 5 & 5 & 10 & 0 & 1 & 1 & 0.5000 & 0.2500 \\
+ 4 & 5 & 4 &  9 & 1 & 0 & 1 & 0.5556 & 0.2469 \\
+10 & 4 & 2 &  6 & 0 & 1 & 1 & 0.6667 & 0.2222 \\
+15 & 3 & 1 &  4 & 1 & 0 & 1 & 0.7500 & 0.1875 \\
+19 & 2 & 1 &  3 & 0 & 1 & 1 & 0.6667 & 0.2222 \\
+23 & 1 & 0 &  1 & 1 & 0 & 1 & 1.0000 & 0.0000 \\
+\hline
+\textbf{Sum} & & & & \textbf{3} & & & \textbf{4.1389} & \textbf{1.1288} \\
+\hline
+\end{tabular}
+\end{center}
+
+(The variance at $t=23$ is $0$ because only one subject is at risk; $n_{i}-1=0$ in the
+denominator, but $n_{1,i}n_{2,i}=0$ in the numerator dominates and the contribution is $0$.)
+
+The log-rank statistic is
+$$
+Z^{2} \;=\; \frac{\bigl(\sum_{i}d_{1,i}-\sum_{i}E(d_{1,i})\bigr)^{2}}
+                  {\sum_{i}\mathrm{Var}(d_{1,i})}
+\;=\; \frac{(3-4.1389)^{2}}{1.1288}
+\;=\; \frac{1.2972}{1.1288}
+\;\approx\; 1.149,
+\qquad Z^{2}\sim\chi^{2}_{1}.
+$$
+
+The p-value is $P(\chi^{2}_{1}>1.149)\approx 0.284$.
+
+
+# Problem 2
+
+**Consider the `kidtran` dataset in the `KMsurv` package, where the death
+times of kidney transplant patients are reported. The patients can be
+classified by race (1 = white, 2 = black) and gender (1 = male, 2 = female)
+into one of four groups. Compare the survival curves for different races
+in each sex group.**
+
+Per the question, the analysis is run *separately within each sex* — a
+two-sample race comparison among males, and another among females. For
+each sex we plot Kaplan-Meier curves for the two race groups and run a
+log-rank test.
+
+```{r p2-load}
+data(kidtran)
+str(kidtran)
+male   <- subset(kidtran, gender == 1)
+female <- subset(kidtran, gender == 2)
+```
+
+## Males: KM curves and log-rank by race
+
+```{r p2-male-km, fig.cap="Kaplan-Meier survival by race, males only. Tick marks denote right-censored observations."}
+fit_m <- survfit(Surv(time, delta) ~ race, data = male)
+plot(fit_m, mark.time = TRUE, lty = 1, col = c("black", "red"),
+     xlab = "Time (days)", ylab = "Survival probability",
+     main = "Males: KM by race")
+legend("bottomleft", c("Race 1 (white)", "Race 2 (black)"),
+       lty = 1, col = c("black", "red"), bty = "n")
+```
+
+```{r p2-male-lr}
+survdiff(Surv(time, delta) ~ race, data = male)
+```
+
+**Hypotheses:** $H_{0}: S_{\text{white}}(t)=S_{\text{black}}(t)$ for all
+$t$ within males vs $H_{1}$: not equal for some $t$.
+
+Test statistic $\chi^{2}=0.10$ on $\mathrm{df}=1$, $p\approx 0.76$.
+**Do not reject $H_{0}$**. Among males, there is no evidence of a
+race difference in survival; the two KM curves track each other closely.
+
+## Females: KM curves and log-rank by race
+
+```{r p2-female-km, fig.cap="Kaplan-Meier survival by race, females only. Tick marks denote right-censored observations."}
+fit_f <- survfit(Surv(time, delta) ~ race, data = female)
+plot(fit_f, mark.time = TRUE, lty = 1, col = c("black", "red"),
+     xlab = "Time (days)", ylab = "Survival probability",
+     main = "Females: KM by race")
+legend("bottomleft", c("Race 1 (white)", "Race 2 (black)"),
+       lty = 1, col = c("black", "red"), bty = "n")
+```
+
+```{r p2-female-lr}
+survdiff(Surv(time, delta) ~ race, data = female)
+```
+
+**Hypotheses:** $H_{0}: S_{\text{white}}(t)=S_{\text{black}}(t)$ for all
+$t$ within females vs $H_{1}$: not equal for some $t$.
+
+Test statistic $\chi^{2}=4.8$ on $\mathrm{df}=1$, $p\approx 0.028$.
+**Reject $H_{0}$** at the $5\%$ level. Among females, survival differs
+significantly by race: black female recipients had more observed deaths
+than expected under $H_{0}$ ($14$ vs $8.21$), so they have *worse*
+survival than white female recipients, consistent with the KM plot in
+which the race-2 curve drops below the race-1 curve.
+
+
+# Problem 3
+
+**Consider the `larynx` data in the `KMsurv` package. Let**
+
+- **$Z_{1}=1$ if the patient is in stage II, $0$ otherwise;**
+- **$Z_{2}=1$ if the patient is in stage III, $0$ otherwise;**
+- **$Z_{3}=1$ if the patient is in stage IV, $0$ otherwise;**
+- **$Z_{4}=$ age (in years).**
+
+**Fit a proportional-hazards model with $Z_{1},Z_{2},Z_{3},Z_{4}$ and the
+interaction $Z_{1}\!\cdot\!Z_{4}$. Explain the results. What is the
+relative risk of dying for a stage-II patient of age $50$ compared to a
+stage-I patient of the same age?**
+
+Stage I is the reference category.
+
+## Cox PH fit
+
+```{r p3-fit}
+data(larynx)
+larynx$Z1 <- as.numeric(larynx$stage == 2)  # stage II indicator
+larynx$Z2 <- as.numeric(larynx$stage == 3)  # stage III indicator
+larynx$Z3 <- as.numeric(larynx$stage == 4)  # stage IV indicator
+larynx$Z4 <- larynx$age
+
+fit <- coxph(Surv(time, delta) ~ Z1 + Z2 + Z3 + Z4 + Z1:Z4,
+             data = larynx, ties = "breslow")
+summary(fit)
+```
+
+The fitted model is
+$$
+h(t \mid Z) \;=\; h_{0}(t)\,
+\exp\!\bigl\{\beta_{1}Z_{1}+\beta_{2}Z_{2}+\beta_{3}Z_{3}
+            +\beta_{4}Z_{4}+\beta_{14}Z_{1}Z_{4}\bigr\}.
+$$
+
+## Interpretation
+
+Recall that hazard ratios are constant in time under the PH assumption
+(Lec 23, slide 6) but here vary across covariate combinations because
+of the interaction. From the coefficient table:
+
+- **$\hat\beta_{2}=0.622$, $\exp(\hat\beta_{2})=1.86$** ($p=0.08$).
+  Stage III versus stage I patients have $1.86$ times the hazard of
+  death at *any* age (no interaction with age was fit for stage III).
+- **$\hat\beta_{3}=1.753$, $\exp(\hat\beta_{3})=5.77$** ($p<0.001$).
+  Stage IV versus stage I patients have $5.77$ times the hazard at any
+  age — stage IV is highly significantly worse than stage I.
+- **$\hat\beta_{4}=0.0060$, $\exp(\hat\beta_{4})=1.006$** ($p=0.69$).
+  Because $Z_{1}\!\cdot\!Z_{4}$ is in the model, $\beta_{4}$ is the
+  per-year log hazard ratio for *non-stage-II* patients (stages I, III,
+  IV); a one-year increase in age multiplies their hazard by $1.006$,
+  not significantly different from $1$.
+- **$\hat\beta_{1}=-7.382$, $\exp(\hat\beta_{1})=6.2\times 10^{-4}$**
+  ($p=0.03$). This is *not* the stage II vs stage I hazard ratio in
+  general; it is the HR at age $0$, which is far outside the range of
+  the data. Because of the $Z_{1}\!\cdot\!Z_{4}$ interaction, the stage
+  II vs stage I log hazard ratio at age $a$ equals
+  $\beta_{1}+a\,\beta_{14}$.
+- **$\hat\beta_{14}=0.1117$, $\exp(\hat\beta_{14})=1.118$** ($p=0.02$).
+  Each additional year of age multiplies the stage-II-vs-stage-I hazard
+  ratio by $1.12$. Equivalently, for stage II patients, the per-year
+  log hazard ratio is $\beta_{4}+\beta_{14}=0.118$, so a one-year
+  increase in age multiplies a stage-II patient's hazard by
+  $\exp(0.118)\approx 1.12$. The age effect is therefore much stronger
+  in stage II than in the other stages, and the stage-II-vs-stage-I
+  gap *widens* with increasing age.
+
+The omnibus likelihood-ratio test ($24.1$ on $5$ df, $p=2\times 10^{-4}$)
+indicates that the covariate set is jointly highly significant.
+
+## Relative risk: stage II at age 50 vs stage I at age 50
+
+Both patients have $Z_{2}=Z_{3}=0$, $Z_{4}=50$. Their covariate vectors are
+
+- Stage I: $(Z_{1},Z_{2},Z_{3},Z_{4},Z_{1}Z_{4})=(0,0,0,50,0)$;
+- Stage II: $(Z_{1},Z_{2},Z_{3},Z_{4},Z_{1}Z_{4})=(1,0,0,50,50)$.
+
+The log hazard ratio is therefore
+$$
+\log\mathrm{RR} \;=\; \beta_{1}\,(1-0)+\beta_{14}\,(50-0)
+                 \;=\; \beta_{1}+50\,\beta_{14}.
+$$
+Plugging in the estimates,
+$$
+\widehat{\log\mathrm{RR}}
+\;=\; -7.3820 + 50\,(0.1117)
+\;=\; -1.7986,
+$$
+$$
+\widehat{\mathrm{RR}}\;=\;\exp(-1.7986)\;\approx\;0.166.
+$$
+
+```{r p3-rr}
+b1  <- coef(fit)["Z1"]
+b14 <- coef(fit)["Z1:Z4"]
+logRR <- b1 + 50 * b14
+RR    <- exp(logRR)
+c(logRR = unname(logRR), RR = unname(RR))
+```
+
+**Answer.** A stage II patient aged $50$ has an estimated hazard about
+$\widehat{\mathrm{RR}}\approx 0.17$ times that of a stage I patient
+aged $50$ — i.e., at age $50$ a stage II patient has *lower* mortality
+hazard than a stage I patient. (Because $\hat\beta_{14}>0$, this gap
+shrinks at older ages and reverses around age $\beta_{1}/(-\beta_{14})
+\approx 66$ years, beyond which stage II patients have higher hazard
+than stage I patients.)

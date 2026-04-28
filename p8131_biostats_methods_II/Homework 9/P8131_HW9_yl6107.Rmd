@@ -1,0 +1,141 @@
+---
+title: "P8131 Homework 9"
+author: "Yongyan Liu (yl6107)"
+date: "2026-04-24"
+output:
+  pdf_document:
+    latex_engine: xelatex
+header-includes:
+  - \usepackage{amsmath}
+editor_options:
+  markdown:
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 6, fig.height = 4)
+library(survival)
+library(KMsurv)
+```
+
+# Problem 1
+
+**Determine the survival and density functions for a continuous survival
+time variable with hazard function**
+$$
+h(x) = \frac{2x}{1 + x^{2}}, \qquad x \ge 0.
+$$
+**Hint: consider the derivative of $\log(1 + x^{2})$.**
+
+From Lecture 21 the survival function is recovered from the hazard via
+$$
+S(x) = \exp\!\bigl\{-H(x)\bigr\}, \qquad
+H(x) = \int_{0}^{x} h(u)\,du,
+$$
+Using the hint, observe that $h$ is exactly the derivative of $\log(1 + u^{2})$.
+$$
+H(x) \;=\; \int_{0}^{x}\!\frac{2u}{1+u^{2}}\,du
+       \;=\; \Bigl[\log(1 + u^{2})\Bigr]_{0}^{x}
+       \;=\; \log(1 + x^{2}).
+$$
+$$
+S(x) \;=\; \exp\!\bigl\{-H(x)\bigr\}
+      \;=\; \exp\!\bigl\{-\log(1 + x^{2})\bigr\}
+      \;=\; \frac{1}{1 + x^{2}}, \qquad x \ge 0.
+$$
+Using $f(x) = h(x)\,S(x)$,
+$$
+f(x) \;=\; \frac{2x}{1+x^{2}} \cdot \frac{1}{1+x^{2}}
+       \;=\; \frac{2x}{(1 + x^{2})^{2}}, \qquad x \ge 0.
+$$
+# Problem 2
+
+**For the data $1,\,2,\,2,\,4^{+},\,5^{+},\,6,\,7^{+},\,8^{+},\,9^{+},\,10^{+}$
+(where $+$ denotes right censoring), write out the data table and
+calculate (a) the Kaplan--Meier estimate of $S(t)$, (b) the
+Nelson--Aalen estimate of $H(t)$, and (c) the Fleming--Harrington
+estimate of $S(t)$.**
+
+See the table below:
+
+\begin{center}
+\begin{tabular}{cccccccc}
+\hline
+$t_i$ & $d_i$ & $c_i$ & $n_i$ & $\hat\lambda_i = d_i/n_i$ &
+$\widehat S_{\mathrm{KM}}(t_i)$ & $\widetilde H(t_i)$ &
+$\widehat S_{\mathrm{FH}}(t_i)$ \\
+\hline
+1  & 1 & 0 & 10 & $1/10 = 0.1000$         & $0.9000$ & $0.1000$ & $0.9048$ \\
+2  & 2 & 0 & 9  & $2/9  \approx 0.2222$   & $0.7000$ & $0.3222$ & $0.7245$ \\
+4  & 0 & 1 & 7  & $0$                     & $0.7000$ & $0.3222$ & $0.7245$ \\
+5  & 0 & 1 & 6  & $0$                     & $0.7000$ & $0.3222$ & $0.7245$ \\
+6  & 1 & 0 & 5  & $1/5  = 0.2000$         & $0.5600$ & $0.5222$ & $0.5932$ \\
+7  & 0 & 1 & 4  & $0$                     & $0.5600$ & $0.5222$ & $0.5932$ \\
+8  & 0 & 1 & 3  & $0$                     & $0.5600$ & $0.5222$ & $0.5932$ \\
+9  & 0 & 1 & 2  & $0$                     & $0.5600$ & $0.5222$ & $0.5932$ \\
+10 & 0 & 1 & 1  & $0$                     & $0.5600$ & $0.5222$ & $0.5932$ \\
+\hline
+\end{tabular}
+\end{center}
+
+# Problem 3
+
+**Use the `tongue` data in the R package `KMsurv`. For each tumor type
+(aneuploid and diploid), plot the Kaplan--Meier curve of the survival
+function and its pointwise 95% confidence intervals (using the log
+transformation). What are the estimated 1-year survival rate and 95%
+CI?**
+
+The `tongue` data set records survival of 80 patients with cancer of
+the tongue, classified by tumor DNA profile: `type = 1` is aneuploid
+($n_1 = 52$) and `type = 2` is diploid ($n_2 = 28$); `time` is in
+**weeks** and `delta` is the death indicator. One year therefore
+corresponds to $t = 52$ weeks.
+
+```{r}
+data(tongue)
+str(tongue)
+table(tongue$type)
+
+aneu <- subset(tongue, type == 1)
+dipl <- subset(tongue, type == 2)
+
+fit_aneu <- survfit(Surv(time, delta) ~ 1, data = aneu, conf.type = "log")
+fit_dipl <- survfit(Surv(time, delta) ~ 1, data = dipl, conf.type = "log")
+```
+
+## KM curves with log-transform 95% CIs
+
+```{r km-aneu, fig.cap="Kaplan--Meier survival for aneuploid tumors with pointwise 95\\% log-transform CIs. Tick marks indicate right-censored observations; the dotted vertical line marks $t = 52$ weeks (1 year)."}
+plot(fit_aneu, conf.int = TRUE, mark.time = TRUE,
+     xlab = "Time (weeks)", ylab = "Survival probability",
+     main = "Aneuploid (type = 1)")
+abline(v = 52, lty = 3, col = "grey50")
+```
+
+```{r km-dipl, fig.cap="Kaplan--Meier survival for diploid tumors with pointwise 95\\% log-transform CIs. Tick marks indicate right-censored observations; the dotted vertical line marks $t = 52$ weeks (1 year)."}
+plot(fit_dipl, conf.int = TRUE, mark.time = TRUE,
+     xlab = "Time (weeks)", ylab = "Survival probability",
+     main = "Diploid (type = 2)")
+abline(v = 52, lty = 3, col = "grey50")
+```
+
+## 1-year survival rate and 95% CI
+
+```{r}
+summary(fit_aneu, times = 52)
+summary(fit_dipl, times = 52)
+```
+
+- **Aneuploid tumors (type = 1).** The estimated 1-year (52-week)
+  survival rate is $\widehat S(52) = 0.654$, with 95\% log-transform
+  CI $(0.537,\; 0.797)$.
+- **Diploid tumors (type = 2).** The estimated 1-year (52-week)
+  survival rate is $\widehat S(52) = 0.486$, with 95\% log-transform
+  CI $(0.330,\; 0.716)$.
+
+Patients with aneuploid tumors have a noticeably higher estimated
+1-year survival probability than patients with diploid tumors,
+although the diploid CI is wide (smaller subgroup, $n_2 = 28$) and
+the two confidence bands overlap.
