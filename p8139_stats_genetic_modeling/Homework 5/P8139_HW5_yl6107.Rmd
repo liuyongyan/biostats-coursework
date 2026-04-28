@@ -1,0 +1,130 @@
+---
+title: "P8139 Final Project Proposal: methylation-driven transcriptional silencing in TCGA-KIRC"
+author: "Yongyan Liu (yl6107) — Homework #5"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    number_sections: true
+geometry: margin=0.85in
+fontsize: 11pt
+linestretch: 1.0
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{float}
+  - \usepackage{caption}
+  - \captionsetup{font=small,labelfont=bf,skip=3pt}
+  - \setlength{\parskip}{0.15em}
+  - \setlength{\parindent}{0pt}
+  - \setlength{\textfloatsep}{6pt}
+  - \setlength{\intextsep}{6pt}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(knitr)
+```
+
+# Cancer type and research question
+
+**Cancer type.** Clear-cell renal cell carcinoma (ccRCC), TCGA project KIRC. ccRCC is chosen because it is the largest paired-design cohort in TCGA, its molecular biology is dominated by VHL inactivation (a well-characterized positive control), and its single dominant histology limits biological heterogeneity (TCGA Research Network 2013; Kaelin 2007).
+
+**Motivating problem.** Paired tumor–adjacent-normal methylation analyses on the Illumina 450K platform routinely declare more than half of tested CpGs differentially methylated at FDR $<0.05$. The list is statistically valid but biologically uninformative because most differentially methylated CpGs are passenger or cell-composition changes, not regulators of transcription.
+
+**Research question.** *Which CpG methylation changes drive transcriptional silencing of their cognate gene?* This is the epigenetic counterpart of Knudson's tumor-suppressor second hit and the operationally relevant question for cancer epigenetics. We address it by integrating paired DNA methylation with paired RNA-seq from the same patients, requiring concordant evidence from two statistical tests before declaring a CpG transcriptionally silencing.
+
+# Data sources, samples, and study design
+
+**Data acquisition.** DNA methylation 450K $\beta$-values, RNA-seq STAR-Counts (used for $\log_2(\mathrm{TPM}+1)$), and harmonized clinical metadata are retrieved from the GDC with `TCGAbiolinks::GDCquery` and `GDCdownload` (Bioconductor 3.22; Colaprico et al. 2016).
+
+**Samples and design.** This is a **paired case–control design** at the methylation level (each patient contributes a primary-tumor `-01A` aliquot and a solid adjacent-normal `-11A` aliquot) combined with an **independent case-mostly design** at the integration level (most patients have only the tumor RNA-seq). One `-05A` "additional new primary" is excluded by pre-registration. Sample counts:
+
+```{r samples}
+samp <- data.frame(
+  Modality = c("DNA methylation 450K (aliquots)",
+               "DNA methylation 450K (patients)",
+               "Paired methylation set (both -01A and -11A)",
+               "RNA-seq STAR-Counts (patient × sample-type keys)",
+               "Integration set: matched (patient, sample-type) keys"),
+  N = c("484 (324 tumor + 160 normal)",
+        "319",
+        "160 patients",
+        "605",
+        "342 (318 tumor + 24 adjacent-normal)"),
+  check.names = FALSE)
+kable(samp, booktabs = TRUE, align = c("l","r"),
+      caption = "TCGA-KIRC cohort sizes after pre-registered exclusions.")
+```
+
+The DM test runs on the 160 paired patients; the methylation–expression integration test runs on the 342-key matched set.
+
+# DNA methylation preprocessing steps
+
+The 485,577-probe $\beta$-value matrix is filtered sequentially, with attrition recorded. Preprocessing is standard and conservative; no probes are added back at any later stage.
+
+```{r preprocess}
+attrition <- data.frame(
+  Step = c("Baseline (450K array)",
+           "Intersect with Illumina 450K annotation (drop unmapped)",
+           "Drop chr X / chr Y (avoid sex-driven PC2 in EDA)",
+           "Cross-reactive + SNP-overlapping probes (DMRcate; Chen 2013, Peters 2015)",
+           "Drop probes with > 20\\% sample missingness",
+           "Complete-case across all 484 samples (paired-test ready)"),
+  `Probes retained` = format(c(485577, 472651, 461295, 433595, 395325, 320953),
+                              big.mark = ","),
+  check.names = FALSE)
+kable(attrition, booktabs = TRUE, align = c("l","r"),
+      caption = "Preprocessing attrition for DNA methylation.")
+```
+
+$\beta$-values are clipped to $[0.001, 0.999]$ and transformed to $M = \log_2(\beta/(1-\beta))$ for variance stabilization in the downstream paired test (Du et al. 2010). RNA-seq counts are converted to TPM and log-transformed as $\log_2(\mathrm{TPM}+1)$; replicate aliquots within (patient, sample-type) are mean-aggregated.
+
+# Analysis plan
+
+The plan combines two independent statistical tests; **a CpG is "silencing" only if both tests agree with concordant direction**. This is the mechanistic translation of Knudson's two-hit hypothesis into the methylation–expression coupling regime.
+
+**(1) Differential methylation (DM) test — paired moderated $t$** (needed for the methylation-change direction; without DM, MEA alone cannot distinguish promoter silencing from gene-body activation). For each CpG, within-pair M-value differences $D_i = M_i^{\text{tumor}} - M_i^{\text{normal}}$ ($i = 1, \dots, 160$) are tested against $H_0\!:\,\mathbb{E}[D] = 0$ using `limma::lmFit` with an intercept-only design and `eBayes` shrinkage (Smyth 2004; Ritchie et al. 2015); for balanced paired data this is statistically equivalent to the moderated paired $t$-test, and patient-level confounders cancel in $D_i$.
+
+**(2) Methylation–expression association (MEA) test — partial-correlation regression** (DM is silent on transcriptional consequence; MEA tests the gene-regulatory effect that turns "differential" into "silencing." Adjusting for `sample_type` is critical because cross-sample correlation is dominated by the bulk tumor/normal mean shift; e.g., VHL cross-cohort $\rho = -0.03$ vs within-status partial $p = 2 \times 10^{-6}$). For each promoter (CpG, gene) pair (annotated as `TSS1500`, `TSS200`, `5'UTR`, or `1stExon`), we fit
+$$
+\log_2(\mathrm{TPM}_{\text{gene}} + 1) \;=\; \alpha + \beta\,\beta_{\text{CpG}} + \gamma^{\!\top} Z + \varepsilon,
+\quad Z = (\text{sample\_type, age, sex, tissue source site}),
+$$
+across the 342 matched samples; the test is computed analytically as a partial correlation after QR residualization on the 15-column design matrix, vectorizing to all 137,451 promoter pairs in $<\!1$ second.
+
+**(3) Silencing definition** (directional concordance of the two independent tests captures the Knudson-second-hit signature and excludes coincidental coupling, gene-body activation, or DM that is statistically real but not gene-regulatory). A (CpG, gene) pair is **silencing** if (i) DM FDR $<0.05$, (ii) MEA FDR $<0.05$, and (iii) $\widehat{\mathrm{logFC}}_{\text{DM}} > 0$ and $\hat{\beta}_{\text{MEA}} < 0$. The reverse direction (hypomethylation $\cap$ positive coupling) is recorded as **activation** and reported descriptively.
+
+**(4) Pattern partition by responder fraction** (mean-based DM dilutes signals present in only a minority of tumors; e.g., VHL is silenced via methylation in only ~15% of ccRCC tumors yet is the dominant ccRCC driver — without a per-tumor responder count, this pattern is invisible. The partition is *also* a method validation: if the silencing screen correctly identifies subgroup-driven events, the recovered VHL responder rate should match the documented ~15% literature value, and recovering it is concurrent-validity evidence that the method captures the right kind of heterogeneity). Each silencing CpG is annotated by $\hat{\pi}_{\text{resp}}$, the fraction of tumors whose $\beta$ deviates from the adjacent-normal mean by $>0.2$ (the standard 450K biological-significance threshold). Silencing pairs split into **subgroup-driven** ($\hat{\pi}_{\text{resp}} < 0.3$) and **cohort-wide** ($\geq 0.3$); sensitivity to 0.2 / 0.3 / 0.4 is reported.
+
+**(5) Pathway enrichment and cell-composition control** — the central methodological claim. *Setup*: bulk tumor DM is confounded by cell composition, because tumor tissue carries more infiltrating leukocytes than adjacent normal kidney; any CpG that distinguishes immune from epithelial cells appears differentially methylated for compositional reasons alone. *Standard fix*: reference-based deconvolution (EpiDISH, CIBERSORT) — adds a tool dependency and requires a tissue-matched reference panel. *Hypothesis*: silencing's directional concordance criterion automatically excises this signal, because an immune CpG bulk-hypomethylated in tumor *by* infiltration also carries elevated bulk mRNA from the same cells — exactly the opposite of silencing's hypermethylation + low-mRNA signature, so it fails directional concordance and never enters the silencing list. *Falsifiable prediction*: immune pathways dominant in raw-DM enrichment should disappear under the silencing restriction. *Implementation*: GSEA on raw-DM rankings (`fgsea`; Korotkevich et al. 2021) is compared against ORA on the silencing gene list (hypergeometric on Hallmark + KEGG Legacy; Liberzon et al. 2015; Subramanian et al. 2005).
+
+**(6) Pre-registered validation** (without external ground truth, the pipeline could be self-consistent but biologically wrong; pre-registering literature anchors before examining data prevents this). (a) An 18-gene literature TSG list (VHL, RASSF1, SFRP1/2/4/5, DKK3, GATA5, BNC1, COL14A1, PCDH17, SLIT2, CDKN2A, APAF1, TIMP3, NEFH, UCHL1, PITX2) serves as concurrent-validity sanity check. (b) **VHL positive control**: at least one VHL-promoter CpG must flag as silencing. (c) **Calibration**: the DM test's $\lambda_{GC}$ is paired with a sign-flipping permutation null on 30,000 probes × 20 replicates.
+
+**(7) Multiple-testing correction** (DM: 320,953 CpGs; MEA: 137,451 pairs; Bonferroni is too conservative given pervasive real signal, but uncorrected $p$-values yield thousands of false positives). BH FDR at $q<0.05$ is applied separately to each test; the silencing AND of two independently FDR-controlled sets is conservative relative to either single-test FDR. BH FDR is also used across gene-set families for pathway enrichment. Calibration is established by a sign-flipping permutation null (step (6) above) rather than by Bonferroni.
+
+# Figures, tables, and preliminary findings (pipeline complete)
+
+**Planned outputs.** Six figures: (1) PCA of top-variance CpGs (cohort structure); (2) DM diagnostic panel — p-value histogram with permutation-null overlay (visualizing both calibration and signal pervasiveness), paired-$\Delta\beta$ histogram (effect-size biology with biological-significance threshold lines), and $\Delta\beta$-vs-p volcano with five anchor TSGs labelled (VHL, SFRP1, DKK3, GATA5, RASSF1); (3) MEA volcano + responder-fraction histogram; (4) six-locus methylation–expression scatter; (5) raw-DM GSEA vs silencing-restricted ORA; (6) VHL/`cg13672843` case study. Four tables: preprocessing attrition, immune-pathway dropout, FDR sensitivity grid, 18-gene TSG recovery.
+
+**Preliminary results (pipeline complete).** The central methodological finding: requiring concordant mRNA change in the silencing definition collapses immune-pathway enrichment by **ten orders of magnitude** — HALLMARK_INFLAMMATORY_RESPONSE drops from $p_{adj} = 6\times10^{-10}$ in raw-DM GSEA to $1.0$ in silencing-restricted ORA, with the entire immune block (Complement, Allograft Rejection, Interferon $\gamma$/$\alpha$, TNF$\alpha$ NF-$\kappa$B, IL6 JAK STAT3, KEGG Hematopoietic Cell Lineage) collapsing to non-significance. The remaining silencing-restricted top hits are recognizable cancer biology (EMT, TGF-$\beta$, axon guidance, KRAS, KEGG Pathways in Cancer). Supporting numbers: DM yields **222,386 FDR-significant CpGs (69.3%)** with permutation-null $\lambda_{GC}^{\text{perm}} = 0.95$ vs $\lambda_{GC}^{\text{real}} = 36.8$ (visualized directly in the new p-value-histogram diagnostic). The integration filter reduces this to **12,922 silencing (CpG, gene) pairs across 4,483 unique genes**, of which **82.5% are subgroup-driven** ($\hat{\pi}_{\text{resp}} < 0.3$). VHL/`cg13672843` is the textbook subgroup-driven exemplar: cohort-mean $\Delta\beta = 0.04$ (invisible to mean-based DM) but the 32 responder tumors (10.1%) show 33% lower VHL mRNA (Wilcoxon $p = 4.5 \times 10^{-6}$, Cohen's $d = -0.79$). The 18-gene literature TSG panel is recovered with **hypergeometric enrichment of $2.55\times$ ($p = 1.4\times 10^{-4}$)** over the 28.3% baseline pass-through rate of the silencing list.
+
+**Expected conclusion.** The central methodological contribution is that **silencing — defined as the directional intersection of paired-design differential methylation and within-status methylation–expression association — is sufficient to identify transcriptionally silencing CpGs without an external cell-composition deconvolution panel.** The construct operationalizes Knudson's tumor-suppressor "second hit" in the methylation domain. Its empirical signature: the immune-cell-composition confounding that dominates raw differential-methylation enrichment collapses entirely under the silencing restriction, while recognizable cancer biology (EMT, TGF-$\beta$, KRAS) survives — replacing reference-based tools such as EpiDISH or CIBERSORT with a single per-CpG regression. A complementary descriptive observation with broader practical implications: most cancer methylation silencing turns out to be patient-subgroup-specific rather than cohort-wide — VHL, the canonical ccRCC tumor suppressor, exemplifies this — arguing that cancer methylation studies should routinely report per-tumor responder fractions rather than rely on cohort means alone. The entire approach is built from standard statistical primitives; the contribution is *composition* of established building-blocks, not novel inferential machinery.
+
+# References {-}
+
+\footnotesize \setlength{\parskip}{0pt} \setlength{\parindent}{0pt}
+
+\noindent
+Chen, Y., et al. (2013). Discovery of cross-reactive probes and polymorphic CpGs in the Illumina Infinium HumanMethylation450 microarray. *Epigenetics* **8**, 203–209. \
+Colaprico, A., et al. (2016). TCGAbiolinks: integrative analysis of TCGA data. *Nucleic Acids Research* **44**, e71. \
+Du, P., et al. (2010). Comparison of Beta-value and M-value methods for quantifying methylation. *BMC Bioinformatics* **11**, 587. \
+Herman, J. G., et al. (1994). Silencing of VHL by DNA methylation in renal carcinoma. *PNAS* **91**, 9700–9704. \
+Jones, P. A., Baylin, S. B. (2007). The epigenomics of cancer. *Cell* **128**, 683–692. \
+Kaelin, W. G. Jr. (2007). The VHL tumour suppressor protein: O$_2$ sensing and cancer. *Nature Reviews Cancer* **8**, 865–873. \
+Korotkevich, G., et al. (2021). Fast gene set enrichment analysis. *bioRxiv* 060012. \
+Liberzon, A., et al. (2015). The MSigDB Hallmark gene set collection. *Cell Systems* **1**, 417–425. \
+Peters, T. J., et al. (2015). De novo identification of differentially methylated regions. *Epigenetics & Chromatin* **8**, 6. \
+Ritchie, M. E., et al. (2015). limma powers differential expression analyses for RNA-sequencing and microarray studies. *Nucleic Acids Research* **43**, e47. \
+Smyth, G. K. (2004). Linear models and empirical Bayes methods for microarray differential expression. *Stat. Appl. Genet. Mol. Biol.* **3**, Article 3. \
+Subramanian, A., et al. (2005). Gene set enrichment analysis: knowledge-based approach for genome-wide expression profiles. *PNAS* **102**, 15545–15550. \
+The Cancer Genome Atlas Research Network (2013). Comprehensive molecular characterization of clear cell RCC. *Nature* **499**, 43–49.

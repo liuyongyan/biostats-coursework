@@ -1,0 +1,7 @@
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
+bioc <- c("DMRcate", "fgsea", "IlluminaHumanMethylation450kmanifest")
+cran <- c("msigdbr", "matrixStats", "ggrepel", "EnhancedVolcano")
+for (p in cran) if (!requireNamespace(p, quietly = TRUE)) install.packages(p)
+BiocManager::install(bioc, ask = FALSE, update = FALSE)
+for (p in c(bioc, cran)) cat(sprintf("%-40s %s\n", p, requireNamespace(p, quietly = TRUE)))

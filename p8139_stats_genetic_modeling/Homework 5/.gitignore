@@ -1,0 +1,56 @@
+# =====================================================================
+# Homework 5 — gitignore
+# Strategy: keep all source code (scripts, Rmd) and the small artifacts
+# the report reads at knit time; ignore raw data, large intermediate
+# outputs, logs, and cached binaries (they are regenerable from scripts).
+# =====================================================================
+
+# ---- Raw TCGA downloads (~16 GB) -------------------------------------
+project_workspace/data_kirc/
+project_workspace/data_kirp/
+
+# ---- Intermediate pipeline outputs (regenerable, large) --------------
+project_workspace/preprocess_out/
+project_workspace/q1_out/
+project_workspace/q3_out/
+project_workspace/q5_out/
+project_workspace/q9_out/
+project_workspace/effectsize_out/
+project_workspace/hitclass_out/
+project_workspace/methylmix_out/
+project_workspace/casestudy_out/
+project_workspace/sensitivity_out/
+project_workspace/validation_out/
+project_workspace/vhl_expr_out/
+project_workspace/eda_outputs_kirc/
+project_workspace/audit_out/
+project_workspace/kirp_out/
+
+# ---- silencing_out: ignore by default, allow only the CSVs the Rmd reads
+project_workspace/silencing_out/*
+!project_workspace/silencing_out/silencing_table.csv
+!project_workspace/silencing_out/sensitivity_fdr_grid.csv
+
+# ---- Run logs / cached binaries / IDE droppings ----------------------
+project_workspace/*.log
+project_workspace/*.rds
+project_workspace/Rplots.pdf
+project_workspace/KIRP_DONE
+project_workspace/.DS_Store
+project_workspace/.Rhistory
+project_workspace/MANIFEST*.txt
+project_workspace/sessionInfo*.txt
+
+# ---- Bookdown / knit byproducts --------------------------------------
+*_files/
+*_cache/
+P8139_FinalReport_yl6107.knit.md
+P8139_FinalReport_yl6107.tex
+P8139_FinalReport_yl6107.aux
+P8139_FinalReport_yl6107.log
+P8139_FinalReport_yl6107.out
+P8139_FinalReport_yl6107.toc
+
+# ---- Project local --------------------------------------------------
+.DS_Store
+.Rhistory
