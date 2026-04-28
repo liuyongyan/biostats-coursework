@@ -1,6 +1,6 @@
 ---
 title: "P8109 Statistical Inference - Comprehensive Review"
-author: "Lectures 1-8: COMPLETE Theorems, Definitions, and Remarks"
+author: "Lectures 1-10: COMPLETE Theorems, Definitions, and Remarks"
 date: "Spring 2026"
 output: 
   pdf_document:
@@ -257,6 +257,117 @@ header-includes:
 - **Theorem 8.1:** If a family has MLR in $T(\mathbf{X})$, then for testing $H_0: \theta \leq \theta_0$ vs $H_1: \theta > \theta_0$, there exists a UMP test of size $\alpha$ given by:
   $$\phi(\mathbf{x}) = \begin{cases} 1 & \text{if } T(\mathbf{x}) > c \\ \gamma & \text{if } T(\mathbf{x}) = c \\ 0 & \text{if } T(\mathbf{x}) < c \end{cases}$$
 - **Remark:** UMP tests usually exist for one-sided alternatives in MLR families but rarely exist for two-sided alternatives ($H_1: \theta \neq \theta_0$).
+
+# Lecture 9: Likelihood Ratio Test and Others
+
+## 9.1 Generalized Likelihood Ratio Test (LRT)
+- **Setup:** Test $H_0: \theta \in \Theta_0$ vs $H_1: \theta \in \Theta_1$, where at least one hypothesis is composite. Unless $\Theta_0$ has special structure, no UMP/UMPU test typically exists.
+- **Generalized LRT Statistic (9.1):**
+  $$\lambda(\mathbf{X}) = \frac{\sup_{\theta \in \Theta_0} L(\theta|\mathbf{X})}{\sup_{\theta \in \Theta_0 \cup \Theta_1} L(\theta|\mathbf{X})}$$
+  Reject $H_0$ if $\lambda \leq \lambda_0$, where $\lambda_0$ yields the required test size.
+- **Remarks:**
+  1. $0 \leq \lambda \leq 1$ (numerator $\geq 0$; denominator's parameter space contains the numerator's).
+  2. The generalized LRT is **NOT** equivalent to the Neyman-Pearson MP test even when both hypotheses are simple — so $\lambda$ does not necessarily yield the most powerful test.
+  3. The denominator typically uses the unconstrained MLE $\hat{\theta}$; the numerator uses the constrained MLE $\check{\theta}$ under $H_0$.
+
+## 9.2 Key LRT Examples
+- **Example 9.1 (Two-sided $t$-test):** For $X_i \sim N(\mu, \sigma^2)$, testing $H_0: \mu = \mu_0$, the LRT yields:
+  $$\lambda(\mathbf{X}) = \left( \frac{1}{1 + t^2/(n-1)} \right)^{n/2}, \quad t = \frac{\bar{X} - \mu_0}{S/\sqrt{n}}$$
+  Since $\lambda$ is monotone decreasing in $t^2$, rejecting $\lambda < \lambda_0$ is equivalent to rejecting when $|t| > t_{n-1, \alpha/2}$.
+- **Example 9.2 (Large-sample one-sided test for exponential rate):** For $f(x|\theta) = \theta e^{-\theta x}$, $x>0$, testing $H_0: \theta \leq \theta_0$, the LRT reduces to rejecting when $y = \theta_0 \bar{X} < k$ for some $k < 1$. Using CLT, $\sqrt{n}(\theta \bar{X} - 1) \xrightarrow{d} N(0,1)$, so the large-sample test rejects $H_0$ if:
+  $$\sqrt{n}(\theta_0 \bar{X} - 1) < -z_\alpha$$
+
+## 9.3 Proper Hypothesis
+- **Definition 9.1:** A null hypothesis is **proper** if $\Theta_0$ can be characterized either as:
+  - **(9.2) Restriction form:** $H_0: \mathbf{R}(\theta) = \mathbf{0}$ vs $H_1: \mathbf{R}(\theta) \neq \mathbf{0}$, where $\mathbf{R}: \mathbb{R}^d \to \mathbb{R}^r$ is differentiable and the Jacobian $\mathbf{C}(\theta)_{r \times d} = \partial \mathbf{R}/\partial \theta$ has rank $r$, with $0 < r \leq d$.
+  - **(9.3) Reparameterization form:** $H_0: \theta = \mathbf{g}(\psi)$ vs $H_1: \theta \neq \mathbf{g}(\psi)$, where $\mathbf{g}: \Psi \to \mathbb{R}^d$ is injective, differentiable, $\Psi \subset \mathbb{R}^{d-r}$ open, and $\mathbf{D}(\psi)_{d \times (d-r)} = \partial \mathbf{g}/\partial \psi$ has rank $d-r$.
+
+## 9.4 Three Asymptotic Test Statistics
+Let $\hat{\theta}_n$ = unconstrained MLE; $\check{\theta}_n$ = constrained MLE under $H_0$; $i_n(\theta)$ = Fisher Information; $S(\theta|\mathbf{X})$ = score.
+
+- **Definition 9.2:** Three test statistics:
+  1. **Likelihood Ratio (LRT):** $Q_L = 2[\log L(\hat{\theta}_n|\mathbf{X}) - \log L(\check{\theta}_n|\mathbf{X})] = -2\log \lambda(\mathbf{X})$.  *(uses both MLEs)*
+  2. **Wald's Statistic:** $Q_W = \mathbf{R}^T(\hat{\theta}_n) \left\{ \mathbf{C}(\hat{\theta}_n) i_n^{-1}(\hat{\theta}_n) \mathbf{C}^T(\hat{\theta}_n) \right\}^{-1} \mathbf{R}(\hat{\theta}_n)$.  *(uses only unconstrained MLE)*
+  3. **Rao's Score Statistic:** $Q_R = S^T(\check{\theta}_n|\mathbf{X}) i_n^{-1}(\check{\theta}_n) S(\check{\theta}_n|\mathbf{X})$.  *(uses only constrained MLE)*
+
+- **Theorem 9.1 (Asymptotic Equivalence):** Under regularity conditions and $H_0$ as in (9.2) or (9.3):
+  $$Q_L, \, Q_W, \, Q_R \xrightarrow{d} \chi^2_r$$
+  Hence each test rejects $H_0$ when $Q > \chi^2_{r,\alpha}$ for an asymptotic size-$\alpha$ test. Here $r$ is the number of restrictions in $\mathbf{R}(\theta) = \mathbf{0}$.
+- **Example 9.3 (Joint test on normal):** For $X_i \sim N(\mu, \sigma^2)$, test $H_0: \mu = 0, \sigma^2 = 1$. With $\mathbf{R}(\theta) = (\mu, \sigma^2 - 1)^T$, $\partial \mathbf{R}/\partial \theta = I_2$ has rank $r=2$, so $-2\log \lambda(\mathbf{X}) \xrightarrow{d} \chi^2_2$.
+
+# Lecture 10: Bayesian Statistics and Statistical Decision
+
+## 10.1 Bayesian Framework
+- **Bayesian Paradigm:** $\theta$ is no longer a fixed constant but a random variable with a **prior distribution** $\pi(\theta)$ chosen before data collection.
+- **Bayes' Theorem (10.1) (Posterior):**
+  $$\pi(\theta | \mathbf{X}) = \frac{f(\mathbf{X}|\theta)\pi(\theta)}{\int f(\mathbf{X}|\theta)\pi(\theta) d\theta}$$
+  In short: **posterior $\propto$ prior $\times$ likelihood (10.2)**. The denominator is the marginal density $f(\mathbf{X}) = \int f(\mathbf{X}|\theta)\pi(\theta) d\theta$.
+- **Conjugate Prior:** If $\pi(\theta)$ and $\pi(\theta|\mathbf{X})$ are from the same family, $\pi(\theta)$ is a conjugate prior w.r.t. $f(\mathbf{X}|\theta)$. Common pairs:
+  - Beta prior + Binomial likelihood $\Rightarrow$ Beta posterior.
+  - Normal prior + Normal likelihood (known $\sigma^2$) $\Rightarrow$ Normal posterior.
+  - Gamma prior + Poisson likelihood $\Rightarrow$ Gamma posterior.
+
+## 10.2 Bayesian Hypothesis Testing
+- **Posterior probability test:** For $H_0: \theta \geq \theta_0$ vs $H_1: \theta < \theta_0$, base test on $P(\theta \geq \theta_0 | \mathbf{X})$. Larger value = more support for $H_0$.
+- **Bayes Factor (BF):** Useful for point hypotheses where $P(\theta = \theta_0 | \mathbf{X}) = 0$ under continuous priors. With prior probabilities $\pi_0 = P(\theta \in \Theta_0)$, $\pi_1 = 1-\pi_0$, and posterior probabilities $p_0, p_1$:
+  $$\text{BF} = \frac{\text{posterior odds of } H_0}{\text{prior odds of } H_0} = \frac{p_0/p_1}{\pi_0/\pi_1}$$
+- **Simple vs. Simple (10.3):** For $H_0: \theta = \theta_0$ vs $H_1: \theta = \theta_1$, the Bayes Factor equals the **likelihood ratio**:
+  $$\text{BF} = \frac{f(\mathbf{X}|\theta_0)}{f(\mathbf{X}|\theta_1)}$$
+- **Composite Hypotheses:** With normalized priors $\rho_i(\theta) = \pi(\theta)/\pi_i$ on $\Theta_i$:
+  $$\text{BF} = \frac{\int_{\Theta_0} f(\mathbf{X}|\theta)\rho_0(\theta) d\theta}{\int_{\Theta_1} f(\mathbf{X}|\theta)\rho_1(\theta) d\theta}$$
+- **Jeffreys' Scale (Support for $H_0$):**
+  | BF | Support for $H_0$ |
+  |---|---|
+  | $<1$ | Negative |
+  | 1–3 | Slight |
+  | 3–12 | Positive |
+  | 12–150 | Strong |
+  | $>150$ | Very strong |
+
+## 10.3 Posterior Bayes Estimator
+- **Definition:** The **posterior Bayes estimator** of $\tau(\theta)$ is the posterior mean:
+  $$E[\tau(\theta) | \mathbf{X}] = \int \tau(\theta) \pi(\theta|\mathbf{X}) d\theta$$
+- **Example 10.1 (Normal-Normal):** $X_i \sim N(\mu, \sigma_0^2)$ with prior $\mu \sim N(\xi, \tau^2)$:
+  $$\pi(\mu | \mathbf{X}) \sim N(A, B^2), \quad A = \frac{\frac{n\bar{X}}{\sigma_0^2} + \frac{\xi}{\tau^2}}{\frac{n}{\sigma_0^2} + \frac{1}{\tau^2}}, \quad B^2 = \frac{1}{\frac{n}{\sigma_0^2} + \frac{1}{\tau^2}}$$
+  The posterior mean $A$ is a precision-weighted average of the prior mean and the data mean. For large $n$, prior choice matters little.
+- **Example 10.4 (Bernoulli with Uniform prior):** $X_i$ i.i.d. Bernoulli$(\theta)$, prior $\theta \sim$ Unif$(0,1) =$ Beta$(1,1)$. Posterior is Beta$(\sum X_i + 1, n - \sum X_i + 1)$, so:
+  $$E[\theta|\mathbf{X}] = \frac{\sum X_i + 1}{n+2}$$
+  This Bayes estimator is biased (the MLE $\bar{X}$ is unbiased/UMVUE — Bayes estimators are generally biased).
+
+## 10.4 Statistical Decision Theory: Loss and Risk
+- **Decision Function:** An estimator $T(\mathbf{X})$ viewed as a decision function; $T(\mathbf{x})$ is the decision/estimate upon observing $\mathbf{X} = \mathbf{x}$.
+- **Loss Function $L(\theta, T)$:** Must satisfy $L(\theta, T) \geq 0$ and $L(\theta, T) = 0 \iff T = \tau(\theta)$.
+  - **Quadratic loss:** $L(\theta, T) = (T - \tau(\theta))^2$.
+  - **Absolute loss:** $L(\theta, T) = |T - \tau(\theta)|$.
+  - **$\varepsilon$-loss:** $L(\theta, T) = A \cdot \mathbf{1}\{|T - \tau(\theta)| > \varepsilon\}$.
+- **Risk Function (10.4):** $R_T(\theta) = E_\theta[L(\theta, T(\mathbf{X}))]$. Under quadratic loss, $R_T(\theta) = \text{MSE}(T)$.
+
+## 10.5 Admissibility and Dominance
+- **Inadmissible:** $T^*$ is **inadmissible** if there exists $T$ such that:
+  1. $R_T(\theta) \leq R_{T^*}(\theta)$ for all $\theta \in \Theta$, AND
+  2. strict inequality holds for at least one $\theta$.
+
+  Then $T$ **dominates** $T^*$ (or $T$ is **better than** $T^*$). If only (1) holds, $T$ is **as good as** $T^*$.
+- **Admissible:** $T^*$ is admissible if it is not inadmissible. Admissibility is **necessary but not sufficient** for being optimal/best (best = as good as every other estimator).
+
+## 10.6 Bayes Risk and Bayes Estimators
+- **Bayes Risk (10.5):** Average risk over the prior:
+  $$r(T) = \int R_T(\theta) \pi(\theta) d\theta$$
+- **Bayes Estimator:** $T^* = \arg\min_T r(T)$. **A unique Bayes estimator is always admissible.**
+- **Theorem 10.1 (Key):** The Bayes estimator minimizes the **posterior expected loss**:
+  $$T^*(\mathbf{x}) = \arg\min_a \int L(\theta, a) \pi(\theta|\mathbf{x}) d\theta$$
+  *Proof sketch:* swap order of integration in $r(T) = \int\int L(\theta,T(\mathbf{x})) f(\mathbf{x}|\theta) \pi(\theta) d\mathbf{x} d\theta$, then minimize the inner integral pointwise in $\mathbf{x}$.
+- **Corollary 10.1 (Bayes estimators by loss):**
+  1. **Quadratic loss:** $T^{*}(\mathbf{X}) = E[\tau(\theta) | \mathbf{X}]$ (posterior **mean**).
+  2. **Absolute loss:** $T^{*}(\mathbf{X})$ = posterior **median** of $\tau(\theta) | \mathbf{X}$.
+- **Example 10.7:** $X \sim$ Unif$(0, \theta)$, prior $\pi(\theta) = \theta e^{-\theta}$. The posterior is $\theta | X \sim X +$ Exponential$(1)$, so under absolute loss the Bayes estimator is $T^* = X + \log 2$ (since the median of Exp$(1)$ is $\log 2$).
+
+## 10.7 Minimax Estimator
+- **Definition:** $T^*$ is **minimax** if $\max_\theta R_{T^*}(\theta) \leq \max_\theta R_T(\theta)$ for all $T$. It minimizes the worst-case (maximum) risk.
+- **Theorem 10.2:** If a Bayes estimator has **constant risk** (independent of $\theta$), then it is also minimax.
+- **Example 10.9 (Minimax for Binomial):** $X \sim $ Bin$(n, \theta)$, prior $\theta \sim$ Beta$(\alpha, \beta)$. Posterior is Beta$(\alpha + x, \beta + n - x)$, and the Bayes estimator (quadratic loss) is $T = (X+\alpha)/(n+\alpha+\beta)$. Choosing $\alpha = \beta = \sqrt{n}/2$ makes the risk constant in $\theta$, so:
+  $$T^* = \frac{X + \sqrt{n}/2}{n + \sqrt{n}}$$
+  is the minimax estimator of $\theta$.
 
 # Calculation Reference Examples
 
