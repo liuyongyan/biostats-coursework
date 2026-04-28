@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# 29_kirp_improvement_A.R
+# 15_kirp_sensitivity.R
 # Test whether adding an effect-size pre-filter + relaxed FDR makes the
 # pipeline less sample-size-sensitive.
 #

@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# 27_download_kirp.R
+# 13_kirp_download.R
 # Download TCGA-KIRP 450K methylation + STAR-Counts RNA-seq + clinical.
 # Mirrors 01_download_kirc.R but for project = TCGA-KIRP.
 # Idempotent: skips already-downloaded data.

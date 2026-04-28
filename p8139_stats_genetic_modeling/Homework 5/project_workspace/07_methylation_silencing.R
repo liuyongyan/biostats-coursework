@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# 19_methylation_silencing.R
+# 07_methylation_silencing.R
 # Identify CpGs whose promoter methylation is associated with transcriptional
 # silencing of the cognate gene in TCGA-KIRC.
 #

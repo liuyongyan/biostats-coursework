@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
-# 20_silencing_partition_gsea.R
-# Downstream of 19_methylation_silencing.R:
+# 09_silencing_pathway.R
+# Downstream of 07_methylation_silencing.R:
 #   - Pattern partition figure (pct_responder histogram with 0.3 cut)
 #   - Silencing volcano (beta_coef vs -log10 assoc_p, colored by silencing/activation)
 #   - Multi-gene methylation-expression scatter panel (VHL, SFRP1, RASSF1, GATA5, DKK3, PCDH17)

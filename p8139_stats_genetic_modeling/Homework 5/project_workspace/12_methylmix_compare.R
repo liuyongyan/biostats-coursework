@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
-# 26_methylmix_compare.R
-# Continue from where 25_methylmix_benchmark.R crashed: load saved MethylMix
+# 12_methylmix_compare.R
+# Continue from where 11_methylmix_benchmark.R crashed: load saved MethylMix
 # result and our silencing list, compute overlap statistics.
 
 suppressPackageStartupMessages({

@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# 21_paper_figures.R
+# 20_figure_main.R
 # Re-render journal-quality figures for the silencing-focused final report.
 # Outputs to project_workspace/figures_final/
 
@@ -52,7 +52,7 @@ p_pca_st <- ggplot(meta_pc, aes(PC1, PC2, color = sample_type)) +
                      name = NULL) +
   labs(x = sprintf("PC1 (%.1f%%)", ve1),
        y = sprintf("PC2 (%.1f%%)", ve2),
-       subtitle = "coloured by sample type") +
+       subtitle = expression("PC1" %~~% "tumor vs normal")) +
   theme_paper(9) +
   theme(legend.position = "bottom")
 
@@ -64,7 +64,7 @@ p_pca_sex <- ggplot(meta_sex, aes(PC1, PC2, color = gender)) +
                      name = NULL) +
   labs(x = sprintf("PC1 (%.1f%%)", ve1),
        y = sprintf("PC2 (%.1f%%)", ve2),
-       subtitle = "coloured by sex") +
+       subtitle = expression("PC2" %~~% "sex")) +
   theme_paper(9) +
   theme(legend.position = "bottom")
 
@@ -77,7 +77,7 @@ p_pca <- p_pca_st + p_pca_sex +
 ggsave(file.path(OUT_DIR, "fig01_pca.png"), p_pca,
        width = 9, height = 4.2, dpi = DPI)
 
-# === Figure 2: superseded by 24_refig2.R (p-hist + Δβ-hist + anchor volcano) ==
+# === Figure 2: superseded by 21_figure_dm_diag.R (p-hist + Δβ-hist + volcano) =
 # The Manhattan/QQ/M-scale-volcano version below is retained for reference but
 # disabled — running it overwrites fig02_q1_diag.png with the inferior layout.
 if (FALSE) {
@@ -170,7 +170,7 @@ p_vol <- ggplot(vol_plot, aes(x = logFC, y = -log10(P.Value), color = color_clas
 p_diag <- (p_man) / (p_qq | p_vol) + plot_layout(heights = c(1, 1.4))
 ggsave(file.path(OUT_DIR, "fig02_q1_diag.png"), p_diag,
        width = 9, height = 6.5, dpi = DPI)
-}  # end of disabled Fig 2 block — see 24_refig2.R for the live version
+}  # end of disabled Fig 2 block — see 21_figure_dm_diag.R for the live version
 
 # === Figure 3: methylation-expression coupling overview =======================
 cat("[Fig 3] silencing volcano + pct_responder histogram...\n")

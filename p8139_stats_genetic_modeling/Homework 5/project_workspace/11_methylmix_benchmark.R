@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# 25_methylmix_benchmark.R
+# 11_methylmix_benchmark.R
 # Run MethylMix on the same TCGA-KIRC data and compare its
 # MethylationDrivenGenes list to our 4,483-gene silencing list.
 #

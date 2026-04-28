@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# 24_refig2.R (v2)
+# 21_figure_dm_diag.R
 # Replace the GWAS-style Manhattan + Q-Q + volcano with three diagnostics
 # that actually carry information for paired tumor-vs-normal cancer methylation:
 #   A. p-value histogram with permutation-null overlay

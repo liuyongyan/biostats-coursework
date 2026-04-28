@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
-# 28_kirp_pipeline.R
+# 14_kirp_pipeline.R
 # Run the same DM + MEA + silencing + pathway pipeline on TCGA-KIRP that
-# we ran on TCGA-KIRC (scripts 04, 05, 19, 20). Compare results.
+# we ran on TCGA-KIRC (scripts 04, 05, 07, 09). Compare results.
 #
 # This is the external-replication test: thresholds, filters, and gene-set
 # libraries are IDENTICAL to the KIRC run. The only thing changed is the

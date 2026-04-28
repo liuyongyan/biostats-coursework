@@ -1,13 +1,14 @@
-# C2 v2: Subgroup-aware VHL methylation × expression analysis
+# 10_vhl_subgroup.R
+# Subgroup-aware VHL methylation × expression analysis (Fig 5).
 #
-# The naive scatter (16_vhl_meth_expr.R) showed:
-#   - Pearson r = -0.27 (p = 1e-6), but Spearman ρ = -0.02 (p = 0.69)
-#   - This Pearson/Spearman split is the visual signature of a Layer-2 (subgroup)
-#     pattern: a small number of high-methylation patients drive a strong linear
-#     signal that vanishes under rank correlation (because the bulk of patients
-#     have β ~ 0, ranking randomly among themselves).
+# Background: a naive Pearson/Spearman scatter on the full cohort yields
+# Pearson r = -0.27 (p = 1e-6) but Spearman ρ = -0.02 (p = 0.69). This
+# split is the visual signature of a subgroup-driven pattern — a small
+# number of high-methylation patients drive a strong linear signal that
+# vanishes under rank correlation because the bulk of patients have
+# β ≈ 0 and rank randomly among themselves.
 #
-# Refined analysis aligned with Layer 2 definition:
+# This script formalizes that intuition:
 #   1. Define "responder" tumors as β >= 0.2 at cg13672843 (Layer 2 pct_responder threshold)
 #   2. Compare VHL expression: responder vs non-responder tumors (Mann-Whitney)
 #   3. Paired analysis: for patients with BOTH methylation AND RNA-seq pairs,
