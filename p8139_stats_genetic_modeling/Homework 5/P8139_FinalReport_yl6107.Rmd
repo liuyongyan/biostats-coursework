@@ -1,6 +1,6 @@
 ---
 title: "Methylation-driven transcriptional silencing in clear-cell renal cell carcinoma: paired-sample integration of TCGA-KIRC DNA methylation and expression"
-author: "Yongyan Liu (yl6107) — P8139 Final Report"
+author: "Yongyan Liu (yl6107)"
 date: "`r Sys.Date()`"
 output:
   bookdown::pdf_document2:
