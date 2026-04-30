@@ -31,6 +31,14 @@ project_workspace/silencing_out/*
 !project_workspace/silencing_out/silencing_table.csv
 !project_workspace/silencing_out/sensitivity_fdr_grid.csv
 
+# ---- dv_out: ignore by default, allow only the CSV the Rmd reads
+project_workspace/dv_out/*
+!project_workspace/dv_out/dv_table.csv
+
+# ---- lme4 / tumor-only sensitivity (regenerable, not read by Rmd)
+project_workspace/sensitivity_lmer/
+project_workspace/sensitivity_tumoronly/
+
 # ---- Run logs / cached binaries / IDE droppings ----------------------
 project_workspace/*.log
 project_workspace/*.rds
