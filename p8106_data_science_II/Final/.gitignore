@@ -1,0 +1,3 @@
+# knitr caches (regenerable from the Rmd)
+*_cache/
+*_files/

@@ -1,0 +1,516 @@
+---
+title: "COVID-19 Severity: Predictive Modeling and Risk-Score Analysis"
+author: "Yongyan Liu (yl6107) — P8106 Data Science II Final Project"
+date: "2026-05-11"
+output:
+  pdf_document:
+    latex_engine: xelatex
+fontsize: 12pt
+geometry: margin=1in
+mainfont: "Times New Roman"
+header-includes:
+  - \usepackage{setspace}\onehalfspacing
+  - \usepackage{caption}\captionsetup{font=small,labelfont=bf}
+  - \usepackage{float}
+  - \usepackage{booktabs}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
+                      fig.pos = "H", out.extra = "")
+library(tidyverse); library(pROC); library(gridExtra)
+library(knitr); library(kableExtra)
+
+## results.RData is produced by p8106_final_yl6107_code.Rmd and contains
+## every fitted model, the resamples object, test-set performance, plus
+## all pre-computed render inputs (pdp_data, vi_tab, rocs, calib_df,
+## auc_ci_df). This report only reads from it; it does not refit, predict,
+## bootstrap, or recompute PDPs.
+load("results.RData")
+
+cv_means  <- summary(resamp)$statistics$ROC[, "Mean"]
+get_auc   <- function(m) test_perf$AUC[test_perf$Model == m]
+get_cv    <- function(m) cv_means[m]
+```
+
+# 1. Introduction
+
+The goal is to identify demographic and clinical factors that predict
+severe COVID-19 illness and to derive a patient-level risk score. From
+the 10,000-participant study, 1,000 were drawn at random
+(`set.seed(6107)`) and partitioned 80 / 20 into training (n = 800) and
+test (n = 200) sets. The outcome is binary (1 = severe, 0 = not
+severe). All 13 candidate predictors in the codebook were retained —
+seven continuous (age, height, weight, BMI, SBP, LDL, depression) and
+six categorical, including the multi-level factors `race` and
+`smoking`.
+
+# 2. Exploratory analysis
+
+Severe outcomes occur in `r round(mean(train_d$severity == "Severe") * 100)`\%
+of the training sample. There is no missingness and no obvious outliers.
+Summary statistics by outcome are in **Table 1** and the marginal
+patterns in **Figure 1**. Three observations drive the modelling choices
+that follow. **First**, severe patients are older (median age
+`r round(median(train_d$age[train_d$severity == "Severe"]))` vs
+`r round(median(train_d$age[train_d$severity == "NotSev"]))`) and have
+higher BMI and SBP. **Second**, the empirical severity rate is
+`r round(100*mean(train_d$severity[train_d$vaccine=="No"]=="Severe"))`\%
+in unvaccinated vs
+`r round(100*mean(train_d$severity[train_d$vaccine=="Yes"]=="Severe"))`\%
+in vaccinated patients — by far the largest single-variable gap (the
+next, hypertension, is
+`r round(100*mean(train_d$severity[train_d$hypertension=="Yes"]=="Severe"))`\%
+vs
+`r round(100*mean(train_d$severity[train_d$hypertension=="No"]=="Severe"))`\%).
+**Third**, `height`, `weight` and `bmi` are mechanically related
+(BMI = weight / height\textsuperscript{2}, with r = 0.70 between weight
+and BMI and r = −0.50 between height and BMI); `SBP` and `hypertension`
+correlate at r = 0.80. We kept all 13 codebook predictors and let
+regularised / tree-based models handle the redundancy.
+
+# 3. Model training
+
+Nine candidates were trained with `caret::train` on the 800-row training
+set using **shared 10-fold CV folds** (`trainControl(index =
+createFolds(...))`) so that every model is compared on identical
+resamples. Tuning and ranking metric: area under the ROC curve
+(`metric = "ROC"`). `caret` dummy-coded factors automatically; the two
+SVMs additionally centred and scaled the predictors. The seed (6107)
+was set before the split, before fold construction, and before every
+`train` call. **Every complexity hyperparameter** — `lambda`, `nprune`,
+`min.node.size`, `n.trees`, `interaction.depth`, `shrinkage`, $C$,
+$\sigma$ — **was selected strictly inside its grid**, so the
+cross-model comparison is apple-to-apple. Three secondary picks land
+at a family's natural endpoint (GLMNET $\alpha=1$, MARS `degree=1`,
+RF `mtry=1`); these are not signs of an under-extended grid but
+themselves substantive findings — the data prefer the simplest /
+most-regularised variant within each family.
+
+The candidate set spans interpretable and flexible families:
+**logistic regression** (`glm`); **penalised logistic regression**
+(`glmnet`, $\alpha\in[0,1]$ over 11 values, $\lambda$ over 30 log-spaced
+values $e^{-8}$–$e^{-1}$); **GAM** with thin-plate smooths on the
+continuous predictors; **MARS** (`earth`, `degree` 1–3, `nprune` 2–18);
+**LDA**; **random forest** (`ranger`, `mtry`$\in\{1,\ldots,8\}$,
+`min.node.size`$\in\{2,4,\ldots,16\}$); **AdaBoost** (`gbm`,
+`distribution = "adaboost"`,
+`n.trees`$\in\{1{,}000,2{,}000,3{,}000,4{,}000,5{,}000\}$,
+`interaction.depth` 1–4,
+`shrinkage`$\in\{0.0005, 0.001, 0.003, 0.01, 0.03\}$,
+`n.minobsinnode = 10`); and two SVMs — **linear** (`svmLinear`, $C$ on
+a 30-point log grid from $e^{-3}$ to $e^{8}$) and **radial-basis**
+(`svmRadialSigma`, $C$ on $e^{-5}$–$e^{5}$ and $\sigma$ on $e^{-8}$–$e^{-2}$,
+both with 10–15 grid points). CV tuning curves are in **Figure 2**;
+selected hyperparameters are in **Table 2**.
+
+# 4. Results
+
+## 4.1 Predictive performance — and the boosting / SVM question
+
+CV ROC and held-out test-set AUC, accuracy, sensitivity, specificity,
+and Brier are in **Table 3** and **Figure 3**; CV ROC distributions are
+in **Figure 2 (panel e)**. **The answer to the researchers' first
+question is no — boosting and SVM do not beat the simpler methods.**
+On 10-fold CV, MARS and GLMNET tie at the top (mean ROC 0.877);
+AdaBoost is essentially tied
+(`r sprintf("%.3f", get_cv("AdaBoost"))`), and
+SVM linear (`r sprintf("%.3f", get_cv("SVM_lin"))`),
+SVM radial, GLM, LDA, and GAM all sit within $\le 0.01$ of the top;
+**random forest is the only model meaningfully weaker on CV**
+(`r sprintf("%.3f", get_cv("RF"))`).
+On the test set every AUC falls in the narrow band
+[`r sprintf("%.3f", min(test_perf$AUC))`,
+`r sprintf("%.3f", max(test_perf$AUC))`], a spread of only
+`r sprintf("%.3f", max(test_perf$AUC) - min(test_perf$AUC))` — the 95\%
+bootstrap CIs (Table 3) overlap completely and are each ~0.09 wide.
+**The test-AUC ranking is therefore essentially within sampling noise
+at $n_{\text{test}}=200$**: RF rises from worst on CV to nominal first
+on test, while MARS slips from tied-first to last, with neither move
+exceeding ~1\%. The CV ranking is the more reliable summary because
+it averages over ten folds rather than a single 200-patient draw.
+
+Why don't the flexible methods help? With the four dominant predictors
+entering the response in nearly additive, threshold-linear form
+(see §4.3), there is no nonlinear-interaction signal for AdaBoost or
+the radial SVM to exploit; the extra flexibility chases noise. RF is
+penalised more — `mtry`=1 with `min.node.size`=10 is the most
+regularised configuration on its CV curve, and even that loses ~0.02
+to the simple methods. Boosting's lower test sensitivity at the 0.5
+cutoff (Sens = `r sprintf("%.2f", test_perf$Sens[test_perf$Model=="AdaBoost"])`)
+reflects miscalibrated probabilities under the exponential loss, not a
+shortfall in discrimination — its test AUC is in the same band as the
+others.
+
+## 4.2 Predictive risk score
+
+MARS and GLMNET are tied at the top of CV ROC, but only MARS yields a
+closed-form, additive risk-score expression that a clinician can read
+off; we therefore use MARS to define $\hat{p}(\text{Severe}\mid x)$.
+After CV the model reduces to **five terms in four predictors**:
+\begin{equation*}
+\text{logit}\bigl(\hat{p}_{\text{Severe}}\bigr) =
+-0.96 + 0.171\,h(\text{age}-60) + 0.353\,h(\text{bmi}-28.7)
++ 0.089\,h(\text{SBP}-118) - 3.32\cdot\mathbf{1}[\text{vaccinated}],
+\end{equation*}
+where $h(u)=\max(u,0)$, so each continuous risk factor is flat below
+its breakpoint and rises linearly above it. This is unusually
+transparent for a "machine-learning" model. The score spans
+$[0.01, 0.99]$ on the test set. At the default 0.5 cutoff, test
+sensitivity is
+`r sprintf("%.2f", test_perf$Sens[test_perf$Model=="MARS"])`
+and specificity
+`r sprintf("%.2f", test_perf$Spec[test_perf$Model=="MARS"])`
+(test Brier `r sprintf("%.3f", test_perf$Brier[test_perf$Model=="MARS"])`);
+clinicians can re-thresh along the ROC curve to trade the two off.
+Calibration on the held-out test set (**Figure 4**) tracks the diagonal
+in the low- and mid-risk range; the highest two deciles deviate by
+about 0.10, but each contains only 20 patients, so the apparent
+miscalibration is comparable to the per-bin Monte Carlo noise.
+
+## 4.3 Key predictors and their effects
+
+Three importance measures — MARS term selection, AdaBoost relative
+influence (**Figure 5a**), and random-forest permutation importance —
+agree on the top predictors and on their order: **vaccination status,
+SBP, age, and BMI**, which together account for about 98% of
+AdaBoost's relative influence. Hypertension is a near-duplicate of
+SBP (r = 0.80) and falls out of MARS once SBP enters; race, gender,
+smoking, LDL, and depression each contribute below 1% to AdaBoost and
+are never selected by MARS.
+
+The partial dependence plots (**Figure 5b**) show *how predicted
+risk varies with* each predictor in the AdaBoost model (model-implied
+associations in this observational sample, not causal effects):
+
+- **Vaccination:** by far the strongest single signal. The PDP gap
+  between unvaccinated and vaccinated is
+  `r sprintf("%.2f", 0.561 - 0.126)`
+  in $\hat{p}(\text{Severe})$ (0.56 vs 0.13), echoing the empirical-rate
+  gap (62\% vs 10\%) and the $-3.32$ MARS vaccine coefficient.
+- **Age:** flat below ~58, rising sharply between 58 and 65 to a
+  plateau near 0.40 (consistent with the MARS hinge at 60).
+- **BMI:** flat below ~28, then rising steeply between 28 and 33
+  (PDP climbing from ~0.25 to ~0.40), aligning with the MARS hinge
+  at 28.7.
+- **SBP:** rising monotonically from ~120 mmHg, with the steepest
+  segment between 125 and 140. This captures the same signal as
+  binary `hypertension`, which is why hypertension drops out of MARS
+  once SBP is in the model.
+
+These directions are biologically plausible and consistent across MARS
+hinge coefficients, AdaBoost PDPs, and the GAM smooths (not shown).
+They should be read as predictive associations rather than causal
+effects: vaccinated and unvaccinated patients differ systematically in
+age and comorbidities, so unadjusted comparisons overstate any causal
+effect of vaccination.
+
+# 5. Conclusion
+
+For this 1,000-patient sample, **boosting and SVM provide no advantage
+over simpler models** — the answer to the researchers' first question.
+On 10-fold CV, MARS and GLMNET tie at the top (mean ROC 0.877), with
+AdaBoost, the two SVMs, GLM, LDA, and GAM all within $\le 0.01$ of
+them; only random forest is meaningfully weaker. Test AUCs all sit in
+[`r sprintf("%.3f", min(test_perf$AUC))`,
+`r sprintf("%.3f", max(test_perf$AUC))`] with completely overlapping
+95\% bootstrap CIs, so the test ranking is dominated by the noise of a
+200-patient draw. We select **MARS** as the final model: tied for best
+on CV and uniquely yielding a five-term, four-predictor closed-form
+risk-score formula clinicians can compute at the bedside.
+**The dominant predictors of severe COVID-19 are vaccination status
+(strongly inversely associated), age, BMI, and systolic blood
+pressure**, entering the response in a nearly additive, threshold-linear
+form — which is precisely why the simple methods suffice. The risk
+score is well-calibrated below the median and re-thresholdable along the
+ROC curve for any sensitivity/specificity target. **Limitations.**
+The estimates rest on a single 1,000-patient observational sample
+without external validation, so the coefficients are predictive
+associations rather than causal effects; calibration in the top two
+deciles (Figure 4) is uncertain at $n_{\text{bin}}=20$ and would need
+re-checking on a larger or higher-risk validation cohort.
+
+\newpage
+
+# Appendix — Tables and Figures
+
+```{r tab1}
+n_sev    <- sum(train_d$severity == "Severe")
+n_notsev <- sum(train_d$severity == "NotSev")
+
+# Continuous block: mean (SD) by severity
+cont_block <- train_d |>
+  pivot_longer(c(age, bmi, SBP, height, weight, LDL, depression),
+               names_to = "Variable", values_to = "v") |>
+  group_by(severity, Variable) |>
+  summarise(val = sprintf("%.1f (%.1f)", mean(v), sd(v)),
+            .groups = "drop") |>
+  pivot_wider(names_from = severity, values_from = val) |>
+  mutate(Variable = factor(Variable,
+                            levels = c("age", "bmi", "SBP",
+                                       "height", "weight", "LDL", "depression"))) |>
+  arrange(Variable) |>
+  mutate(Variable = as.character(Variable))
+
+# Categorical block: n (column %) by severity
+cat_levels <- list(
+  vaccine      = c("Yes", "No"),
+  gender       = c("Male", "Female"),
+  race         = c("White", "Asian", "Black", "Hispanic"),
+  smoking      = c("Never", "Former", "Current"),
+  hypertension = c("Yes", "No"),
+  diabetes     = c("Yes", "No")
+)
+
+cat_block <- map_dfr(names(cat_levels), function(v) {
+  lv <- cat_levels[[v]]
+  tibble(
+    Variable = paste0("  ", lv),
+    Severe   = vapply(lv, function(l) {
+      n <- sum(train_d[[v]] == l & train_d$severity == "Severe")
+      sprintf("%d (%.0f%%)", n, 100 * n / n_sev)
+    }, character(1)),
+    NotSev   = vapply(lv, function(l) {
+      n <- sum(train_d[[v]] == l & train_d$severity == "NotSev")
+      sprintf("%d (%.0f%%)", n, 100 * n / n_notsev)
+    }, character(1)),
+    .group   = v
+  )
+})
+
+cont_section <- cont_block |>
+  transmute(Variable = Variable, Severe = Severe, NotSev = NotSev, .group = "continuous")
+
+t1 <- bind_rows(cont_section, dplyr::select(cat_block, Variable, Severe, NotSev, .group))
+
+cont_n <- nrow(cont_section)
+cat_starts <- cont_n + cumsum(c(0, head(rle(cat_block$.group)$lengths, -1))) + 1
+cat_ends   <- cont_n + cumsum(rle(cat_block$.group)$lengths)
+cat_labels <- rle(cat_block$.group)$values
+
+tab1 <- kable(dplyr::select(t1, Variable, Severe, NotSev),
+              booktabs = TRUE, align = "lrr", escape = FALSE,
+              col.names = c("",
+                            sprintf("Severe (n = %d)", n_sev),
+                            sprintf("Not severe (n = %d)", n_notsev)),
+              caption = "Patient characteristics by COVID-19 severity (training set, n = 800). Continuous variables: mean (SD); categorical variables: n (column \\%).") |>
+  kable_styling(latex_options = c("hold_position"), font_size = 10) |>
+  pack_rows("Continuous, mean (SD)", 1, cont_n,
+            latex_gap_space = "0.3em") |>
+  pack_rows("Categorical, n (column %)", cont_n + 1, nrow(t1),
+            latex_gap_space = "0.4em")
+
+for (i in seq_along(cat_labels)) {
+  tab1 <- tab1 |>
+    pack_rows(cat_labels[i], cat_starts[i], cat_ends[i],
+              latex_gap_space = "0.15em",
+              bold = FALSE, italic = TRUE,
+              hline_before = FALSE, hline_after = FALSE)
+}
+
+tab1
+```
+
+```{r fig1, fig.cap="EDA — top: continuous predictors by severity (boxplots, training set, n = 800). Bottom: empirical severity rate by level for categorical predictors; bars above the overall rate of 32\\% (dashed line) are red, those below are blue.", fig.width=8.5, fig.height=6, out.width="92%", fig.align='center'}
+num_vars <- c("age", "bmi", "SBP", "LDL", "depression")
+p_num <- train_d |>
+  pivot_longer(all_of(num_vars), names_to = "Var", values_to = "v") |>
+  ggplot(aes(severity, v, fill = severity)) +
+  geom_boxplot(alpha = 0.6, outlier.size = 0.5) +
+  facet_wrap(~ Var, scales = "free_y", nrow = 1) +
+  scale_fill_manual(values = c("Severe" = "firebrick", "NotSev" = "steelblue")) +
+  labs(x = NULL, y = NULL) +
+  theme_bw(base_size = 10) +
+  theme(legend.position = "none",
+        strip.background = element_rect(fill = "grey95"))
+
+cat_vars <- c("vaccine", "hypertension", "diabetes", "gender", "race", "smoking")
+overall_rate <- mean(train_d$severity == "Severe")
+p_cat <- train_d |>
+  pivot_longer(all_of(cat_vars), names_to = "Var", values_to = "lvl") |>
+  group_by(Var, lvl) |>
+  summarise(rate = mean(severity == "Severe"), n = n(), .groups = "drop") |>
+  mutate(Var = factor(Var, levels = cat_vars),
+         above = rate > overall_rate) |>
+  ggplot(aes(lvl, rate, fill = above)) +
+  geom_col(alpha = 0.85) +
+  geom_hline(yintercept = overall_rate,
+             linetype = "dashed", colour = "grey30") +
+  scale_fill_manual(values = c(`TRUE` = "firebrick", `FALSE` = "steelblue")) +
+  facet_wrap(~ Var, scales = "free_x", nrow = 2) +
+  labs(x = NULL, y = "P(Severe)") +
+  theme_bw(base_size = 10) +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 35, hjust = 1),
+        strip.background = element_rect(fill = "grey95"))
+
+grid.arrange(p_num, p_cat, nrow = 2, heights = c(1, 1.6))
+```
+
+```{r fig2, fig.cap="CV tuning curves and the resamples ROC distribution. (a) GLMNET ROC vs $\\log\\lambda$, coloured by mixing $\\alpha$. (b) MARS ROC vs nprune, coloured by interaction degree. (c) AdaBoost ROC vs n.trees, coloured by interaction depth, faceted by shrinkage. (d) Radial SVM ROC heatmap on $(\\log\\sigma,\\log C)$; the cross marks the CV-selected pair. (e) 10-fold CV ROC distribution by model.", fig.width=8.5, fig.height=10, out.width="92%", fig.align='center'}
+p_glmn <- ggplot(fits$GLMNET, xTrans = log, highlight = TRUE) +
+  ggtitle("(a) GLMNET") +
+  theme_bw(base_size = 9) +
+  theme(legend.position = "right", legend.key.size = unit(0.35, "cm"))
+p_mars <- ggplot(fits$MARS, highlight = TRUE) +
+  ggtitle("(b) MARS") +
+  theme_bw(base_size = 9) +
+  theme(legend.position = "right", legend.key.size = unit(0.35, "cm"))
+p_gbm  <- ggplot(fits$AdaBoost, highlight = TRUE) +
+  ggtitle("(c) AdaBoost") +
+  theme_bw(base_size = 9) +
+  theme(legend.position = "right", legend.key.size = unit(0.35, "cm"))
+
+svr_perf <- fits$SVM_rbf$results
+svr_best <- fits$SVM_rbf$bestTune
+roc_lim  <- range(svr_perf$ROC)
+p_svr <- ggplot(svr_perf, aes(log(sigma), log(C), fill = ROC)) +
+  geom_tile() +
+  scale_fill_viridis_c(option = "C", direction = 1,
+                       limits = c(max(roc_lim[1], 0.78), roc_lim[2]),
+                       oob = scales::squish, name = "CV ROC") +
+  annotate("point", x = log(svr_best$sigma), y = log(svr_best$C),
+           shape = 4, size = 4, stroke = 1.5, colour = "white") +
+  ggtitle("(d) Radial SVM") +
+  theme_bw(base_size = 9) +
+  theme(legend.key.size = unit(0.4, "cm"))
+
+roc_long <- resamp$values |>
+  dplyr::select(Resample, ends_with("~ROC")) |>
+  pivot_longer(-Resample, names_to = "Model", values_to = "ROC") |>
+  mutate(Model = sub("~ROC", "", Model),
+         Model = factor(Model,
+                        levels = names(sort(cv_means))))
+p_box <- ggplot(roc_long, aes(Model, ROC)) +
+  geom_boxplot(fill = "grey80") +
+  geom_jitter(width = 0.1, alpha = 0.5, size = 1, colour = "firebrick") +
+  coord_flip() +
+  ggtitle("(e) 10-fold CV ROC distribution") +
+  theme_bw(base_size = 9)
+
+grid.arrange(grobs = list(p_glmn, p_mars, p_gbm, p_svr, p_box),
+             layout_matrix = rbind(c(1, 2), c(3, 4), c(5, 5)),
+             heights = c(1, 1, 0.9))
+```
+
+\clearpage
+
+```{r tab-best}
+bt <- function(m) paste(sapply(names(m), function(nm)
+        sprintf("%s=%s", nm, format(unlist(m[[nm]]), digits = 3))),
+        collapse = ", ")
+tune_tab <- tibble(
+  Model = c("GLM", "GLMNET", "GAM", "MARS", "LDA",
+            "RF (ranger)", "AdaBoost (gbm)", "SVM linear", "SVM radial"),
+  `Tuning grid (10-fold CV)` = c(
+    "—",
+    "alpha: 11 pts in [0,1]; lambda: 30 log-pts in exp(-8..-1)",
+    "default thin-plate smooths on continuous predictors",
+    "degree: 1--3; nprune: 2--18",
+    "—",
+    "mtry: 1--8; min.node.size: {2,4,...,16}",
+    "n.trees: {1000,...,5000}; depth: 1--4; shrinkage: {5e-4, 1e-3, 3e-3, 0.01, 0.03}",
+    "C: 30 log-pts in exp(-3..8)",
+    "C: 15 log-pts in exp(-5..5); sigma: 10 log-pts in exp(-8..-2)"),
+  `Best params` = c(
+    "—",
+    bt(fits$GLMNET$bestTune),
+    "—",
+    bt(fits$MARS$bestTune),
+    "—",
+    bt(fits$RF$bestTune),
+    bt(fits$AdaBoost$bestTune),
+    bt(fits$SVM_lin$bestTune),
+    bt(fits$SVM_rbf$bestTune)
+  )
+)
+kable(tune_tab, booktabs = TRUE, align = "lll",
+      caption = "Hyper-parameter tuning grids and CV-selected values. Continuous predictors are centred/scaled only for the two SVMs.") |>
+  kable_styling(latex_options = c("hold_position"),
+                font_size = 8.5) |>
+  column_spec(2, width = "8.0cm") |>
+  column_spec(3, width = "5.0cm")
+```
+
+```{r tab-perf}
+test_perf_pretty <- test_perf %>%
+  mutate(`CV ROC` = cv_means[Model]) %>%
+  left_join(auc_ci_df, by = "Model") %>%
+  arrange(desc(AUC)) %>%
+  dplyr::select(Model, `CV ROC`, AUC_CI, Accuracy, Sens, Spec, Brier) %>%
+  mutate(`CV ROC`  = sprintf("%.3f", `CV ROC`),
+         Accuracy = sprintf("%.3f", Accuracy),
+         Sens     = sprintf("%.3f", Sens),
+         Spec     = sprintf("%.3f", Spec),
+         Brier    = sprintf("%.3f", Brier))
+
+kable(test_perf_pretty, booktabs = TRUE, align = "lrlrrrr",
+      col.names = c("Model", "CV ROC (mean)", "Test AUC (95% CI)",
+                    "Test Acc.", "Sens.", "Spec.", "Brier"),
+      caption = "Cross-validated and test-set performance for all models. Models sorted by test AUC. 95\\% CIs are 2{,}000-replicate stratified bootstrap percentiles (\\texttt{pROC::ci.auc}). Brier = mean squared error of predicted probabilities; lower is better.") |>
+  kable_styling(latex_options = c("hold_position"), font_size = 10)
+```
+
+```{r fig3, fig.cap="Test-set ROC curves for the nine fitted models with their AUCs.", fig.width=6.5, fig.height=5.5}
+ord <- order(sapply(rocs, function(r) -as.numeric(r$auc)))
+rocs_ord <- rocs[ord]
+cols <- RColorBrewer::brewer.pal(9, "Set1")
+plot(rocs_ord[[1]], col = cols[1], legacy.axes = TRUE, lwd = 2,
+     main = "Test-set ROC curves")
+for (i in seq_along(rocs_ord)[-1])
+  plot(rocs_ord[[i]], add = TRUE, col = cols[i], lwd = 2)
+legend("bottomright",
+       legend = sprintf("%s (AUC=%.3f)", names(rocs_ord),
+                        sapply(rocs_ord, function(r) as.numeric(r$auc))),
+       col = cols, lwd = 2, cex = 0.7, bty = "n")
+```
+
+```{r fig4, fig.cap="Calibration of the MARS risk score on the held-out test set. Patients are split into 10 equal-size bins by predicted P(Severe); each dot is a bin's mean predicted vs. observed severity rate (point area is bin size). Closer to the dashed diagonal is better.", fig.width=5, fig.height=4}
+ggplot(calib_df, aes(p_mean, obs)) +
+  geom_abline(linetype = "dashed", colour = "grey50") +
+  geom_point(aes(size = n), colour = "firebrick") +
+  geom_line(colour = "firebrick", alpha = 0.5) +
+  scale_size_continuous(range = c(2, 5), guide = "none") +
+  labs(x = "Mean predicted P(Severe)", y = "Observed P(Severe)",
+       title = sprintf("Calibration on test set - %s", best_name)) +
+  theme_bw()
+```
+
+```{r fig5, fig.cap="Boosting interpretation. (a) Variable importance (relative influence, \\%) from the AdaBoost final model — vaccine, SBP, age, and BMI together account for $\\sim$98\\% of the predictive signal. (b) Partial dependence of the predicted P(Severe) on the four dominant predictors (vaccine, age, BMI, SBP), holding all other predictors at their training distribution.", fig.width=8.5, fig.height=8, out.width="92%", fig.align='center'}
+vi_df <- as_tibble(vi_tab) |>
+  arrange(rel.inf) |>
+  mutate(var = factor(var, levels = var))
+
+p_vi <- ggplot(vi_df, aes(rel.inf, var)) +
+  geom_col(fill = "steelblue") +
+  geom_text(aes(label = sprintf("%.1f", rel.inf)), hjust = -0.1, size = 3) +
+  scale_x_continuous(expand = expansion(mult = c(0, .15))) +
+  labs(title = "(a) AdaBoost variable importance",
+       x = "Relative influence (%)", y = NULL) +
+  theme_bw(base_size = 11)
+
+cont_pdp <- function(v) {
+  ggplot(pdp_data[[v]], aes(.data[[v]], yhat)) +
+    geom_line() +
+    geom_rug(data = train_d, aes(.data[[v]]), sides = "b",
+             alpha = 0.3, inherit.aes = FALSE) +
+    labs(title = paste0("PDP - ", v), x = v, y = "P(Severe)") +
+    theme_bw(base_size = 11)
+}
+p_age <- cont_pdp("age")
+p_bmi <- cont_pdp("bmi")
+p_sbp <- cont_pdp("SBP")
+p_vac <- ggplot(pdp_data$vaccine,
+                aes(vaccine, yhat, fill = vaccine)) +
+  geom_col(width = 0.6, alpha = 0.85) +
+  geom_text(aes(label = sprintf("%.2f", yhat)),
+            vjust = -0.4, size = 3.2) +
+  scale_fill_manual(values = c("No" = "firebrick", "Yes" = "steelblue")) +
+  scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(title = "PDP - vaccine", x = "vaccine", y = "P(Severe)") +
+  theme_bw(base_size = 11) +
+  theme(legend.position = "none")
+
+p_pdp_grid <- arrangeGrob(p_vac, p_age, p_bmi, p_sbp, nrow = 2)
+grid.arrange(p_vi, p_pdp_grid, nrow = 2, heights = c(1, 1.4))
+```

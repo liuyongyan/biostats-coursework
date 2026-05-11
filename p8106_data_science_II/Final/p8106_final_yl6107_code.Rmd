@@ -1,0 +1,402 @@
+---
+title: "P8106 Data Science II — Final Project (Code & Output)"
+author: "Yongyan Liu (yl6107)"
+date: "2026-05-09"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    toc: yes
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 7, fig.height = 4.5, cache = TRUE)
+```
+
+This file contains all R code that produces the numbers, tables, and
+figures presented in the analysis report `p8106_final_yl6107_report.pdf`.
+
+# 1. Setup, data, and train/test split
+
+```{r libs}
+library(tidyverse)
+library(caret)
+library(pROC)
+library(pdp)
+library(gridExtra)
+library(MASS)
+library(mgcv)
+library(earth)
+library(glmnet)
+library(ranger)
+library(gbm)
+library(e1071)
+library(kernlab)
+## Optional: parallelise caret's CV (multi-fold fits run on separate cores).
+## Comment out the next 3 lines if doParallel is not installed.
+library(doParallel)
+cl <- makeCluster(max(1, parallel::detectCores() - 1))
+registerDoParallel(cl)
+```
+
+Sample 1,000 observations from the full dataset using the last four
+digits of the UNI as the random seed, then split exactly 800 / 200.
+
+```{r data}
+load("severity.RData")               # loads `dat`
+
+set.seed(6107)
+my_dat <- dat[sample(nrow(dat), 1000), ]
+my_dat$id <- NULL
+
+my_dat <- my_dat |>
+  mutate(
+    gender       = factor(gender,       levels = c(0, 1), labels = c("Female", "Male")),
+    diabetes     = factor(diabetes,     levels = c(0, 1), labels = c("No", "Yes")),
+    hypertension = factor(hypertension, levels = c(0, 1), labels = c("No", "Yes")),
+    vaccine      = factor(vaccine,      levels = c(0, 1), labels = c("No", "Yes")),
+    race         = factor(race, levels = c(1, 2, 3, 4),
+                          labels = c("White", "Asian", "Black", "Hispanic")),
+    smoking      = factor(smoking, levels = c(0, 1, 2),
+                          labels = c("Never", "Former", "Current")),
+    severity     = factor(severity, levels = c(1, 0), labels = c("Severe", "NotSev"))
+  )
+
+set.seed(6107)
+train_idx <- sample(nrow(my_dat), 800)
+train_d   <- my_dat[train_idx, ]
+test_d    <- my_dat[-train_idx, ]
+```
+
+Shared 10-fold CV indices so that the resamples comparison across all
+models uses the same folds.
+
+```{r ctrl}
+set.seed(6107)
+cvIndex <- createFolds(train_d$severity, k = 10, returnTrain = TRUE)
+ctrl <- trainControl(method          = "cv",
+                     number          = 10,
+                     index           = cvIndex,
+                     classProbs      = TRUE,
+                     summaryFunction = twoClassSummary)
+```
+
+# 2. Exploratory data analysis
+
+```{r eda-summary}
+summary_tab <- train_d |>
+  pivot_longer(c(age, height, weight, bmi, SBP, LDL, depression),
+               names_to = "Var", values_to = "v") |>
+  group_by(severity, Var) |>
+  summarise(`Mean (SD)` = sprintf("%.1f (%.1f)", mean(v), sd(v)),
+            .groups = "drop") |>
+  pivot_wider(names_from = severity, values_from = `Mean (SD)`)
+summary_tab
+```
+
+```{r eda-plot, fig.width=10, fig.height=6}
+num_vars <- c("age", "bmi", "SBP", "LDL", "depression")
+p_num <- train_d |>
+  pivot_longer(all_of(num_vars), names_to = "Var", values_to = "v") |>
+  ggplot(aes(severity, v, fill = severity)) +
+  geom_boxplot(alpha = 0.6, outlier.size = 0.5) +
+  facet_wrap(~ Var, scales = "free_y", nrow = 1) +
+  scale_fill_manual(values = c("Severe" = "firebrick", "NotSev" = "steelblue")) +
+  labs(x = NULL, y = NULL) +
+  theme_bw() + theme(legend.position = "none")
+
+cat_vars <- c("gender", "race", "smoking", "diabetes", "hypertension", "vaccine")
+p_cat <- train_d |>
+  pivot_longer(all_of(cat_vars), names_to = "Var", values_to = "lvl") |>
+  group_by(Var, lvl) |>
+  summarise(rate = mean(severity == "Severe"), n = n(), .groups = "drop") |>
+  ggplot(aes(lvl, rate, fill = lvl)) +
+  geom_col() + geom_hline(yintercept = mean(train_d$severity == "Severe"),
+                          linetype = "dashed", colour = "grey30") +
+  facet_wrap(~ Var, scales = "free_x", nrow = 1) +
+  labs(x = NULL, y = "P(Severe)") +
+  theme_bw() + theme(legend.position = "none",
+                     axis.text.x = element_text(angle = 35, hjust = 1))
+
+grid.arrange(p_num, p_cat, nrow = 2)
+```
+
+# 3. Model training
+
+All tuning grids were extended (when needed) until the CV-selected
+hyperparameter was strictly interior — i.e. not on a grid boundary.
+
+## 3.1 Logistic regression (GLM)
+
+```{r m-glm}
+set.seed(6107)
+fit.glm <- train(severity ~ ., data = train_d,
+                 method = "glm", metric = "ROC", trControl = ctrl)
+```
+
+## 3.2 Penalized logistic regression (elastic net, GLMNET)
+
+```{r m-glmnet}
+glmnGrid <- expand.grid(alpha  = seq(0, 1, length = 11),
+                        lambda = exp(seq(-8, -1, length = 30)))
+set.seed(6107)
+fit.glmn <- train(severity ~ ., data = train_d,
+                  method = "glmnet", tuneGrid = glmnGrid,
+                  metric = "ROC", trControl = ctrl)
+plot(fit.glmn, xTrans = log)
+```
+
+## 3.3 GAM
+
+```{r m-gam}
+set.seed(6107)
+fit.gam <- train(severity ~ ., data = train_d,
+                 method = "gam", metric = "ROC", trControl = ctrl)
+fit.gam$finalModel
+```
+
+## 3.4 MARS
+
+```{r m-mars}
+marsGrid <- expand.grid(degree = 1:3, nprune = 2:18)
+set.seed(6107)
+fit.mars <- train(severity ~ ., data = train_d,
+                  method = "earth", tuneGrid = marsGrid,
+                  metric = "ROC", trControl = ctrl)
+plot(fit.mars)
+```
+
+## 3.5 LDA
+
+```{r m-lda}
+set.seed(6107)
+fit.lda <- train(severity ~ ., data = train_d,
+                 method = "lda", metric = "ROC", trControl = ctrl)
+```
+
+## 3.6 Random forest
+
+`mtry` swept from 1 to 8 and `min.node.size` over {2, 4, …, 16}
+(L11 lecture template). Beyond `min.node.size` ≈ 80 the trees become
+near-stubs and CV ROC drifts upward in a degenerate manner unrelated
+to predictive ability, so we cap the grid at 16.
+
+```{r m-rf}
+rf.grid <- expand.grid(mtry          = 1:8,
+                       splitrule     = "gini",
+                       min.node.size = seq(2, 16, by = 2))
+set.seed(6107)
+fit.rf <- train(severity ~ ., data = train_d,
+                method = "ranger", tuneGrid = rf.grid,
+                metric = "ROC", trControl = ctrl,
+                importance = "permutation")
+ggplot(fit.rf, highlight = TRUE)
+```
+
+## 3.7 Boosting (AdaBoost via gbm)
+
+`shrinkage` swept over four orders of magnitude (`0.0005` to `0.03`)
+with `n.trees` up to 5,000 so that the CV-selected triple
+(`n.trees`, `interaction.depth`, `shrinkage`) sits in the interior.
+
+```{r m-gbm}
+gbmA.grid <- expand.grid(n.trees           = c(1000, 2000, 3000, 4000, 5000),
+                         interaction.depth = 1:4,
+                         shrinkage         = c(0.0005, 0.001, 0.003, 0.01, 0.03),
+                         n.minobsinnode    = 10)
+set.seed(6107)
+fit.gbmA <- train(severity ~ ., data = train_d,
+                  method = "gbm", tuneGrid = gbmA.grid,
+                  metric = "ROC", trControl = ctrl,
+                  distribution = "adaboost", verbose = FALSE)
+ggplot(fit.gbmA, highlight = TRUE)
+```
+
+## 3.8 SVM (linear kernel)
+
+Cost grid extended to $e^{8}$ to push the CV-selected $C$ strictly
+interior.
+
+```{r m-svml}
+svml.grid <- data.frame(C = exp(seq(-3, 8, length = 30)))
+set.seed(6107)
+fit.svml <- train(severity ~ ., data = train_d,
+                  method = "svmLinear", tuneGrid = svml.grid,
+                  metric = "ROC", trControl = ctrl,
+                  preProcess = c("center", "scale"))
+plot(fit.svml, xTrans = log, highlight = TRUE)
+```
+
+## 3.9 SVM (radial-basis kernel)
+
+Cost grid extended down to $e^{-5}$ so the CV-selected $C$ sits in the
+interior.
+
+```{r m-svmr}
+svmr.grid <- expand.grid(C     = exp(seq(-5, 5, length = 15)),
+                         sigma = exp(seq(-8, -2, length = 10)))
+set.seed(6107)
+fit.svmr <- train(severity ~ ., data = train_d,
+                  method = "svmRadialSigma", tuneGrid = svmr.grid,
+                  metric = "ROC", trControl = ctrl,
+                  preProcess = c("center", "scale"))
+plot(fit.svmr, highlight = TRUE)
+```
+
+# 4. Model comparison
+
+## 4.1 Cross-validated ROC (resamples)
+
+```{r resamp}
+resamp <- resamples(list(GLM = fit.glm, GLMNET = fit.glmn,
+                         GAM = fit.gam, MARS = fit.mars,
+                         LDA = fit.lda, RF  = fit.rf,
+                         AdaBoost = fit.gbmA,
+                         SVM_lin = fit.svml, SVM_rbf = fit.svmr))
+summary(resamp)$statistics$ROC
+bwplot(resamp, metric = "ROC")
+```
+
+## 4.2 Test-set metrics
+
+```{r test-metrics}
+fits <- list(GLM = fit.glm, GLMNET = fit.glmn, GAM = fit.gam,
+             MARS = fit.mars, LDA = fit.lda, RF = fit.rf,
+             AdaBoost = fit.gbmA, SVM_lin = fit.svml, SVM_rbf = fit.svmr)
+
+test_perf <- map_dfr(names(fits), function(nm) {
+  m  <- fits[[nm]]
+  pp <- predict(m, newdata = test_d, type = "prob")[, "Severe"]
+  pc <- predict(m, newdata = test_d)
+  r  <- roc(test_d$severity, pp, levels = c("NotSev", "Severe"))
+  cm <- confusionMatrix(pc, test_d$severity, positive = "Severe")
+  tibble(Model    = nm,
+         AUC      = as.numeric(r$auc),
+         Accuracy = as.numeric(cm$overall["Accuracy"]),
+         Sens     = as.numeric(cm$byClass["Sensitivity"]),
+         Spec     = as.numeric(cm$byClass["Specificity"]),
+         Brier    = mean((pp - (test_d$severity == "Severe"))^2))
+})
+test_perf %>% arrange(desc(AUC))
+```
+
+# 5. Interpretation of the best model
+
+```{r best}
+## Test AUCs are bunched within ~0.013 and bootstrap CIs overlap completely
+## (see Section 4.2). We rank by 10-fold CV ROC, where MARS and GLMNET tie
+## at the top; we pick MARS for the closed-form, additive risk-score
+## expression that GLMNET (a coefficient list) cannot match.
+best_name <- "MARS"
+best_fit  <- fits[[best_name]]
+best_name
+```
+
+## 5.1 Variable importance (boosting)
+
+```{r vi-gbm, fig.width=6, fig.height=4.5}
+par(mar = c(4, 8, 2, 2))
+vi_tab <- gbm::summary.gbm(fit.gbmA$finalModel, plotit = TRUE,
+                            las = 1, cBars = 13, cex.names = 0.8)
+vi_tab
+```
+
+## 5.2 Partial dependence plots — top 4 predictors
+
+Compute PDP data for the four dominant predictors (vaccine, age, bmi, SBP).
+We store the data frames so the report can render the figure from
+`results.RData` without re-running `pdp::partial`.
+
+```{r pdp, fig.width=11, fig.height=7}
+pdp_vars <- c("vaccine", "age", "bmi", "SBP")
+pdp_data <- lapply(pdp_vars, function(v) {
+  pdp::partial(fit.gbmA, pred.var = v, prob = TRUE,
+               grid.resolution = 50, train = train_d)
+})
+names(pdp_data) <- pdp_vars
+
+pdp_plot <- function(v) {
+  df <- pdp_data[[v]]
+  if (is.factor(df[[1]])) {
+    ggplot(df, aes(.data[[v]], yhat, fill = .data[[v]])) +
+      geom_col(width = 0.6, alpha = 0.85) +
+      geom_text(aes(label = sprintf("%.2f", yhat)),
+                vjust = -0.4, size = 3.2) +
+      scale_y_continuous(expand = expansion(mult = c(0, 0.15))) +
+      labs(title = paste("AdaBoost PDP -", v),
+           x = v, y = "P(Severe)") +
+      theme_bw() + theme(legend.position = "none")
+  } else {
+    autoplot(df, rug = TRUE, train = train_d) +
+      labs(title = paste("AdaBoost PDP -", v),
+           x = v, y = "P(Severe)") +
+      theme_bw()
+  }
+}
+do.call(grid.arrange, c(lapply(pdp_vars, pdp_plot), nrow = 2))
+```
+
+## 5.3 ROC curves on the test set and bootstrap AUC CIs
+
+```{r roc, fig.width=6, fig.height=5}
+preds <- map(fits, ~ predict(.x, newdata = test_d, type = "prob")[, "Severe"])
+rocs  <- map(preds, ~ roc(test_d$severity, .x, levels = c("NotSev", "Severe")))
+
+cols <- RColorBrewer::brewer.pal(9, "Set1")
+plot(rocs[[1]], col = cols[1], legacy.axes = TRUE)
+for (i in seq_along(rocs)[-1]) plot(rocs[[i]], add = TRUE, col = cols[i])
+legend("bottomright",
+       legend = sprintf("%s (AUC=%.3f)", names(rocs),
+                        sapply(rocs, function(r) as.numeric(r$auc))),
+       col = cols, lwd = 2, cex = 0.7)
+```
+
+2,000-replicate stratified bootstrap 95% CIs for the test-set AUC of each
+model (computed once here and reused by the report).
+
+```{r auc-ci}
+set.seed(6107)
+auc_ci_df <- map_dfr(names(fits), function(nm) {
+  ci <- pROC::ci.auc(rocs[[nm]], method = "bootstrap", boot.n = 2000)
+  tibble(Model = nm,
+         AUC_CI = sprintf("%.3f (%.3f, %.3f)",
+                          as.numeric(rocs[[nm]]$auc),
+                          as.numeric(ci)[1],
+                          as.numeric(ci)[3]))
+})
+auc_ci_df
+```
+
+## 5.4 Calibration of the best-model risk score
+
+```{r calib, fig.width=5, fig.height=4}
+pp_best <- predict(best_fit, newdata = test_d, type = "prob")[, "Severe"]
+calib_df <- tibble(p = pp_best, y = as.integer(test_d$severity == "Severe")) |>
+  mutate(bin = ntile(p, 10)) |>
+  group_by(bin) |>
+  summarise(p_mean = mean(p), obs = mean(y), n = n(), .groups = "drop")
+ggplot(calib_df, aes(p_mean, obs)) +
+  geom_abline(linetype = "dashed", colour = "grey50") +
+  geom_point(aes(size = n), colour = "firebrick") +
+  geom_line() +
+  labs(x = "Mean predicted P(Severe)", y = "Observed P(Severe)",
+       title = sprintf("Calibration (10 risk-score bins) — %s", best_name)) +
+  theme_bw() + theme(legend.position = "none")
+```
+
+# 6. Export results for the report
+
+The analysis report (`p8106_final_yl6107_report.Rmd`) only **reads** from
+`results.RData` and renders — it does not refit models or recompute
+PDPs/bootstrap CIs. Knit this file first to regenerate `results.RData`,
+then knit the report.
+
+```{r save-results}
+save(my_dat, train_d, test_d, ctrl, cvIndex,
+     fits, resamp, test_perf,
+     best_name, best_fit,
+     vi_tab, pdp_data, rocs, calib_df, auc_ci_df,
+     file = "results.RData")
+try(stopCluster(cl), silent = TRUE)
+```
