@@ -1,0 +1,542 @@
+---
+title: "P8109 Lecture 11 — Problem Solving Session: Solutions"
+author: ""
+date: "`r format(Sys.Date())`"
+output:
+  pdf_document:
+    latex_engine: pdflatex
+header-includes:
+  - \usepackage{amsmath}
+  - \usepackage{amssymb}
+  - \usepackage{bm}
+  - \usepackage{framed}
+  - \newcommand{\E}{\mathbb{E}}
+  - \newcommand{\R}{\mathbb{R}}
+  - \newcommand{\ind}{\mathbf{1}}
+fontsize: 11pt
+geometry: margin=1in
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Example 1
+
+\begin{leftbar}\textbf{Problem.} Show that the first order statistic $X_{(1)}$ of a random sample of size $n$ from the distribution with probability density function
+$$f(x\mid\theta)=e^{-(x-\theta)},\quad \theta<x<\infty,\;-\infty<\theta<\infty,$$
+and $f(x\mid\theta)=0$ elsewhere, is a complete sufficient statistic for $\theta$. Find the unique function of this statistic which is the minimum variance unbiased estimator (MVUE) of $\theta$.\end{leftbar}
+
+**Solution.**
+
+**Sufficiency.** $L(\theta\mid\mathbf x)=e^{-\sum x_i+n\theta}\ind_{\{x_{(1)}>\theta\}}$. By factorization (Lect. 6), $T=X_{(1)}$ is sufficient.
+
+**Distribution of $T$.** $P(T>t)=e^{-n(t-\theta)}$ for $t>\theta$, so $T-\theta\sim\mathrm{Exp}(n)$ with density $f_T(t)=ne^{-n(t-\theta)}\ind_{\{t>\theta\}}$.
+
+**Completeness.** Suppose $\E_\theta h(T)=0$ for all $\theta\in\R$:
+$$
+\int_\theta^\infty h(t)\,n e^{-n(t-\theta)}\,dt=0\;\Longleftrightarrow\;\int_\theta^\infty h(t)e^{-nt}\,dt=0\quad\forall\theta.
+$$
+Differentiate w.r.t.\ $\theta$ (FTC, as in Ex.\ 6.5): $-h(\theta)e^{-n\theta}=0\Rightarrow h\equiv 0$. Hence $T$ is complete.
+
+**MVUE of $\theta$.** $\E_\theta T=\theta+\tfrac1n$. By Lehmann–Scheffé (Thm 6.3), the unique MVUE is
+$$\boxed{\;\widehat\theta=X_{(1)}-\tfrac{1}{n}\;}.$$
+
+# Example 2
+
+\begin{leftbar}\textbf{Problem.} Let a random sample of size $n$ be taken from a discrete distribution with probability mass function
+$$f(x\mid\theta)=\tfrac{1}{\theta},\quad x=1,2,\dots,\theta,$$
+and $f(x\mid\theta)=0$ elsewhere, where $\theta$ is an unknown positive integer.
+\textbf{(a)} Show that the largest observation, say $T=X_{(n)}$, of the sample is a complete sufficient statistic for $\theta$.
+\textbf{(b)} Prove that
+$$\dfrac{T^{n+1}-(T-1)^{n+1}}{T^n-(T-1)^n}$$
+is the unique minimum variance unbiased estimator (MVUE) of $\theta$.\end{leftbar}
+
+**Solution.**
+
+**(a)** $L(\theta\mid\mathbf x)=\theta^{-n}\ind_{\{x_{(n)}\le\theta\}}\ind_{\{x_{(1)}\ge1\}}$, so $T=X_{(n)}$ is sufficient.
+
+Distribution: $P(T\le t)=(t/\theta)^n$, so $P(T=t)=[t^n-(t-1)^n]/\theta^n$ for $t=1,\dots,\theta$.
+
+Completeness: if $\E_\theta h(T)=\sum_{t=1}^\theta h(t)\,[t^n-(t-1)^n]/\theta^n=0$ for every $\theta\in\mathbb Z_{>0}$, then
+$$
+\sum_{t=1}^\theta h(t)\,[t^n-(t-1)^n]=0\quad\forall\theta.
+$$
+Take $\theta=1$: $h(1)=0$. Subtract consecutive $\theta$'s: $h(\theta)[\theta^n-(\theta-1)^n]=0\Rightarrow h(\theta)=0$. By induction, $h\equiv0$, so $T$ is complete.
+
+**(b)** Need $g(T)$ with $\E_\theta g(T)=\theta$, i.e.,
+$$\sum_{t=1}^\theta g(t)\,[t^n-(t-1)^n]=\theta^{n+1}\quad\forall\theta.$$
+Subtracting the equation at $\theta-1$ from that at $\theta$:
+$$g(\theta)\,[\theta^n-(\theta-1)^n]=\theta^{n+1}-(\theta-1)^{n+1}.$$
+Therefore the unique MVUE (Lehmann–Scheffé) is
+$$\boxed{\;g(T)=\dfrac{T^{n+1}-(T-1)^{n+1}}{T^n-(T-1)^n}\;}.$$
+
+# Example 3
+
+\begin{leftbar}\textbf{Problem.} Let $X_1,\dots,X_n$ be a random sample of size $n$ from a distribution with probability density function
+$$f(x\mid\theta)=\tfrac12 e^{-|x-\theta|},\quad-\infty<x<\infty,$$
+for all real $\theta$. Find the likelihood ratio test $\Lambda$ for testing
+$$H_0:\theta=0\quad\text{against}\quad H_1:\theta\ne0.$$\end{leftbar}
+
+**Solution.** The MLE of $\theta$ for the double exponential is the sample median $\widetilde M$ (the value of $c$ minimizing $\sum|x_i-c|$). Hence
+$$
+\Lambda=\frac{L(0)}{L(\widetilde M)}=\exp\!\Big(\sum_{i=1}^n|X_i-\widetilde M|-\sum_{i=1}^n|X_i|\Big)\le 1.
+$$
+Reject $H_0$ when $\Lambda\le\lambda_0$, equivalently when $\sum|X_i|-\sum|X_i-\widetilde M|$ is large. (By Thm 9.1, large-sample test rejects when $-2\log\Lambda>\chi^2_{1,\alpha}$.)
+
+# Example 4
+
+\begin{leftbar}\textbf{Problem.} Consider a random sample $X_1,X_2,\dots,X_n$ from a distribution with probability density function
+$$f(x\mid\theta)=\theta(1-x)^{\theta-1},\quad 0<x<1,$$
+and $f(x\mid\theta)=0$ elsewhere, where $\theta>0$.
+\textbf{(a)} Find the form of the uniformly most powerful test of $H_0:\theta=1$ against $H_1:\theta>1$.
+\textbf{(b)} What is the likelihood ratio $\Lambda$ for testing $H_0:\theta=1$ against $H_1:\theta\ne1$?\end{leftbar}
+
+**Solution.** Let $T=-\sum_{i=1}^n\log(1-X_i)$. Under $\theta=1$, $-\log(1-X_i)\sim\mathrm{Exp}(1)$, so $2T\sim\chi^2_{2n}$.
+
+**(a)** $L(\theta)=\theta^n\exp\{-(\theta-1)T\}$. For $\theta_1>\theta_0$,
+$$\frac{L(\theta_1)}{L(\theta_0)}=\Big(\tfrac{\theta_1}{\theta_0}\Big)^n e^{-(\theta_1-\theta_0)T},$$
+which is *decreasing* in $T$, i.e., MLR in $-T$. By Thm 8.1, the UMP test of $H_0:\theta=1$ vs $H_1:\theta>1$ rejects for **small** $T$:
+$$\boxed{\;\text{Reject }H_0\text{ iff }2T<\chi^2_{2n,\,1-\alpha}\;}$$
+where $\chi^2_{2n,1-\alpha}$ is the lower $\alpha$-quantile of $\chi^2_{2n}$.
+
+**(b)** $L(1)=1$. Score equation gives MLE $\widehat\theta=n/T$, so
+$$\sup_\theta L(\theta)=(n/T)^n e^{T-n}.$$
+Therefore
+$$\boxed{\;\Lambda=(T/n)^n e^{n-T}\;},$$
+reject $H_0$ for small $\Lambda$.
+
+# Example 5
+
+\begin{leftbar}\textbf{Problem.} Let $X_1,X_2,\dots,X_n$ denote a random sample from a distribution that is $N(0,\theta)$, where the variance $\theta$ is an unknown positive number. Does there exist a uniformly most powerful test with significance level $\alpha$ for testing the simple hypothesis
+$$H_0:\theta=1$$
+against the composite alternative hypothesis $H_1:\theta>1$?\end{leftbar}
+
+**Solution.** $L(\theta)=(2\pi\theta)^{-n/2}\exp\!\big(-\tfrac{1}{2\theta}\sum X_i^2\big)$. This is a one-parameter exponential family with sufficient statistic $T=\sum X_i^2$ and natural parameter $\eta(\theta)=-1/(2\theta)$, which is *strictly increasing* in $\theta$. Hence MLR in $T$ (Ex. 8.2 form).
+
+By Thm 8.1, **yes**, the UMP size-$\alpha$ test exists:
+$$\boxed{\;\text{Reject }H_0\text{ iff }\sum X_i^2>\chi^2_{n,\alpha}\;},$$
+since under $\theta=1$, $\sum X_i^2\sim\chi^2_n$.
+
+# Example 6
+
+\begin{leftbar}\textbf{Problem.} Let $X_1,\dots,X_n$ be i.i.d.\ from a discrete distribution with probability mass function
+$$f(x\mid p)=p(1-p)^x,\quad x=0,1,2,\dots.$$
+Derive the uniformly most powerful (UMP) test of size $\alpha$ for
+$$H_0:p\le 0.5\quad\text{versus}\quad H_1:p>0.5.$$\end{leftbar}
+
+**Solution.** $L(p)=p^n(1-p)^S$, $S=\sum X_i$. For $p_1>p_0$,
+$$\frac{L(p_1)}{L(p_0)}=\Big(\tfrac{p_1}{p_0}\Big)^n\!\Big(\tfrac{1-p_1}{1-p_0}\Big)^{S},$$
+decreasing in $S$ (since $(1-p_1)/(1-p_0)<1$). Thus MLR in $-S$. By Thm 8.1, the UMP test rejects for **small** $S$:
+$$\phi(\mathbf X)=\begin{cases}1,&S<c_\alpha,\\ \gamma_\alpha,&S=c_\alpha,\\ 0,&S>c_\alpha,\end{cases}$$
+where $(c_\alpha,\gamma_\alpha)$ are determined by $\E_{p=1/2}\phi=\alpha$, and $S\sim\mathrm{NegBin}(n,p)$ with $P(S=k)=\binom{n+k-1}{k}p^n(1-p)^k$.
+
+# Example 7
+
+\begin{leftbar}\textbf{Problem.} Let $X_1,X_2,\dots,X_n$ denote a random sample from a Poisson distribution with mean $\theta$, where $0<\theta<\infty$. Let $\Theta$ be an observed value of the random variable $\Theta$. If $\Theta$ has the prior probability density function
+$$h(\theta)=\dfrac{\theta^{\alpha-1}e^{-\theta/\beta}}{\Gamma(\alpha)\,\beta^{\alpha}},\quad 0<\theta<\infty,$$
+and $h(\theta)=0$ elsewhere, where $\alpha>0$ and $\beta>0$ are known constants. Find the Bayes estimator of $\theta$ under the squared error loss.\end{leftbar}
+
+**Solution.** Likelihood $\times$ prior:
+$$
+\pi(\theta\mid\mathbf x)\propto\theta^{\sum x_i}e^{-n\theta}\cdot\theta^{\alpha-1}e^{-\theta/\beta}=\theta^{\alpha+\sum x_i-1}\exp\!\Big(-\theta\big[n+\tfrac1\beta\big]\Big).
+$$
+Hence (Lect. 10)
+$$
+\theta\mid\mathbf X\sim\mathrm{Gamma}\!\Big(\alpha+\textstyle\sum X_i,\;\dfrac{\beta}{1+n\beta}\Big).
+$$
+Under squared error loss, the Bayes estimator is the posterior mean (Cor. 10.1):
+$$\boxed{\;\widehat\theta_B=\dfrac{\beta\big(\alpha+\sum_{i=1}^n X_i\big)}{1+n\beta}\;}.$$
+
+# Example 8
+
+\begin{leftbar}\textbf{Problem.} Consider a Bayesian model in which $\theta$ is absolutely continuous with density
+$$\lambda(\theta)=\dfrac{4\theta^3}{(1+\theta)^5},\quad\theta>0.$$
+Given $\theta>0$, the data $X$ and $Y$ have joint density
+$$f(x,y\mid\theta)=\dfrac{1}{2\theta^3},\quad |x|<\theta,\;0<y<\theta^2.$$
+Find the Bayes estimate of $\theta$ under the squared error loss.\end{leftbar}
+
+**Solution.** Joint posterior kernel:
+$$
+\lambda(\theta)f(x,y\mid\theta)=\frac{4\theta^3}{(1+\theta)^5}\cdot\frac{1}{2\theta^3}\,\ind_{\{|x|<\theta,\,0<y<\theta^2\}}=\frac{2}{(1+\theta)^5}\,\ind_{\{\theta>m\}},
+$$
+where $m=\max(|x|,\sqrt y)$. Normalize:
+$$
+\int_m^\infty\!\frac{2}{(1+\theta)^5}d\theta=\frac{1}{2(1+m)^4}\;\Longrightarrow\;\pi(\theta\mid x,y)=\frac{4(1+m)^4}{(1+\theta)^5},\;\theta>m.
+$$
+With $u=1+\theta$:
+$$
+\E[\theta\mid x,y]=4(1+m)^4\!\int_{1+m}^\infty\!\!\frac{u-1}{u^5}du=4(1+m)^4\!\left[\frac{(1+m)^{-3}}{3}-\frac{(1+m)^{-4}}{4}\right]=\frac{4(1+m)}{3}-1.
+$$
+Bayes estimate under squared-error loss (posterior mean):
+$$\boxed{\;\widehat\theta_B=\dfrac{4\max(|X|,\sqrt Y)+1}{3}\;}.$$
+
+# Final 22 Q2(b)
+
+\begin{leftbar}\textbf{Problem.} Let $X\sim N(0,\theta)$, $\theta>0$.
+\textbf{(a)} Show that $X$ is not complete.
+\textbf{(b)} Show that $X^2$ is complete.\end{leftbar}
+
+**Solution.**
+
+**(a)** $\E_\theta[X]=0$ for all $\theta>0$, but $h(x)=x\not\equiv0$. So $X$ is not complete.
+
+**(b)** The density $f(x\mid\theta)=\frac{1}{\sqrt{2\pi\theta}}\exp\!\big(-\tfrac{x^2}{2\theta}\big)=h(x)\exp\{\eta T(x)-A(\eta)\}$ with $T(x)=x^2$ and $\eta=-1/(2\theta)$ ranging over $(-\infty,0)$, an open interval. This is a one-parameter exponential family of full rank, so by Thm 6.2, $T(X)=X^2$ is complete.
+
+(Direct: setting $s=1/(2\theta)$, $\E h(X^2)=0$ becomes $\int_0^\infty h(y)y^{-1/2}e^{-sy}dy=0$ for all $s>0$. Uniqueness of the Laplace transform forces $h\equiv0$.)
+
+# Final 22 Q3
+
+\begin{leftbar}\textbf{Problem.} Let $X_1,\dots,X_n$ be i.i.d.\ random variables, each with a $\mathrm{Poisson}(\theta)$ distribution.
+\textbf{(a)} Show that $S=\sum_{i=1}^n X_i$ is a sufficient statistic for $\theta$.
+\textbf{(b)} Show that the statistic
+$$T(X)=\begin{cases}1,&\text{if }X=k,\\0,&\text{otherwise,}\end{cases}$$
+is unbiased for $g(\theta)=P(X=k)$.
+\textbf{(c)} Use the Rao–Blackwell theorem to show that
+$$\binom{S}{k}\!\Big(\tfrac1n\Big)^k\!\Big(1-\tfrac1n\Big)^{S-k}$$
+is an improved unbiased estimator of $g(\theta)$.\end{leftbar}
+
+**Solution.**
+
+**(a)** $f(\mathbf x\mid\theta)=\dfrac{e^{-n\theta}\theta^{\sum x_i}}{\prod x_i!}$. By factorization, $S=\sum X_i$ is sufficient.
+
+**(b)** $\E[\ind_{\{X_1=k\}}]=P(X_1=k)=g(\theta)$.
+
+**(c)** Conditional on $S=s$, $X_1\sim\mathrm{Bin}(s,1/n)$ (standard Poisson splitting). Hence by Rao–Blackwell:
+$$
+\E[T(X_1)\mid S]=P(X_1=k\mid S)=\binom{S}{k}\!\Big(\tfrac1n\Big)^k\!\Big(1-\tfrac1n\Big)^{S-k}.
+$$
+This is unbiased for $g(\theta)$ and has variance no larger than that of $T(X_1)$.
+
+# Final 22 Q4
+
+\begin{leftbar}\textbf{Problem.} Let $X$ be a random variable from two possible distributions. Under $H_0$, $X\sim f_0(x)$, where
+$$f_0(x)=\dfrac{1}{\sqrt{2\pi}}\exp\!\Big(-\dfrac{x^2}{2}\Big),\quad-\infty<x<\infty.$$
+Under $H_1$, $X\sim f_1(x)$, where
+$$f_1(x)=\dfrac12 e^{-|x|},\quad-\infty<x<\infty.$$
+Based on a single observation, derive the most powerful (MP) size-$\alpha$ test.\end{leftbar}
+
+**Solution.** By NP Lemma, MP test rejects when $f_0(x)/f_1(x)<k$, i.e.,
+$$
+\frac{(2\pi)^{-1/2}e^{-x^2/2}}{\tfrac12 e^{-|x|}}=\sqrt{\tfrac{2}{\pi}}\,\exp\!\Big(|x|-\tfrac{x^2}{2}\Big)<k.
+$$
+Equivalently $|x|-x^2/2<c$, i.e., $\big(|x|-1\big)^2>1-2c$. Letting $d=\sqrt{1-2c}$, the rejection region is
+$$
+\{|X|<1-d\}\cup\{|X|>1+d\}\quad(0\le d\le1).
+$$
+Choose $d$ so the size equals $\alpha$. Under $H_0$, $X\sim N(0,1)$:
+$$
+2\Phi(1-d)-1+2[1-\Phi(1+d)]=\alpha\;\Longleftrightarrow\;\Phi(1+d)-\Phi(1-d)=\tfrac{1-\alpha}{2}.
+$$
+The unique $d\in[0,1]$ satisfying this defines the MP size-$\alpha$ test. (For very small $\alpha<2(1-\Phi(2))\approx0.046$ the inner region collapses and the test reduces to $|X|>z_{\alpha/2}$.)
+
+# Final 22 Q5
+
+\begin{leftbar}\textbf{Problem.} A statistician observes a random variable $X$ having a uniform distribution on $(0,\theta)$, where $\theta$ is assumed to have the prior
+$$g(\theta)=\begin{cases}\theta e^{-\theta},&\text{if }\theta>0,\\0,&\text{elsewhere.}\end{cases}$$
+The aim is to estimate $\theta$ with quadratic loss function $L(\theta,T)=(T-\theta)^2$, where $T$ is an estimator of $\theta$.
+\textbf{(a)} By writing the posterior distribution of $\theta$ explicitly, or otherwise, obtain the posterior mean of $\theta$.
+\textbf{(b)} Obtain the posterior expected loss, and by minimizing it, calculate the Bayes estimator.
+\textbf{(c)} Comment on your answers in (a) and (b).\end{leftbar}
+
+**Solution.**
+
+**(a)** Joint density:
+$$f(x,\theta)=\tfrac{1}{\theta}\cdot\theta e^{-\theta}\,\ind_{\{0<x<\theta\}}=e^{-\theta}\ind_{\{\theta>x\}}.$$
+Marginal of $X$: $\int_x^\infty e^{-\theta}d\theta=e^{-x}$. Hence posterior
+$$
+\pi(\theta\mid x)=\frac{e^{-\theta}}{e^{-x}}\ind_{\{\theta>x\}}=e^{-(\theta-x)}\ind_{\{\theta>x\}},
+$$
+i.e., $\theta\mid x\sim x+\mathrm{Exp}(1)$. Posterior mean:
+$$\E[\theta\mid x]=x+1.$$
+
+**(b)** Posterior expected loss for an action $T$:
+$$\E[(T-\theta)^2\mid x]=T^2-2T\,\E[\theta\mid x]+\E[\theta^2\mid x],$$
+minimized at $T=\E[\theta\mid x]=x+1$. So the Bayes estimator is
+$$\boxed{\;\widehat\theta_B=X+1\;}.$$
+
+**(c)** Both answers agree, illustrating Thm 10.1 / Cor. 10.1: under squared-error loss, the Bayes estimator is the posterior mean.
+
+# Final 24 Q3
+
+\begin{leftbar}\textbf{Problem.} Consider a random sample $X_1,X_2,\dots,X_n$ from a $N(\mu,\mu^2)$ distribution.
+\textbf{(a)} By using the Fisher–Neyman factorization theorem, find a sufficient statistic in the form $(T_1,T_2)$ for $\mu$.
+\textbf{(b)} Show that
+$$\E\!\left\{\Big(\sum_{i=1}^n X_i\Big)^{\!2}-2\sum_{i=1}^n X_i^2\right\}=0.$$
+\textbf{(c)} Show that there does not exist a complete sufficient statistic for $\mu$.\end{leftbar}
+
+**Solution.**
+
+**(a)** $f(\mathbf x\mid\mu)=(2\pi\mu^2)^{-n/2}\exp\!\big(-\tfrac{1}{2\mu^2}\sum x_i^2+\tfrac{1}{\mu}\sum x_i-\tfrac{n}{2}\big)$. By Fisher–Neyman, $(T_1,T_2)=\big(\sum X_i,\sum X_i^2\big)$ is sufficient for $\mu$.
+
+**(b)** With $\E[X_i]=\mu$, $\mathrm{Var}(X_i)=\mu^2$:
+$$\E[X_i^2]=2\mu^2,\quad \E[\textstyle\sum X_i^2]=2n\mu^2,\quad\E[(\sum X_i)^2]=n\mu^2+n^2\mu^2=n(n+1)\mu^2.$$
+Therefore
+$$
+\E\!\left[(n+1)\textstyle\sum_{i=1}^n X_i^2-2(\sum_{i=1}^n X_i)^2\right]=2n(n+1)\mu^2-2n(n+1)\mu^2=0.
+$$
+*(Note: as printed in lecture the coefficient $2$ on $\sum X_i^2$ gives $\E[\,\cdot\,]=n(n-3)\mu^2$, which only vanishes when $n=3$. The general identity above is the intended one.)*
+
+**(c)** Apply Thm 6.1: $L(\mu\mid\mathbf x)/L(\mu\mid\mathbf y)$ is independent of $\mu$ iff $\sum x_i=\sum y_i$ and $\sum x_i^2=\sum y_i^2$. Hence $(T_1,T_2)$ is **minimal sufficient**. Any complete sufficient statistic must be minimal sufficient (Lect. 6 remark), so it is in 1-1 correspondence with $(T_1,T_2)$. But part (b) gives $h(T_1,T_2)=(n+1)T_2-2T_1^2\not\equiv0$ with $\E h=0$, contradicting completeness. Therefore no complete sufficient statistic exists for $\mu$.
+
+# Final 25 Q3
+
+\begin{leftbar}\textbf{Problem.} Consider a random sample $X_1,\dots,X_n$ from a binomial $(m,p)$ distribution. Let $\theta=P\{X=m\}$.
+\textbf{(a)} Show that $T=\sum_{i=1}^n X_i$ is complete and sufficient for $\theta$.
+\textbf{(b)} Show that
+$$U=\begin{cases}1,&\text{if }X=m,\\0,&\text{otherwise,}\end{cases}$$
+is unbiased for $\theta$.
+\textbf{(c)} Show that the uniform minimum variance unbiased estimator (UMVUE) of $\theta$ is
+$$U^*(T)=\dfrac{\binom{T}{m}}{\binom{mn}{m}},\quad T=m,m+1,\dots,mn.$$\end{leftbar}
+
+**Solution.**
+
+**(a)** $L(p)\propto p^{\sum x_i}(1-p)^{nm-\sum x_i}$ — exponential family of full rank in $\eta=\log\frac{p}{1-p}$ with sufficient statistic $T=\sum X_i$. By Thm 6.2, $T$ is complete and sufficient. (Equivalently, $T\sim\mathrm{Bin}(nm,p)$, and $\E h(T)=0\Rightarrow$ polynomial in $p/(1-p)$ vanishes $\Rightarrow h\equiv0$.)
+
+**(b)** $\E[U]=P(X_1=m)=p^m=\theta$.
+
+**(c)** Apply Lehmann–Scheffé: UMVUE $=\E[U\mid T]=P(X_1=m\mid T)$. Conditional on $T=t$:
+$$
+P(X_1=m\mid T=t)=\frac{P(X_1=m)\,P\!\big(\sum_{i=2}^n X_i=t-m\big)}{P(T=t)}=\frac{p^m\binom{(n-1)m}{t-m}p^{t-m}(1-p)^{(n-1)m-(t-m)}}{\binom{nm}{t}p^t(1-p)^{nm-t}}.
+$$
+The $p$- and $(1-p)$-powers cancel and
+$$
+\frac{\binom{(n-1)m}{t-m}}{\binom{nm}{t}}=\frac{((n-1)m)!\,t!}{(t-m)!\,(nm)!}=\frac{t!}{m!(t-m)!}\cdot\frac{m!\,((n-1)m)!}{(nm)!}=\frac{\binom{t}{m}}{\binom{nm}{m}}.
+$$
+Hence
+$$\boxed{\;U^*(T)=\dfrac{\binom{T}{m}}{\binom{nm}{m}},\quad T=m,m+1,\dots,nm\;}.$$
+
+# Final 25 Q4
+
+\begin{leftbar}
+\textbf{Problem.} Let $X$ be a random variable with probability mass function
+$$H_0:p(x)=p_0(x),\qquad H_1:p(x)=p_1(x),$$
+where
+\begin{center}
+\begin{tabular}{c|cccccc}
+$X$ & 1 & 2 & 3 & 4 & 5 & 6 \\
+\hline
+$p_0(x)$ & .01 & .01 & .01 & .01 & .01 & .95 \\
+$p_1(x)$ & .05 & .04 & .03 & .02 & .01 & .85 \\
+\end{tabular}
+\end{center}
+\textbf{(a)} Calculate the likelihood ratio $L_1/L_0$ for each of the values of $X$.\\
+\textbf{(b)} By using the Neyman–Pearson lemma and your answer in (a), obtain the rejection region for the most powerful test.\\
+\textbf{(c)} Obtain the most powerful size $\alpha=0.05$ test and calculate its power.
+\end{leftbar}
+
+**Solution.**
+
+**(a)** Likelihood ratios $L_1/L_0=p_1(x)/p_0(x)$:
+
+| $X$ | 1 | 2 | 3 | 4 | 5 | 6 |
+|-----|---|---|---|---|---|---|
+| $L_1/L_0$ | 5 | 4 | 3 | 2 | 1 | $17/19\approx0.8947$ |
+
+**(b)** By Neyman–Pearson, the MP test rejects for the largest values of $L_1/L_0$. Sorting the $x$'s by $L_1/L_0$ descending: $1,2,3,4,5,6$.
+
+**(c)** Cumulative $H_0$ probability when adding outcomes in this order: $.01,.02,.03,.04,.05,1$. The largest size $\le0.05$ region is $\{1,2,3,4,5\}=\{X\ne6\}$, with exact size $0.05$. So the MP $\alpha=0.05$ test is
+$$
+\phi(x)=\ind_{\{x\ne6\}}.
+$$
+Power: $P_{H_1}(X\ne6)=0.05+0.04+0.03+0.02+0.01=0.15$.
+
+# HW3 Q5
+
+\begin{leftbar}\textbf{Problem.} Show that the $\mathrm{Uniform}(\theta,\theta+1)$ family is not complete.\end{leftbar}
+
+**Solution.** For $n\ge 2$, set $Y_i=X_i-\theta\sim\mathrm{Uniform}(0,1)$. The range $X_{(n)}-X_{(1)}=Y_{(n)}-Y_{(1)}\sim\mathrm{Beta}(n-1,2)$ has mean $(n-1)/(n+1)$, free of $\theta$. Hence
+$$h(\mathbf X)=X_{(n)}-X_{(1)}-\tfrac{n-1}{n+1}$$
+satisfies $\E_\theta h\equiv 0$ but $h\not\equiv 0$.
+
+For $n=1$, take $h(X)=\sin(\pi X)$: $\E_\theta h=\int_\theta^{\theta+1}\sin(\pi x)\,dx=0$ for every $\theta$, yet $h\not\equiv 0$. So the family is not complete.
+
+# HW3 Q6
+
+\begin{leftbar}\textbf{Problem.} Let $X_1,\dots,X_n\stackrel{iid}{\sim}\mathrm{Bin}(m,p)$. Find the UMVUE of $p^r q^s$, where $q=1-p$ and $r,s$ are known positive integers with $r+s<mn$.
+\textbf{(a)} Distribution of $T=\sum X_i$.
+\textbf{(b)} Solve $\E[U(T)]=p^r q^s$ for $U$.
+\textbf{(c)} Argue $U(T)$ is the UMVUE.\end{leftbar}
+
+**Solution.**
+
+**(a)** $T\sim\mathrm{Bin}(mn,p)$ (sum of independent binomials).
+
+**(b)** $\E[U(T)]=p^r q^s$ becomes
+$$\sum_{t=0}^{mn} U(t)\binom{mn}{t}p^{t-r}q^{mn-t-s}=1.$$
+Match this to the identity (with $k=t-r$)
+$$1=(p+q)^{mn-r-s}=\sum_{k=0}^{mn-r-s}\binom{mn-r-s}{k}p^{k}q^{mn-r-s-k},$$
+giving $U(t)\binom{mn}{t}=\binom{mn-r-s}{t-r}$ on $t\in\{r,\dots,mn-s\}$ and $U(t)=0$ otherwise:
+$$\boxed{\;U(T)=\dfrac{\binom{mn-r-s}{T-r}}{\binom{mn}{T}},\quad T=r,r+1,\dots,mn-s.\;}$$
+
+**(c)** $\mathrm{Bin}(m,p)$ is a one-parameter exponential family of full rank in $\eta=\log\!\frac{p}{1-p}$, so $T$ is complete and sufficient (Thm 6.2). By Lehmann–Scheffé, $U(T)$ is the unique UMVUE.
+
+# HW4 Q1
+
+\begin{leftbar}\textbf{Problem.} $f(x\mid\theta)=\theta x^{\theta-1}$, $0<x<1$. With $n=1$, find the power of the MP test of $H_0:\theta=1$ vs $H_1:\theta=2$ at $\alpha=0.05$.\end{leftbar}
+
+**Solution.** NP ratio $L(2)/L(1)=2x$ is increasing in $x$, so the MP test rejects when $X>c$. Size: $P_{\theta=1}(X>c)=1-c=0.05\Rightarrow c=0.95$. Power:
+$$P_{\theta=2}(X>0.95)=\int_{0.95}^1 2x\,dx=1-0.9025=\boxed{\;0.0975\;}.$$
+
+# HW4 Q2
+
+\begin{leftbar}\textbf{Problem.} Same density. With $n=2$, show the MP rejection region of size $\alpha$ is $X_1X_2\ge k^*$, where $k^*-k^*\log k^*=1-\alpha$.\end{leftbar}
+
+**Solution.** NP ratio $L(2)/L(1)=4X_1X_2$, so reject when $X_1X_2>k^*$. Size:
+$$
+\alpha=P_{\theta=1}(X_1X_2>k^*)=\int_{k^*}^{1}\!\!\int_{k^*/x_1}^{1}\!dx_2\,dx_1=\int_{k^*}^{1}\!\Big(1-\tfrac{k^*}{x_1}\Big)dx_1=1-k^*+k^*\log k^*.
+$$
+Equivalently, $1-\alpha=k^*-k^*\log k^*$. $\square$
+
+# HW4 Q3
+
+\begin{leftbar}\textbf{Problem.} $f(y\mid\theta)=\tfrac12(1+\theta y)$, $-1<y<1$, $\theta>-1$. Random sample $Y_1,\dots,Y_n$.
+\textbf{(a)} Form of MP region for $H_0:\theta=0$ vs $H_1:\theta=1$ at level $\alpha$.
+\textbf{(b)} $n=1$, $\alpha=0.05$: dividing point.
+\textbf{(c)} Power at $\theta=1$ when $n=1$, $\alpha=0.05$.\end{leftbar}
+
+**Solution.**
+
+**(a)** NP ratio $L(1)/L(0)=\prod_{i=1}^n(1+Y_i)$, so reject when $\prod(1+Y_i)>c$. Equivalently, with $W_i=-\log\!\big((1+Y_i)/2\big)$, reject when $\sum W_i<k$. (Under $H_0$, $(1+Y_i)/2\sim\mathrm{Uniform}(0,1)$, so $W_i\sim\mathrm{Exp}(1)$ and $\sum_{i=1}^n W_i\sim\mathrm{Gamma}(n,1)$; the threshold $k$ is the $\alpha$-quantile of that distribution.)
+
+**(b)** $n=1$: reject when $1+Y>c$, i.e., $Y>c-1$. Under $H_0$, $Y\sim\mathrm{Uniform}(-1,1)$, so $\alpha=(2-c)/2\Rightarrow c-1=1-2\alpha=0.9$. **Reject iff $Y>0.9$.**
+
+**(c)** Power at $\theta=1$:
+$$P_{\theta=1}(Y>0.9)=\int_{0.9}^1\tfrac12(1+y)\,dy=\tfrac12\big[y+\tfrac{y^2}{2}\big]_{0.9}^1=\boxed{\;0.0975\;}.$$
+
+# HW4 Q4
+
+\begin{leftbar}\textbf{Problem.} $X_i\stackrel{iid}{\sim}\mathrm{Poisson}(\lambda)$ for $i=1,\dots,10$. Construct the randomized MP test of size $\alpha=0.05$ for $H_0:\lambda=0.1$ vs $H_1:\lambda>0.1$.\end{leftbar}
+
+**Solution.** Likelihood has MLR in $T=\sum_{i=1}^{10}X_i$, and $T\sim\mathrm{Poisson}(n\lambda)=\mathrm{Poisson}(1)$ under $H_0$. By Thm 8.1, the UMP test is
+$$\phi=\ind_{\{T>c\}}+\gamma\,\ind_{\{T=c\}},\qquad P_{H_0}(T>c)+\gamma\,P_{H_0}(T=c)=0.05.$$
+Under Poisson(1): $P(T\le 3)\approx 0.9810$, $P(T>3)\approx 0.0190$, $P(T=3)\approx 0.0613$. Choose $c=3$:
+$$\gamma=\dfrac{0.05-0.0190}{0.0613}\approx 0.506.$$
+
+# HW5 Q1
+
+\begin{leftbar}\textbf{Problem.} $p\sim\mathrm{Uniform}(0,1)=\mathrm{Beta}(1,1)$. Observe $X=2$ defective items out of $n=30$. Find $P(p\le 0.1\mid X=2)$.\end{leftbar}
+
+**Solution.** Beta–binomial conjugacy: posterior $\sim\mathrm{Beta}(1+2,\,1+30-2)=\mathrm{Beta}(3,29)$. Hence
+$$P(p\le 0.1\mid X=2)=\mathrm{pbeta}(0.1,3,29)\approx\boxed{\;0.6114\;}.$$
+
+# HW5 Q2
+
+\begin{leftbar}\textbf{Problem.} $X\mid\theta\sim N(\theta,100)$, prior $\theta\sim N(100,225)$, observed $x=115$.
+\textbf{(a)} Show the posterior is $N(110.38,\,69.23)$.
+\textbf{(b)} Show the Bayes factor for $H_0:\theta\le 100$ vs $H_1:\theta>100$ is $0.12$.\end{leftbar}
+
+**Solution.**
+
+**(a)** Normal–normal conjugacy (Ex. 10.1). Posterior precision and mean:
+$$B^2=\Big(\tfrac{1}{100}+\tfrac{1}{225}\Big)^{-1}\approx 69.23,\qquad A=B^2\Big(\tfrac{115}{100}+\tfrac{100}{225}\Big)\approx 110.38.$$
+
+**(b)** Posterior tail: $P(\theta\le 100\mid x)=\Phi\!\big((100-110.38)/\sqrt{69.23}\big)=\Phi(-1.247)\approx 0.106$. Prior is symmetric about $100$, so prior odds equal $1$, and
+$$BF_{01}=\dfrac{0.106/0.894}{1}\approx\boxed{\;0.12\;}.$$
+
+# HW5 Q3
+
+\begin{leftbar}\textbf{Problem.} $X\sim\mathrm{Bin}(20,p)$, observe $X=15$.
+\textbf{(a)} Posterior Bayes estimate under $\mathrm{Beta}(3,5)$ prior.
+\textbf{(b)} MLE.
+\textbf{(c)} Repeat (a) under $\mathrm{Uniform}(0,1)$ prior.
+\textbf{(d)} Compare all three when $X=150$ out of $200$.\end{leftbar}
+
+**Solution.**
+
+**(a)** Posterior $\sim\mathrm{Beta}(3+15,\,5+5)=\mathrm{Beta}(18,10)$; mean $=18/28\approx 0.64$.
+
+**(b)** $\widehat p_{\mathrm{MLE}}=15/20=0.75$.
+
+**(c)** Posterior $\sim\mathrm{Beta}(16,6)$; mean $=16/22\approx 0.73$.
+
+**(d)** $\widehat p_{\mathrm{MLE}}=150/200=0.75$. Beta$(3,5)$ posterior mean $=153/208\approx 0.74$. Beta$(1,1)$ posterior mean $=151/202\approx 0.75$. With more data, prior influence shrinks; both Bayes estimates converge to the MLE.
+
+# HW5 Q4
+
+\begin{leftbar}\textbf{Problem.} $X\mid\theta\sim\mathrm{Gamma}(\alpha,1/\theta)$, $\theta\sim\mathrm{Gamma}(\beta,1/\gamma)$. Find the marginal density of $X$.\end{leftbar}
+
+**Solution.** Marginalize over $\theta$:
+$$
+f(x)=\int_0^\infty\!\frac{\theta^\alpha}{\Gamma(\alpha)}x^{\alpha-1}e^{-\theta x}\cdot\frac{\gamma^\beta}{\Gamma(\beta)}\theta^{\beta-1}e^{-\gamma\theta}\,d\theta=\frac{x^{\alpha-1}\gamma^\beta}{\Gamma(\alpha)\Gamma(\beta)}\!\int_0^\infty\!\theta^{\alpha+\beta-1}e^{-\theta(x+\gamma)}d\theta.
+$$
+The inner integral equals $\Gamma(\alpha+\beta)/(x+\gamma)^{\alpha+\beta}$, so
+$$\boxed{\;f(x)=\dfrac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)}\cdot\dfrac{\gamma^\beta x^{\alpha-1}}{(x+\gamma)^{\alpha+\beta}}\;}\quad(x>0).$$
+(A generalized beta-prime / compound gamma density.)
+
+# HW5 Q5
+
+\begin{leftbar}\textbf{Problem.} Pareto prior $\pi(\theta)=\gamma\beta^\gamma\theta^{-(\gamma+1)}$, $\theta\ge\beta$, with $\beta>0$, $\gamma>2$.
+\textbf{(a)} Prior mean.
+\textbf{(b)} Given $Y_1,\dots,Y_n\stackrel{iid}{\sim}\mathrm{Uniform}(0,\theta)$, posterior mean.
+\textbf{(c)} Show $\widehat\theta=\dfrac{\gamma+n}{\gamma+n-1}\max\{z,\beta\}$, $z=\max(y_1,\dots,y_n)$, is admissible under squared-error loss.\end{leftbar}
+
+**Solution.**
+
+**(a)** $\E\theta=\int_\beta^\infty\theta\cdot\gamma\beta^\gamma\theta^{-(\gamma+1)}d\theta=\gamma\beta^\gamma\cdot\dfrac{\beta^{1-\gamma}}{\gamma-1}=\dfrac{\gamma\beta}{\gamma-1}$.
+
+**(b)** Likelihood $\propto\theta^{-n}\ind_{\{\theta\ge\max y_i\}}$. With $z_*=\max\{y_1,\dots,y_n,\beta\}$, the posterior kernel is $\theta^{-(n+\gamma+1)}\ind_{\{\theta>z_*\}}$, normalized to
+$$\pi(\theta\mid\mathbf y)=(n+\gamma)\,z_*^{n+\gamma}\,\theta^{-(n+\gamma+1)}\ind_{\{\theta>z_*\}}\quad(\text{Pareto on }(z_*,\infty)).$$
+Posterior mean:
+$$\E[\theta\mid\mathbf y]=\dfrac{n+\gamma}{n+\gamma-1}\,z_*.$$
+
+**(c)** This posterior mean equals $\widehat\theta$. Under squared-error loss, the posterior mean is the unique Bayes estimator (Cor. 10.1); a unique Bayes estimator with finite Bayes risk is admissible.
+
+# HW5 Q6
+
+\begin{leftbar}\textbf{Problem.} Crash probabilities: plane $5\times 10^{-6}$, car $10^{-2}$. Loss table:
+\begin{center}
+\begin{tabular}{c|cc}
+& Plane & Car \\ \hline
+Crash & $10^6$ & $100$ \\
+No crash & $5$ & $0$
+\end{tabular}
+\end{center}
+Which decision has smaller risk?\end{leftbar}
+
+**Solution.** Expected loss:
+$$R_{\text{plane}}=10^6(5\times 10^{-6})+5(1-5\times 10^{-6})\approx 5+5=10,$$
+$$R_{\text{car}}=100(10^{-2})+0(1-10^{-2})=1.$$
+Travel by car is the decision with smaller risk.
+
+# HW5 Q7
+
+\begin{leftbar}\textbf{Problem.} Risk table with prior $\{1/8,3/8,1/4,1/4\}$ on $\{\theta_1,\theta_2,\theta_3,\theta_4\}$:
+\begin{center}
+\begin{tabular}{c|ccc}
+& $d_1$ & $d_2$ & $d_3$ \\ \hline
+$\theta_1$ & 0 & 2 & 3 \\
+$\theta_2$ & 1 & 0 & 2 \\
+$\theta_3$ & 3 & 4 & 0 \\
+$\theta_4$ & 1 & 2 & 0
+\end{tabular}
+\end{center}
+\textbf{(a)} Bayes risk of each decision.
+\textbf{(b)} Bayes decision.
+\textbf{(c)} Minimax decisions.\end{leftbar}
+
+**Solution.**
+
+**(a)**
+$$r(d_1)=\tfrac18\cdot 0+\tfrac38\cdot 1+\tfrac14\cdot 3+\tfrac14\cdot 1=\tfrac{11}{8},$$
+$$r(d_2)=\tfrac18\cdot 2+\tfrac38\cdot 0+\tfrac14\cdot 4+\tfrac14\cdot 2=\tfrac{14}{8},$$
+$$r(d_3)=\tfrac18\cdot 3+\tfrac38\cdot 2+\tfrac14\cdot 0+\tfrac14\cdot 0=\tfrac{9}{8}.$$
+
+**(b)** $d_3$ minimizes Bayes risk.
+
+**(c)** Worst-case losses: $\max_\theta L(\theta,d_1)=3$, $\max L(\cdot,d_2)=4$, $\max L(\cdot,d_3)=3$. Minimax decisions: $d_1$ and $d_3$.
+
+# HW5 Q8
+
+\begin{leftbar}\textbf{Problem.} $X\sim\mathrm{Bernoulli}(\theta)$. Decision rule $d(1)=d_1$, $d(0)=d_2$, with squared-error loss $L(d,\theta)=(d-\theta)^2$.
+\textbf{(a)} Risk function $R_d(\theta)$.
+\textbf{(b)} Show the minimax decision satisfies $d_1=3/4$, $d_2=1/4$.\end{leftbar}
+
+**Solution.**
+
+**(a)** $R_d(\theta)=\E[L(\theta,d(X))]=(d_1-\theta)^2\theta+(d_2-\theta)^2(1-\theta)$.
+
+**(b)** From Ex. 10.9, the minimax estimator of $\theta$ for $\mathrm{Bin}(n,\theta)$ under squared-error loss is
+$$T^*=\dfrac{X+\sqrt{n}/2}{n+\sqrt{n}}\quad\big(\text{Bayes vs.\ Beta}(\sqrt n/2,\sqrt n/2)\text{ prior, with constant risk}\big).$$
+For $n=1$: $T^*(X)=(X+1/2)/2$, so $T^*(1)=3/4$ and $T^*(0)=1/4$. Hence $\boxed{\;d_1=3/4,\;d_2=1/4\;}$.
+

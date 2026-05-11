@@ -202,7 +202,7 @@ header-includes:
 - **Theorem 6.1 (Lehmann-Scheffé):** $T(\mathbf{x})$ is minimal sufficient if for any two sample points $\mathbf{x}$ and $\mathbf{y}$, the ratio $L(\theta|\mathbf{x})/L(\theta|\mathbf{y})$ is independent of $\theta$ **if and only if** $T(\mathbf{x}) = T(\mathbf{y})$.
 
 ## 6.2 Completeness
-- **Definition 6.2:** A statistic $T$ is complete if $E_\theta[h(T)] = 0$ for all $\theta$ implies $P_\theta(h(T) = 0) = 1$ for all $\theta$. (Completeness means the only unbiased estimator of zero is zero itself).
+- **Definition 6.2:** A statistic $T$ is complete if **for every (measurable) function $h$**, $E_\theta[h(T)] = 0$ for all $\theta$ implies $P_\theta(h(T) = 0) = 1$ for all $\theta$. (Completeness means the only unbiased estimator of zero is zero itself).
 - **Theorem 6.2:** If $X_1, \dots, X_n$ are i.i.d. from a **full-rank Exponential Family** with the natural form:
   $$f(x|\eta) = h(x) \exp\left\{ \eta T(x) - A(\eta) \right\}$$
   The natual statistic $\mathbf{T(X)}$ is **complete and sufficient**. And, the joint density of the sample $\mathbf{X}$ is also an Exponential Family:
@@ -398,3 +398,69 @@ Let $\hat{\theta}_n$ = unconstrained MLE; $\check{\theta}_n$ = constrained MLE u
 - **Beta Function:** $B(\alpha, \beta) = \int_0^1 x^{\alpha-1}(1-x)^{\beta-1} dx = \frac{\Gamma(\alpha)\Gamma(\beta)}{\Gamma(\alpha+\beta)}$.
 - **Normal Integral:** $\int_{-\infty}^\infty e^{-ax^2 + bx + c} dx = \sqrt{\frac{\pi}{a}} e^{\frac{b^2}{4a} + c}$.
 - **Integration by Parts:** $\int u dv = uv - \int v du$. Useful for finding moments.
+
+# Appendix B: Distribution Transformations & Closure Identities
+
+Useful for constructing sufficient statistics, recognizing posteriors, and reducing complicated random variables to standard ones.
+
+## B.1 Monotone Transformations (single random variable)
+- **Uniform $\to$ Exponential:** $X \sim U(0,1) \implies -\log X \sim \text{Exp}(1)$. More generally, $-\frac{1}{\lambda}\log X \sim \text{Exp}(\lambda)$.
+- **Probability Integral Transform (PIT):** If $X$ has continuous CDF $F$, then $F(X) \sim U(0,1)$. Inverse: if $U \sim U(0,1)$, then $F^{-1}(U) \sim F$ (basis of inverse-CDF sampling).
+- **Exponential $\to$ Chi-square:** $X \sim \text{Exp}(1/2) \iff X \sim \chi^2_2$.
+- **Gamma special cases:** $\text{Exp}(\lambda) = \text{Gamma}(1, 1/\lambda)$ and $\chi^2_k = \text{Gamma}(k/2, 2)$ (shape, scale).
+- **Standard Normal squared:** $Z \sim N(0,1) \implies Z^2 \sim \chi^2_1$.
+- **Lognormal:** $X \sim N(\mu, \sigma^2) \implies e^X \sim \text{LogNormal}(\mu,\sigma^2)$, with $E[e^X] = e^{\mu + \sigma^2/2}$.
+- **Location-scale:** $Z \sim N(0,1) \implies \mu + \sigma Z \sim N(\mu, \sigma^2)$.
+- **Affine on Gamma:** $X \sim \text{Gamma}(\alpha,\beta) \implies cX \sim \text{Gamma}(\alpha, \beta/c)$ for $c>0$ (shape preserved, rate rescaled).
+
+## B.2 Sums of i.i.d. / Independent Random Variables (Convolution)
+Most exponential-family sufficient statistics arise from these:
+
+| Component | Distribution | Sum $\sum_{i=1}^n X_i$ |
+|---|---|---|
+| $X_i \sim \text{Bernoulli}(p)$ (i.i.d.) | $\to$ | $\text{Binomial}(n, p)$ |
+| $X_i \sim \text{Bin}(n_i, p)$ (same $p$) | $\to$ | $\text{Bin}(\sum n_i, p)$ |
+| $X_i \sim \text{Pois}(\lambda_i)$ | $\to$ | $\text{Pois}(\sum \lambda_i)$ |
+| $X_i \sim \text{Geom}(p)$ (i.i.d.) | $\to$ | $\text{NegBin}(n, p)$ |
+| $X_i \sim N(\mu_i,\sigma_i^2)$ | $\to$ | $N(\sum\mu_i, \sum\sigma_i^2)$ |
+| $X_i \sim \text{Exp}(\lambda)$ (i.i.d.) | $\to$ | $\text{Gamma}(n, \lambda)$ |
+| $X_i \sim \text{Gamma}(\alpha_i, \beta)$ (same $\beta$) | $\to$ | $\text{Gamma}(\sum\alpha_i, \beta)$ |
+| $X_i \sim \chi^2_{k_i}$ | $\to$ | $\chi^2_{\sum k_i}$ |
+| $X_i \sim \text{Cauchy}(0,1)$ (i.i.d.) | $\to$ | $n \cdot \text{Cauchy}(0,1)$ (no CLT!) |
+
+> **Mnemonic:** sums close within a family **only** when the parameter being summed (count, rate, df, variance, shape) is *additive*. Bernoulli's $p$ is **not** additive, but $1$ is — hence Binomial counts, not "summed $p$".
+
+## B.3 Order Statistics
+- **Uniform order stats $\to$ Beta:** $X_1,\dots,X_n \stackrel{iid}{\sim} U(0,1) \implies X_{(k)} \sim \text{Beta}(k, n-k+1)$.
+- **Exponential min:** $X_i \sim \text{Exp}(\lambda_i)$ independent $\implies \min_i X_i \sim \text{Exp}(\sum\lambda_i)$. Also $P(X_j = \min) = \lambda_j/\sum\lambda_i$.
+- **Memoryless property (Exp):** $P(X > s+t \mid X > s) = P(X > t)$ — only Exp (continuous) and Geometric (discrete) have this.
+- **Uniform $(0,\theta)$ max:** $X_{(n)} = \max X_i$ has CDF $(x/\theta)^n$, density $nx^{n-1}/\theta^n$ on $(0,\theta)$. $E[X_{(n)}] = \frac{n}{n+1}\theta$ (used in UMVUE construction).
+
+## B.4 Ratios and Compositions (Sampling-Distribution Identities)
+- **$Z, \chi^2 \to t$:** $Z \sim N(0,1), V \sim \chi^2_k$ independent $\implies T = \frac{Z}{\sqrt{V/k}} \sim t_k$.
+- **Two $\chi^2 \to F$:** $U \sim \chi^2_m, V \sim \chi^2_n$ independent $\implies F = \frac{U/m}{V/n} \sim F_{m,n}$.
+- **$t^2 \sim F$:** $T \sim t_k \implies T^2 \sim F_{1,k}$.
+- **Ratio of standard Normals:** $Z_1, Z_2 \sim N(0,1)$ independent $\implies Z_1/Z_2 \sim \text{Cauchy}(0,1)$.
+- **Beta from Gammas:** $X \sim \text{Gamma}(\alpha, \theta), Y \sim \text{Gamma}(\beta, \theta)$ independent $\implies \frac{X}{X+Y} \sim \text{Beta}(\alpha,\beta)$, and $\frac{X}{X+Y} \perp (X+Y)$.
+- **Dirichlet from Gammas:** $X_i \sim \text{Gamma}(\alpha_i, \theta)$ ind. $\implies (X_1,\dots,X_k)/\sum X_j \sim \text{Dirichlet}(\alpha_1,\dots,\alpha_k)$.
+
+## B.5 Conjugate-Pair Posteriors (cross-check by transformation)
+Reading the conjugate pair as a transformation of parameters often makes the posterior immediate:
+
+| Likelihood | Prior | Posterior |
+|---|---|---|
+| $X \sim \text{Bin}(n,p)$ | $p \sim \text{Beta}(\alpha,\beta)$ | $\text{Beta}(\alpha + x, \beta + n - x)$ |
+| $X_i \sim \text{Pois}(\lambda)$ | $\lambda \sim \text{Gamma}(\alpha,\beta)$ | $\text{Gamma}(\alpha + \sum x_i, \beta + n)$ |
+| $X_i \sim \text{Exp}(\lambda)$ | $\lambda \sim \text{Gamma}(\alpha,\beta)$ | $\text{Gamma}(\alpha + n, \beta + \sum x_i)$ |
+| $X_i \sim N(\mu,\sigma_0^2)$ | $\mu \sim N(\xi,\tau^2)$ | $N\!\left(\frac{n\bar X/\sigma_0^2 + \xi/\tau^2}{n/\sigma_0^2 + 1/\tau^2},\,\frac{1}{n/\sigma_0^2 + 1/\tau^2}\right)$ |
+| $X_i \sim N(\mu_0,\sigma^2)$ | $\sigma^2 \sim \text{Inv-Gamma}(\alpha,\beta)$ | $\text{Inv-Gamma}\!\left(\alpha + \tfrac{n}{2},\,\beta + \tfrac{1}{2}\sum(x_i - \mu_0)^2\right)$ |
+
+## B.6 Limit Identities (asymptotic transformations)
+- **Binomial $\to$ Poisson:** $\text{Bin}(n,p) \to \text{Pois}(\lambda)$ when $n\to\infty$, $p\to 0$, $np \to \lambda$.
+- **Poisson $\to$ Normal:** $\text{Pois}(\lambda) \approx N(\lambda,\lambda)$ for large $\lambda$.
+- **Binomial $\to$ Normal (CLT):** $\frac{\hat p - p}{\sqrt{p(1-p)/n}} \xrightarrow{d} N(0,1)$.
+- **$t_k \to N(0,1)$** as $k \to \infty$; $\chi^2_k \approx N(k,2k)$ for large $k$.
+- **Variance-stabilizing transforms (delta method):**
+  - Poisson: $\sqrt{X} \approx N(\sqrt{\lambda}, 1/4)$.
+  - Binomial proportion: $\arcsin\sqrt{\hat p} \approx N(\arcsin\sqrt{p}, 1/(4n))$.
+  - Correlation: Fisher's $z = \tfrac{1}{2}\log\frac{1+r}{1-r}$ stabilizes variance at $1/(n-3)$.

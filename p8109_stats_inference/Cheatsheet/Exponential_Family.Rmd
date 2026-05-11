@@ -161,6 +161,43 @@ Shape $\alpha$, rate $\beta$. Mean $\mu = \alpha/\beta$.
 \item Score: $U(\beta) = \frac{n\alpha}{\beta} - \sum y_i$, Fisher: $\mathcal{I}(\beta) = \frac{n\alpha}{\beta^2}$
 \end{itemize}
 
+\section*{Beta Distribution $Beta(\alpha, \beta)$}
+
+Two-parameter EF (not standard 1-parameter EDM form unless one parameter is fixed).
+
+\begin{itemize}
+\setlength{\itemsep}{0pt}
+\item PDF: $f(y) = \frac{1}{B(\alpha,\beta)}y^{\alpha-1}(1-y)^{\beta-1}$, $y \in (0,1)$
+\item $B(\alpha,\beta) = \frac{\Gamma(\alpha)\Gamma(\beta)}{\Gamma(\alpha+\beta)}$
+\item Mean: $E(Y) = \frac{\alpha}{\alpha+\beta}$, Variance: $\text{Var}(Y) = \frac{\alpha\beta}{(\alpha+\beta)^2(\alpha+\beta+1)}$
+\item Mode: $\frac{\alpha-1}{\alpha+\beta-2}$ (for $\alpha,\beta>1$)
+\item Special cases: $Beta(1,1) = U(0,1)$; $Beta(1/2,1/2) = $ arcsine
+\end{itemize}
+
+\textbf{Exp Form (2-parameter EF):}
+$$f(y|\alpha,\beta) = \exp\{(\alpha-1)\log y + (\beta-1)\log(1-y) - \log B(\alpha,\beta)\}$$
+
+\begin{itemize}
+\setlength{\itemsep}{0pt}
+\item Natural params: $\eta_1 = \alpha-1$, $\eta_2 = \beta-1$
+\item Sufficient stats: $T_1(y) = \log y$, $T_2(y) = \log(1-y)$
+\item $A(\alpha,\beta) = \log B(\alpha,\beta) = \log\Gamma(\alpha) + \log\Gamma(\beta) - \log\Gamma(\alpha+\beta)$
+\item $E[\log Y] = \psi(\alpha) - \psi(\alpha+\beta)$, $E[\log(1-Y)] = \psi(\beta) - \psi(\alpha+\beta)$ (via $\partial A/\partial\alpha$, $\partial A/\partial\beta$)
+\item $h(y) = 1$ on $(0,1)$ (support free of params $\Rightarrow$ regular EF)
+\end{itemize}
+
+\textbf{Conjugacy:} Beta is the conjugate prior for Bernoulli/Binomial $p$:
+\begin{itemize}
+\setlength{\itemsep}{0pt}
+\item Prior $p \sim Beta(\alpha,\beta)$, likelihood $X \sim Bin(n,p)$
+\item Posterior $p|X \sim Beta(\alpha + x, \beta + n - x)$
+\item Posterior mean (Bayes estimator under squared loss): $\frac{\alpha+x}{\alpha+\beta+n}$
+\end{itemize}
+
+\textbf{Construction:} If $X \sim Gamma(\alpha,\theta)$, $Y \sim Gamma(\beta,\theta)$ independent, then $\frac{X}{X+Y} \sim Beta(\alpha,\beta)$.
+
+\textbf{Order stats:} If $U_1,\dots,U_n \stackrel{iid}{\sim} U(0,1)$, then $U_{(k)} \sim Beta(k, n-k+1)$.
+
 \section*{Chi-square Distribution $\chi^2(k)$}
 
 Special case of Gamma with $\alpha = k/2, \beta = 1/2$.
