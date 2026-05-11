@@ -433,10 +433,13 @@ kable(tune_tab, booktabs = TRUE, align = "lll",
 ```
 
 ```{r tab-perf}
+model_order <- c("GLM", "GLMNET", "GAM", "MARS", "LDA",
+                 "RF", "AdaBoost", "SVM_lin", "SVM_rbf")
 test_perf_pretty <- test_perf %>%
   mutate(`CV ROC` = cv_means[Model]) %>%
   left_join(auc_ci_df, by = "Model") %>%
-  arrange(desc(AUC)) %>%
+  mutate(Model = factor(Model, levels = model_order)) %>%
+  arrange(Model) %>%
   dplyr::select(Model, `CV ROC`, AUC_CI, Accuracy, Sens, Spec, Brier) %>%
   mutate(`CV ROC`  = sprintf("%.3f", `CV ROC`),
          Accuracy = sprintf("%.3f", Accuracy),
@@ -447,7 +450,7 @@ test_perf_pretty <- test_perf %>%
 kable(test_perf_pretty, booktabs = TRUE, align = "lrlrrrr",
       col.names = c("Model", "CV ROC (mean)", "Test AUC (95% CI)",
                     "Test Acc.", "Sens.", "Spec.", "Brier"),
-      caption = "Cross-validated and test-set performance for all models. Models sorted by test AUC. 95\\% CIs are 2{,}000-replicate stratified bootstrap percentiles (\\texttt{pROC::ci.auc}). Brier = mean squared error of predicted probabilities; lower is better.") |>
+      caption = "Cross-validated and test-set performance for all models, listed in the order they were introduced in lectures. CV ROC (10-fold mean) is the model-selection metric; test AUC is the held-out performance with 2{,}000-replicate stratified bootstrap 95\\% CIs (\\texttt{pROC::ci.auc}). Brier = mean squared error of predicted probabilities; lower is better.") |>
   kable_styling(latex_options = c("hold_position"), font_size = 10)
 ```
 
