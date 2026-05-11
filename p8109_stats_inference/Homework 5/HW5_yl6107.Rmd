@@ -1,0 +1,227 @@
+---
+title: "P8109 Statistical Inference -- Homework 5"
+author: "Yongyan Liu (yl6107)"
+date: "2026-04-30"
+output:
+  pdf_document:
+    latex_engine: xelatex
+header-includes:
+  - \usepackage{amsmath,amssymb,amsthm}
+  - \DeclareMathOperator{\Var}{Var}
+  - \DeclareMathOperator{\Cov}{Cov}
+  - \DeclareMathOperator{\E}{E}
+  - \newcommand{\iid}{\overset{\text{iid}}{\sim}}
+  - \newcommand{\ind}{\overset{\text{ind}}{\sim}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Problem 1
+
+**A simple random sample of size $n=30$ is drawn from a lot with unknown defective fraction $p$, where the prior on $p$ is $\mathrm{Uniform}(0,1)$. Given that $X = 2$ defective items are observed, find the posterior probability $P(p \le 0.1 \mid X = 2)$.**
+
+The likelihood from $X \mid p \sim \mathrm{Binomial}(30, p)$ is
+$$L(p \mid x) \;\propto\; p^{x}(1-p)^{n-x} \;=\; p^{2}(1-p)^{28}.$$
+The Uniform$(0,1)$ prior is $\pi(p) = 1 = \mathrm{Beta}(1,1)$. Then by "posterior $\propto$ prior $\times$ likelihood",
+$$\pi(p \mid x) \;\propto\; p^{x+1-1}(1-p)^{n-x+1-1} \;=\; p^{2}(1-p)^{28},$$
+which is the kernel of $\mathrm{Beta}(\alpha^{*}, \beta^{*})$ with $\alpha^{*} = x + 1 = 3$ and $\beta^{*} = n - x + 1 = 29$, i.e.,
+$$p \mid X = 2 \;\sim\; \mathrm{Beta}(3, 29).$$
+Hence
+$$P(p \le 0.1 \mid X = 2) \;=\; F_{\mathrm{Beta}(3, 29)}(0.1).$$
+
+```{r p1}
+pbeta(0.1, shape1 = 3, shape2 = 29)
+```
+
+So $P(p \le 0.1 \mid X = 2) \approx 0.6114$.
+
+# Problem 2
+
+**Let $X \mid \theta \sim N(\theta, 100)$ (variance $\sigma_{0}^{2} = 100$) and let the prior be $\theta \sim N(100, 225)$ (so $\xi = 100$, $\tau^{2} = 225$). The observed score is $x = 115$. Show that (a) the posterior is $N(110.38, 69.23)$, and (b) the Bayes factor for $H_{0}: \theta \le 100$ versus $H_{1}: \theta > 100$ is $0.12$.**
+
+## (a) Posterior distribution
+
+With $n = 1$, the likelihood and prior are
+$$f(x \mid \theta) \;=\; \frac{1}{\sqrt{2\pi\sigma_{0}^{2}}}\exp\!\left\{-\frac{(x-\theta)^{2}}{2\sigma_{0}^{2}}\right\}, \qquad \pi(\theta) \;=\; \frac{1}{\sqrt{2\pi\tau^{2}}}\exp\!\left\{-\frac{(\theta-\xi)^{2}}{2\tau^{2}}\right\}.$$
+By Example 10.1 (Lecture 10, slides 4--5), the posterior is $\theta \mid X \sim N(A, B^{2})$ with
+$$A \;=\; \frac{\dfrac{n\bar X}{\sigma_{0}^{2}} + \dfrac{\xi}{\tau^{2}}}{\dfrac{n}{\sigma_{0}^{2}} + \dfrac{1}{\tau^{2}}}, \qquad B^{2} \;=\; \frac{1}{\dfrac{n}{\sigma_{0}^{2}} + \dfrac{1}{\tau^{2}}}.$$
+Substituting $n = 1$, $x = 115$, $\sigma_{0}^{2} = 100$, $\xi = 100$, $\tau^{2} = 225$:
+$$B^{2} \;=\; \left(\frac{1}{100} + \frac{1}{225}\right)^{-1} \;=\; \frac{900}{13} \;\approx\; 69.23, \qquad A \;=\; B^{2}\left(\frac{115}{100} + \frac{100}{225}\right) \;=\; \frac{1435}{13} \;\approx\; 110.38.$$
+
+Therefore
+$$\theta \mid X = 115 \;\sim\; N(110.38,\; 69.23).$$
+
+## (b) Bayes factor
+
+Both hypotheses are composite, so the simple-vs-simple BF formula does not apply. Using the General Composite Hypotheses formulation (Lecture 10, slide 15), the Bayes factor equals the ratio of posterior odds to prior odds:
+$$\mathrm{BF} \;=\; \frac{p_{0}/p_{1}}{\pi_{0}/\pi_{1}}, \qquad p_{0} \;=\; P(\theta \le 100 \mid X), \quad \pi_{0} \;=\; P(\theta \le 100).$$
+
+The prior is $N(100, 225)$, centered at $100$, so $\pi_{0} = 0.5$ and $\pi_{0}/\pi_{1} = 1$. The posterior is $N(110.38, 69.23)$, so
+$$p_{0} \;=\; \Phi\!\left(\frac{100 - 110.38}{\sqrt{69.23}}\right) \;=\; \Phi(-1.247) \;\approx\; 0.1060,$$
+and therefore
+$$\mathrm{BF} \;=\; \frac{p_{0}/p_{1}}{\pi_{0}/\pi_{1}} \;=\; \frac{0.1060/0.8940}{1} \;\approx\; 0.12.$$
+
+# Problem 3
+
+**With $n = 20$ rabbits and $X \sim \mathrm{Binomial}(20, p)$, $X = 15$ survived. (a) Compute the posterior Bayes estimator of $p$ under a $\mathrm{Beta}(3,5)$ prior. (b) Obtain the MLE. (c) Recompute (a) with a Uniform$(0,1)$ prior. (d) For $n = 200$, $x = 150$, compare the MLE, the $\mathrm{Beta}(3,5)$ posterior mean, and the Uniform-prior posterior mean.**
+
+For Beta--Binomial conjugacy (Lecture 10, Example 10.4 / Example 10.9, slide 38),
+$$L(p \mid x) \;\propto\; p^{x}(1-p)^{n-x}, \qquad \pi(p) \;\propto\; p^{\alpha-1}(1-p)^{\beta-1},$$
+$$\pi(p \mid x) \;\propto\; p^{\alpha+x-1}(1-p)^{\beta+n-x-1}, \qquad p \mid X \;\sim\; \mathrm{Beta}(\alpha + x,\, \beta + n - x).$$
+Under squared error loss the Bayes estimator is the posterior mean (Corollary 10.1(i), slide 29):
+$$\hat p_{\mathrm{Bayes}} \;=\; \E[p \mid X] \;=\; \frac{\alpha + x}{\alpha + \beta + n}.$$
+
+## (a) Beta(3,5) prior, $n = 20$, $x = 15$
+
+$$p \mid X \;\sim\; \mathrm{Beta}(3 + 15,\; 5 + 5) \;=\; \mathrm{Beta}(18,\, 10),$$
+$$\hat p_{\mathrm{Bayes}} \;=\; \frac{18}{28} \;=\; \frac{9}{14} \;\approx\; 0.64.$$
+
+## (b) MLE
+
+$$\hat p_{\mathrm{MLE}} \;=\; \frac{X}{n} \;=\; \frac{15}{20} \;=\; 0.75.$$
+
+## (c) Uniform = Beta(1,1) prior
+
+$$p \mid X \;\sim\; \mathrm{Beta}(1 + 15,\; 1 + 5) \;=\; \mathrm{Beta}(16,\, 6),$$
+$$\hat p_{\mathrm{Bayes}} \;=\; \frac{16}{22} \;=\; \frac{8}{11} \;\approx\; 0.73.$$
+
+The estimate increases from $0.64$ to $0.73$ when the more informative prior $\mathrm{Beta}(3,5)$ (which puts mass on smaller $p$) is replaced by the flat prior.
+
+## (d) $n = 200$, $x = 150$
+
+$$\hat p_{\mathrm{MLE}} \;=\; \frac{150}{200} \;=\; 0.75, \qquad \hat p_{\mathrm{Beta}(3,5)} \;=\; \frac{153}{208} \;\approx\; 0.74, \qquad \hat p_{\mathrm{Unif}} \;=\; \frac{151}{202} \;\approx\; 0.75.$$
+
+**Comment.** All three estimators are essentially equal at $n = 200$. As $n$ grows, the data terms dominate the fixed prior parameters in $(\alpha + x)/(\alpha + \beta + n)$, so the posterior mean converges to the MLE $x/n$ regardless of the prior. The discrepancies seen at $n = 20$ between $0.64$ (Beta(3,5)) and $0.75$ (MLE) shrink to less than one percentage point at $n = 200$.
+
+# Problem 4
+
+**Let $X \mid \theta \sim \mathrm{Gamma}(\alpha, 1/\theta)$ with density $f(x \mid \theta) = \frac{\theta^{\alpha}}{\Gamma(\alpha)}x^{\alpha-1}e^{-\theta x}$ and let $\theta \sim \mathrm{Gamma}(\beta, 1/\gamma)$ with density $\pi(\theta) = \frac{\gamma^{\beta}}{\Gamma(\beta)}\theta^{\beta-1}e^{-\gamma\theta}$. Obtain the unconditional density of $X$.**
+
+By the marginal density formula (Lecture 10, slide 3),
+$$f(x) \;=\; \int_{0}^{\infty} f(x \mid \theta)\,\pi(\theta)\,d\theta \;=\; \int_{0}^{\infty} \frac{\theta^{\alpha}}{\Gamma(\alpha)}x^{\alpha-1}e^{-\theta x}\;\cdot\;\frac{\gamma^{\beta}}{\Gamma(\beta)}\theta^{\beta-1}e^{-\gamma\theta}\,d\theta.$$
+Pulling constants outside,
+$$f(x) \;=\; \frac{x^{\alpha-1}\,\gamma^{\beta}}{\Gamma(\alpha)\Gamma(\beta)}\int_{0}^{\infty} \theta^{\alpha + \beta - 1}\,e^{-(x + \gamma)\theta}\,d\theta.$$
+The integrand is the kernel of a $\mathrm{Gamma}(\alpha + \beta,\, \text{rate} = x + \gamma)$ density in $\theta$, so by
+$$\int_{0}^{\infty} \theta^{a-1}e^{-b\theta}\,d\theta \;=\; \frac{\Gamma(a)}{b^{a}},$$
+we obtain
+$$\int_{0}^{\infty} \theta^{\alpha + \beta - 1}\,e^{-(x + \gamma)\theta}\,d\theta \;=\; \frac{\Gamma(\alpha + \beta)}{(x + \gamma)^{\alpha + \beta}}.$$
+Therefore
+$$f(x) \;=\; \frac{\Gamma(\alpha + \beta)}{\Gamma(\alpha)\Gamma(\beta)}\;\frac{\gamma^{\beta}\,x^{\alpha-1}}{(x + \gamma)^{\alpha + \beta}}, \qquad x > 0.$$
+This is a (scaled) Beta-prime / compound-Gamma form.
+
+# Problem 5
+
+**Let $\theta$ have the Pareto-type prior $\pi(\theta) = \gamma\beta^{\gamma}\theta^{-(\gamma+1)}$ for $\theta \ge \beta$, with $\beta > 0$ and $\gamma > 2$. (a) Find the prior mean of $\theta$. (b) Given $Y_{1}, \ldots, Y_{n} \iid \mathrm{Uniform}(0, \theta)$, find the posterior mean of $\theta$. (c) Show that $\hat\theta = \frac{\gamma + n}{\gamma + n - 1}\max\{z, \beta\}$, with $z = \max(y_{1}, \ldots, y_{n})$, is admissible under squared error loss.**
+
+## (a) Prior mean
+
+$$\E[\theta] \;=\; \int_{\beta}^{\infty} \theta \cdot \gamma\beta^{\gamma}\theta^{-(\gamma+1)}\,d\theta \;=\; \gamma\beta^{\gamma}\int_{\beta}^{\infty} \theta^{-\gamma}\,d\theta.$$
+Provided $\gamma > 1$ (which holds since $\gamma > 2$),
+$$\int_{\beta}^{\infty} \theta^{-\gamma}\,d\theta \;=\; \left[\frac{\theta^{-\gamma + 1}}{-\gamma + 1}\right]_{\beta}^{\infty} \;=\; \frac{\beta^{1 - \gamma}}{\gamma - 1}.$$
+Hence
+$$\E[\theta] \;=\; \gamma\beta^{\gamma}\cdot\frac{\beta^{1 - \gamma}}{\gamma - 1} \;=\; \frac{\gamma\beta}{\gamma - 1}.$$
+(The first moment requires $\gamma > 1$; the assumption $\gamma > 2$ guarantees the second moment, hence the variance, is also finite.)
+
+## (b) Posterior mean
+
+For $Y_{i} \mid \theta \sim \mathrm{Uniform}(0, \theta)$, each density is $\theta^{-1}\mathbf{1}\{0 < y_{i} < \theta\}$, so with $z = \max(y_{1}, \ldots, y_{n})$,
+$$L(\theta \mid \mathbf{y}) \;=\; \theta^{-n}\,\mathbf{1}\{\theta \ge z\}.$$
+Combining with the prior, which is supported on $\theta \ge \beta$,
+$$\pi(\theta \mid \mathbf{y}) \;\propto\; \theta^{-n}\mathbf{1}\{\theta \ge z\} \cdot \theta^{-(\gamma+1)}\mathbf{1}\{\theta \ge \beta\} \;=\; \theta^{-(n + \gamma + 1)}\mathbf{1}\{\theta \ge \max(z, \beta)\}.$$
+Let $m = \max(z, \beta)$. The normalizing constant is
+$$\int_{m}^{\infty} \theta^{-(n+\gamma+1)}\,d\theta \;=\; \frac{m^{-(n+\gamma)}}{n + \gamma},$$
+so
+$$\pi(\theta \mid \mathbf{y}) \;=\; (n + \gamma)\,m^{n+\gamma}\,\theta^{-(n+\gamma+1)}, \qquad \theta \ge m,$$
+which is a Pareto kernel of the same family with shape $n + \gamma$ and lower endpoint $m$. The posterior mean (provided $n + \gamma > 1$) is
+$$\E[\theta \mid \mathbf{y}] \;=\; \int_{m}^{\infty} \theta \cdot (n+\gamma)\,m^{n+\gamma}\theta^{-(n+\gamma+1)}\,d\theta \;=\; (n+\gamma)m^{n+\gamma}\int_{m}^{\infty}\theta^{-(n+\gamma)}\,d\theta.$$
+Evaluating the integral,
+$$\int_{m}^{\infty}\theta^{-(n+\gamma)}\,d\theta \;=\; \frac{m^{1 - (n + \gamma)}}{n + \gamma - 1},$$
+so
+$$\E[\theta \mid \mathbf{Y}] \;=\; \frac{n + \gamma}{n + \gamma - 1}\,\max(z, \beta).$$
+
+## (c) Admissibility
+
+The given estimator is exactly the posterior mean from part (b):
+$$\hat\theta \;=\; \frac{\gamma + n}{\gamma + n - 1}\,\max\{z, \beta\} \;=\; \E[\theta \mid \mathbf{Y}].$$
+By Corollary 10.1(i) (Lecture 10, slide 29), under squared error loss the Bayes estimator is the posterior mean. Hence $\hat\theta$ is the Bayes estimator with respect to the prior $\pi(\theta) = \gamma\beta^{\gamma}\theta^{-(\gamma+1)}$.
+
+The posterior is a proper, non-degenerate Pareto distribution, so the posterior mean -- and therefore the Bayes estimator under squared error loss -- is unique. By the lecture result that *a Bayes estimator, when unique, is always admissible* (Lecture 10, slide 26), we conclude that $\hat\theta$ is admissible under squared error loss.
+
+# Problem 6
+
+**Crash probabilities are $5 \times 10^{-6}$ for plane and $10^{-2}$ for car. The loss table is plane: $10^{6}$ if crash, $5$ if no crash; car: $100$ if crash, $0$ if no crash. Which decision has smaller (Bayes) risk?**
+
+Each decision induces its own prior over $\theta \in \{\text{crash}, \text{no crash}\}$. The Bayes risk is the expected loss under the mode-specific crash probability:
+$$r(d_{\mathrm{plane}}) \;=\; 10^{6}\cdot(5\times 10^{-6}) + 5\cdot(1 - 5\times 10^{-6}) \;\approx\; 10,$$
+$$r(d_{\mathrm{car}}) \;=\; 100\cdot(10^{-2}) + 0\cdot(1 - 10^{-2}) \;=\; 1.$$
+
+**Conclusion.** The car has the smaller Bayes risk ($1$ vs.\ $\approx 10$). Despite the much higher per-crash loss for an airplane crash, the much lower crash probability for the plane is more than offset by the everyday loss of $5$ assigned to a non-crash plane trip versus $0$ for a non-crash car trip. Under this loss specification, the car is the Bayes decision.
+
+# Problem 7
+
+**Risk table on $\Theta = \{\theta_{1}, \theta_{2}, \theta_{3}, \theta_{4}\}$ with prior $\pi = (1/8, 3/8, 1/4, 1/4)$ and decisions $\{d_{1}, d_{2}, d_{3}\}$:**
+
+\[
+\begin{array}{c|ccc}
+ & d_{1} & d_{2} & d_{3} \\ \hline
+\theta_{1} & 0 & 2 & 3 \\
+\theta_{2} & 1 & 0 & 2 \\
+\theta_{3} & 3 & 4 & 0 \\
+\theta_{4} & 1 & 2 & 0
+\end{array}
+\]
+
+**(a) Bayes risk of each decision; (b) which decision is Bayes; (c) the minimax decision(s).**
+
+## (a) Bayes risk
+
+Using $r(d_{j}) \;=\; \sum_{i=1}^{4} R(d_{j}, \theta_{i})\,\pi(\theta_{i})$,
+$$r(d_{1}) \;=\; 0\cdot\tfrac{1}{8} + 1\cdot\tfrac{3}{8} + 3\cdot\tfrac{1}{4} + 1\cdot\tfrac{1}{4} \;=\; \tfrac{11}{8} \;=\; 1.375,$$
+$$r(d_{2}) \;=\; 2\cdot\tfrac{1}{8} + 0\cdot\tfrac{3}{8} + 4\cdot\tfrac{1}{4} + 2\cdot\tfrac{1}{4} \;=\; \tfrac{7}{4} \;=\; 1.75,$$
+$$r(d_{3}) \;=\; 3\cdot\tfrac{1}{8} + 2\cdot\tfrac{3}{8} + 0\cdot\tfrac{1}{4} + 0\cdot\tfrac{1}{4} \;=\; \tfrac{9}{8} \;=\; 1.125.$$
+
+## (b) Bayes decision
+
+The minimum Bayes risk is $r(d_{3}) = 9/8 = 1.125$, so
+Therefore $d_{3}$ is the Bayes decision.
+
+## (c) Minimax decision
+
+The maximum risk for each decision (column maxima of the risk table) is
+$$\max_{i} R(d_{1}, \theta_{i}) = 3, \qquad \max_{i} R(d_{2}, \theta_{i}) = 4, \qquad \max_{i} R(d_{3}, \theta_{i}) = 3.$$
+The minimum of these column maxima is $3$, attained by both $d_{1}$ and $d_{3}$. Therefore the **minimax decisions are $d_{1}$ and $d_{3}$ (tie).**
+
+# Problem 8
+
+**Let $X \sim \mathrm{Bernoulli}(\theta)$ and consider an estimator $d(X)$ with $d(1) = d_{1}$, $d(0) = d_{2}$, under squared error loss $L(d, \theta) = (d - \theta)^{2}$. (a) Write the risk function $R_{d}(\theta)$. (b) Show that the minimax decision satisfies $d_{1} = 3/4$, $d_{2} = 1/4$.**
+
+## (a) Risk function
+
+$$R_{d}(\theta) \;=\; \E_{\theta}[(d(X) - \theta)^{2}] \;=\; (d_{1} - \theta)^{2}\,P(X = 1 \mid \theta) + (d_{2} - \theta)^{2}\,P(X = 0 \mid \theta),$$
+$$R_{d}(\theta) \;=\; \theta(d_{1} - \theta)^{2} + (1 - \theta)(d_{2} - \theta)^{2}.$$
+
+## (b) Minimax decision via Theorem 10.2
+
+We follow the constant-risk Bayes route (Theorem 10.2, Lecture 10, slide 33), mirroring Example 10.9 for $n = 1$.
+
+**Step 1: Bayes estimator under a Beta$(\alpha, \beta)$ prior.** With $X \sim \mathrm{Bernoulli}(\theta)$ and prior $\theta \sim \mathrm{Beta}(\alpha, \beta)$, the conjugate posterior is $\theta \mid X \sim \mathrm{Beta}(\alpha + X, \beta + 1 - X)$. The Bayes estimator under squared error loss is the posterior mean:
+$$T(X) \;=\; \frac{X + \alpha}{\alpha + \beta + 1}.$$
+
+**Step 2: Risk as a polynomial in $\theta$.** Substituting $d_{1} = T(1) = \dfrac{1 + \alpha}{\alpha + \beta + 1}$ and $d_{2} = T(0) = \dfrac{\alpha}{\alpha + \beta + 1}$ into $R_{d}(\theta)$ and writing $c = \alpha + \beta + 1$,
+$$R_{T}(\theta) \;=\; \Var_{\theta}(T(X)) + (\E_{\theta}[T(X)] - \theta)^{2}.$$
+With $\E_{\theta}[T(X)] = \dfrac{\theta + \alpha}{c}$ and $\Var_{\theta}(T(X)) = \dfrac{\theta(1 - \theta)}{c^{2}}$,
+$$R_{T}(\theta) \;=\; \frac{\theta(1-\theta)}{c^{2}} + \left(\frac{\theta + \alpha}{c} - \theta\right)^{2} \;=\; \frac{\theta(1-\theta)}{c^{2}} + \frac{(\alpha - (c - 1)\theta)^{2}}{c^{2}}.$$
+Multiplying through by $c^{2}$ and collecting powers of $\theta$,
+$$c^{2} R_{T}(\theta) \;=\; \alpha^{2} \;+\; \bigl[1 - 2\alpha(c-1)\bigr]\theta \;+\; \bigl[(c-1)^{2} - 1\bigr]\theta^{2}.$$
+
+**Step 3: Solve for constant risk.** For $R_{T}(\theta)$ to be constant in $\theta$, set the coefficients of $\theta$ and $\theta^{2}$ to zero:
+$$(c - 1)^{2} - 1 \;=\; 0 \;\Longrightarrow\; \alpha + \beta \;=\; 1, \qquad 1 - 2\alpha \;=\; 0 \;\Longrightarrow\; \alpha \;=\; \beta \;=\; \tfrac{1}{2}.$$
+With $\alpha = \beta = 1/2$ and $c = 2$,
+$$d_{1} \;=\; T(1) \;=\; \frac{1 + 1/2}{2} \;=\; \frac{3}{4}, \qquad d_{2} \;=\; T(0) \;=\; \frac{1/2}{2} \;=\; \frac{1}{4}.$$
+
+**Step 4: Conclude.** The Bayes estimator $T^{*}(X) = (X + 1/2)/2$, corresponding to $(d_{1}, d_{2}) = (3/4, 1/4)$, has constant risk
+$$R_{T^{*}}(\theta) \;=\; \frac{\alpha^{2}}{c^{2}} \;=\; \frac{1/4}{4} \;=\; \frac{1}{16}.$$
+By Theorem 10.2, a Bayes estimator with constant risk is minimax. Therefore the minimax decision satisfies
+$$d_{1} \;=\; \tfrac{3}{4}, \qquad d_{2} \;=\; \tfrac{1}{4}.$$
