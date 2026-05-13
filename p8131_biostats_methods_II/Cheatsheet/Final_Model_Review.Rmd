@@ -1,0 +1,372 @@
+---
+title: "Biostatistical Methods II Final Model Review (Lectures 12-23)"
+output:
+  pdf_document:
+    latex_engine: pdflatex
+geometry: margin=0.4in
+classoption: twocolumn
+header-includes:
+  - \usepackage{amsmath}
+  - \usepackage{amssymb}
+  - \usepackage{bm}
+  - \usepackage{enumitem}
+  - \setlist[itemize]{leftmargin=*, noitemsep, topsep=2pt, parsep=2pt}
+  - \setlist[enumerate]{leftmargin=*, noitemsep, topsep=2pt, parsep=2pt}
+  - \setlength{\parindent}{0pt}
+  - \setlength{\parskip}{4pt}
+  - \usepackage{titlesec}
+  - \titlespacing*{\section}{0pt}{6pt}{3pt}
+  - \titlespacing*{\subsection}{0pt}{4pt}{2pt}
+  - \sloppy
+fontsize: 9pt
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# 1. Poisson Log-Linear Model (L12)
+
+**Model:** $Y_i\sim\text{Poisson}(\mu_i)$ independent.
+$$\log\mu_i = \mathbf{x}_i^T\boldsymbol{\beta}=\beta_0+\beta_1 x_{i1}+\dots+\beta_p x_{ip}$$
+$$E(Y_i)=\mu_i=\exp(\mathbf{x}_i^T\boldsymbol{\beta}),\;\;\text{Var}(Y_i)=\mu_i$$
+
+**Interpretation:**
+
+*   $\beta_0$: log of expected count when all $x=0$.
+*   $\beta_j$: change in **log expected count** per unit increase in $x_j$ (others fixed).
+*   $\exp(\beta_j)$: **rate ratio (RR)**. Counts are multiplied by $\exp(\beta_j)$ for a 1-unit increase.
+*   E.g., $\beta_j=0.2 \Rightarrow$ counts increase by a factor of $e^{0.2}\approx 1.22$ (22% higher).
+
+# 2. Poisson Rate Model (with Offset, L12)
+
+**Model:** Events $Y_i$ over exposure $n_i$ (time/area/persons) at rate $\lambda_i$.
+$$Y_i\sim\text{Poisson}(\mu_i),\;\; \mu_i=n_i\lambda_i$$
+$$\log\mu_i=\underbrace{\log n_i}_{\text{offset}}+\mathbf{x}_i^T\boldsymbol{\beta}$$
+
+**Interpretation:**
+
+*   $\log n_i$ is the **offset** — known, coefficient fixed at 1.
+*   $\boldsymbol{\beta}$ now describes covariate effects on the **rate** $\lambda_i=\exp(\mathbf{x}_i^T\boldsymbol{\beta})$, NOT on the count.
+*   $\exp(\beta_j)$: **log rate ratio** — multiplicative change in rate per unit $x_j$.
+
+# 3. Quasi-Poisson Model (L13)
+
+**Model:** Same mean structure as Poisson, but variance allows overdispersion.
+$$\log\mu_i=\mathbf{x}_i^T\boldsymbol{\beta},\;\; E(Y_i)=\mu_i,\;\; \text{Var}(Y_i)=\phi\mu_i,\;\; \phi>1$$
+
+**Interpretation:**
+
+*   $\boldsymbol{\beta}$: same interpretation as in Poisson ($\hat{\boldsymbol\beta}_Q=\hat{\boldsymbol\beta}_{MLE}$).
+*   $\phi$: **dispersion parameter**. Estimated by $\hat\phi=G/(n-p)$.
+*   $\text{cov}(\hat{\boldsymbol\beta}_Q)=\hat\phi\cdot\text{cov}(\hat{\boldsymbol\beta}_{MLE})$ — SEs inflated by $\sqrt{\hat\phi}$.
+*   No proper likelihood (quasi-likelihood only).
+
+# 4. Negative Binomial Regression (L13)
+
+**Model:** $Y_i\sim NB(\mu_i,\phi)$ with reparameterization
+$$P(Y=y)=\frac{\Gamma(y+\phi)}{\Gamma(y+1)\Gamma(\phi)}\frac{\mu^y\phi^\phi}{(\mu+\phi)^{\phi+y}}$$
+$$\log\mu_i=\mathbf{x}_i^T\boldsymbol{\beta},\;\; E(Y_i)=\mu_i,\;\; \text{Var}(Y_i)=\mu_i+\mu_i^2/\phi$$
+
+**Interpretation:**
+
+*   $\boldsymbol{\beta}$: log rate ratios (same as Poisson).
+*   $\phi$: dispersion parameter. $\phi\to\infty\Rightarrow$ Poisson.
+*   Variance is **quadratic** in $\mu$ (vs linear for quasi-Poisson).
+*   Has proper likelihood — can use AIC/LRT.
+
+# 5. Zero-Inflated Poisson (ZIP, L13)
+
+**Model:** Latent indicator $Z_i$ for "structural zero":
+$$P(Z_i=0)=\pi_i,\;\; Y_i|Z_i=0\equiv 0,\;\; Y_i|Z_i=1\sim\text{Poisson}(\lambda_i)$$
+$$\log\lambda_i=\mathbf{x}_i^T\boldsymbol{\beta},\;\; \text{logit}(\pi_i)=\mathbf{z}_i^T\boldsymbol{\gamma}$$
+
+**Interpretation:**
+
+*   $\boldsymbol{\beta}$ (count part): log rate ratios for **non-structural-zero** subjects.
+*   $\boldsymbol{\gamma}$ (zero part): log-odds ratios for being a structural zero (always-zero) per unit $z$.
+*   $P(Y_i=0)=\pi_i+(1-\pi_i)e^{-\lambda_i}$.
+
+# 6. Contingency Table: Poisson Model (L14)
+
+**Model:** Cell counts $Y_{ij}\sim\text{Poisson}(\mu_{ij})$ (no margin fixed).
+
+*   **Saturated:** $\hat\mu_{ij}=y_{ij}$ ($IJ$ params).
+*   **Independence (additive):**
+$$\log\mu_{ij}=\gamma+\alpha_i+\beta_j,\;\;\sum\alpha_i=\sum\beta_j=0$$
+
+**Interpretation:**
+
+*   $\gamma$: overall log mean.
+*   $\alpha_i$: log multiplicative effect of row $i$.
+*   $\beta_j$: log multiplicative effect of column $j$.
+*   No row–column interaction $\Leftrightarrow$ row and column variables are **independent**.
+
+# 7. Contingency Table: Multinomial (L14)
+
+**Model:** Total $n=\sum y_{ij}$ fixed.
+$$f(\mathbf{y}|n)=n!\prod_{i,j}\frac{\pi_{ij}^{y_{ij}}}{y_{ij}!},\;\;\sum\pi_{ij}=1$$
+
+**Independence:** $\pi_{ij}=\pi_{i\cdot}\pi_{\cdot j}$.
+
+**Interpretation:**
+
+*   $\pi_{ij}$: joint probability of cell $(i,j)$.
+*   $\pi_{i\cdot},\pi_{\cdot j}$: marginal probabilities. MLEs: $\hat\pi_{i\cdot}=Y_{i+}/n$.
+*   $LR\sim\chi^2_{(I-1)(J-1)}$ — same as Poisson independence test.
+
+# 8. Contingency Table: Product Multinomial (L14)
+
+**Model:** Row totals $n_{i+}$ fixed (e.g., case-control). Each row independently multinomial.
+
+*   **Saturated:** $\hat\pi_{j|i}=y_{ij}/n_{i+}$.
+*   **Homogeneity:** $\pi_{j|i}=\pi_{\cdot j}$ for all $i$.
+
+**Interpretation:**
+
+*   $\pi_{j|i}$: conditional probability of column $j$ given row $i$.
+*   Homogeneity $\Leftrightarrow$ row classification doesn't affect column distribution (independence).
+*   $df=(I-1)(J-1)$ as before.
+
+# 9. Marginal Linear Model for Longitudinal (L15-16)
+
+**Model:** Repeated measurements $Y_{ij}$ on subject $i$, time $j$.
+$$\mathbf{Y}_i=\mathbf{X}_i\boldsymbol{\beta}+\boldsymbol{\epsilon}_i,\;\; \boldsymbol{\epsilon}_i\sim N(\mathbf{0},\boldsymbol{\Sigma})$$
+$$E(Y_{ij})=\mathbf{X}_{ij}^T\boldsymbol{\beta},\;\; \text{Var}(\mathbf{Y}_i)=\boldsymbol{\Sigma}$$
+
+**Interpretation:**
+
+*   $\boldsymbol{\beta}$: **population-averaged** effect — change in mean response per unit $x$ across the population.
+*   $\boldsymbol{\Sigma}$: within-subject covariance structure (CS, AR1, Toeplitz, exp, unstructured).
+
+## Covariance Structures (different $\boldsymbol{\Sigma}$):
+
+*   **Compound Sym:** $\sigma^2$ on diag, $\sigma^2\rho$ off-diag (2 params).
+*   **Toeplitz:** $\text{corr}(Y_{ij},Y_{i,j+k})=\rho_k$ (n params, equal spacing).
+*   **AR(1):** $\rho_k=\rho^k$ (2 params, equal spacing).
+*   **Exponential:** $\text{corr}=\rho^{|t_j-t_k|}$ (uneven spacing).
+*   **Unstructured:** all entries free.
+
+# 10. Linear Mixed Effects: Random Intercept (L17)
+
+**Model:**
+$$Y_{ij}=\beta_0+\mathbf{X}_{ij}^T\boldsymbol{\beta}+b_i+\epsilon_{ij}$$
+$$b_i\sim N(0,\sigma_b^2),\;\;\epsilon_{ij}\sim N(0,\sigma^2),\;\;\text{indep}$$
+
+**Interpretation:**
+
+*   $\boldsymbol{\beta}$: **fixed effect** — population-average change in $Y$ per unit $x$ (also = subject-specific, since random part is just an intercept shift).
+*   $b_i$: **subject-specific deviation** from population intercept.
+*   $\sigma_b^2$: between-subject variance; $\sigma^2$: within-subject (residual).
+*   **ICC** $=\sigma_b^2/(\sigma_b^2+\sigma^2)$: proportion of total variance from between-subject heterogeneity.
+*   Induces **compound symmetry** marginal covariance: $\text{Cov}(Y_{ij},Y_{ik})=\sigma_b^2$.
+
+# 11. Linear Mixed Effects: Random Intercept and Slope (L17)
+
+**Model:**
+$$Y_{ij}=\beta_1+\beta_2 t_{ij}+b_{1i}+b_{2i}t_{ij}+\epsilon_{ij}$$
+$$\mathbf{b}_i=(b_{1i},b_{2i})^T\sim N(\mathbf{0},\mathbf{G}),\;\;\mathbf{G}=\begin{pmatrix}g_{11}&g_{12}\\g_{12}&g_{22}\end{pmatrix}$$
+
+**Interpretation:**
+
+*   $\beta_1$: population mean intercept.
+*   $\beta_2$: population mean slope (rate of change over time).
+*   $b_{1i}$: subject $i$'s deviation in baseline level.
+*   $b_{2i}$: subject $i$'s deviation in rate of change over time.
+*   $g_{11},g_{22}$: between-subject variance in intercept/slope.
+*   $g_{12}$: covariance between intercept & slope (e.g., negative $g_{12}$ = subjects starting higher tend to decline faster).
+*   $\text{Var}(Y_{ij})=g_{11}+2t_{ij}g_{12}+t_{ij}^2 g_{22}+\sigma^2$ (depends on time).
+
+# 12. General Linear Mixed Model (L17)
+
+**Model:** $\mathbf{Y}_i=\mathbf{X}_i\boldsymbol{\beta}+\mathbf{Z}_i\mathbf{b}_i+\boldsymbol{\epsilon}_i$
+$$\mathbf{b}_i\sim N(\mathbf{0},\mathbf{G}),\;\;\boldsymbol{\epsilon}_i\sim N(\mathbf{0},\sigma^2\mathbf{I})$$
+$$E(\mathbf{Y}_i|\mathbf{b}_i)=\mathbf{X}_i\boldsymbol{\beta}+\mathbf{Z}_i\mathbf{b}_i,\;\; E(\mathbf{Y}_i)=\mathbf{X}_i\boldsymbol{\beta}$$
+$$\text{Var}(\mathbf{Y}_i)=\mathbf{Z}_i\mathbf{G}\mathbf{Z}_i^T+\sigma^2\mathbf{I}$$
+
+**Interpretation:**
+
+*   $\boldsymbol{\beta}$: fixed (population) effects — same for everyone.
+*   $\mathbf{b}_i$: random subject-specific effects, predicted by **BLUP**.
+*   $\mathbf{Z}_i$: design matrix selecting which coefficients vary by subject (subset of columns of $\mathbf{X}_i$).
+
+# 13. GEE: Marginal Model for non-Gaussian Longitudinal (L19)
+
+**Model:** No full distribution specified.
+$$g(\mu_{ij})=\mathbf{X}_{ij}^T\boldsymbol{\beta},\;\; \text{Var}(Y_{ij})=\phi V(\mu_{ij})$$
+$$\text{corr}(Y_{ij},Y_{ik})=\alpha_{jk}\;(\text{working corr})$$
+
+**Estimating equation:**
+$$\sum_i\mathbf{D}_i^T\boldsymbol{\Sigma}_i^{-1}(\mathbf{Y}_i-\boldsymbol{\mu}_i)=\mathbf{0}$$
+
+**Interpretation:**
+
+*   $\boldsymbol{\beta}$: **population-averaged** — comparing mean response across **subgroups of population** differing by $X$ value.
+*   E.g., logistic GEE: $\beta_j$ = log OR comparing two subpopulations differing in $X_j$ by 1 unit.
+*   $\phi$: scale parameter (dispersion).
+*   $\alpha_{jk}$: working correlation params (nuisance — robust to misspecification).
+
+## Common GEE Specifications:
+
+*   **Continuous:** identity link, $\text{Var}=\sigma^2$, AR(1) corr.
+*   **Count:** log link, $\text{Var}=\phi\mu$, exchangeable corr.
+*   **Binary:** logit link, $\text{Var}=\mu(1-\mu)$, unstructured corr.
+
+# 14. Generalized Linear Mixed Model (GLMM, L20)
+
+**Model:** Conditional on $\mathbf{b}_i$:
+$$Y_{ij}|\mathbf{b}_i\sim\text{EF},\;\; g(E(Y_{ij}|\mathbf{b}_i))=\mathbf{X}_{ij}^T\boldsymbol{\beta}+\mathbf{Z}_{ij}^T\mathbf{b}_i$$
+$$\mathbf{b}_i\sim N(\mathbf{0},\mathbf{G})$$
+
+**Interpretation:**
+
+*   $\boldsymbol{\beta}$: **subject-specific** effect — change in $g(\mu)$ per unit $x$ for the **same individual** ($\mathbf{b}_i$ held fixed).
+*   $\mathbf{b}_i$: subject-specific random effect; captures unobserved heterogeneity.
+*   For nonlinear $g$ (logit/log), $\boldsymbol{\beta}_{GLMM}\neq\boldsymbol{\beta}_{Marginal}$. Typically $|\beta_{GLMM}|>|\beta_{Marginal}|$.
+*   For linear $g$ (identity/Gaussian), GLMM = LMM and the two coincide.
+
+## 14a. Logistic GLMM (Random Intercept)
+
+$$\text{logit}(P(Y_{ij}=1|b_i))=b_i+\beta_1+X_{ij}\beta_2,\;\; b_i\sim N(0,\sigma_b^2)$$
+
+*   $\beta_2$: log OR per unit $X$ for **same subject**.
+*   For two subjects differing in $X$ by 1, log OR diff $=\beta_2+b_i-b_{i'}$.
+
+## 14b. Poisson GLMM (Random Int + Slope)
+
+$$\log E(Y_{ij}|\mathbf{b}_i)=(b_{1i}+\beta_1)+(b_{2i}+\beta_2)t_{ij}$$
+
+*   $\beta_2$: log rate ratio per unit time, **subject-specific**.
+*   $\mathbf{b}_i\sim N(\mathbf{0},\mathbf{G})$: heterogeneity in baseline rate AND time trend.
+
+# 15. Parametric Survival Distributions (L21)
+
+## 15a. Exponential
+$$f(t)=\lambda e^{-\lambda t},\;\; S(t)=e^{-\lambda t},\;\; h(t)=\lambda$$
+
+*   $\lambda$: **constant hazard rate** (events per unit time).
+*   Memoryless property; $E(T)=1/\lambda$.
+
+## 15b. Weibull
+$$S(t)=e^{-\lambda t^\alpha},\;\; h(t)=\lambda\alpha t^{\alpha-1},\;\; f(t)=\lambda\alpha t^{\alpha-1}e^{-\lambda t^\alpha}$$
+
+*   $\lambda$: scale parameter.
+*   $\alpha$: shape parameter.
+    *   $\alpha>1$: hazard increases with time (e.g., aging).
+    *   $\alpha<1$: hazard decreases with time (e.g., infant mortality).
+    *   $\alpha=1$: constant hazard $\Rightarrow$ exponential.
+
+# 16. Kaplan-Meier (Nonparametric, L21)
+
+**Model:** No parametric form. Estimate $S(t)$ directly.
+$$\hat S(t)=\prod_{i:t_i\leq t}\left(1-\frac{d_i}{n_i}\right)$$
+
+**Interpretation:**
+
+*   $\hat\lambda_i=d_i/n_i$: estimated conditional probability of dying at $t_i$ given survival to $t_i^-$.
+*   $\hat S(t)$: probability of surviving past $t$.
+*   Step function — drops only at uncensored event times.
+
+# 17. Accelerated Failure Time (AFT) Model (L23)
+
+**Model:**
+$$\log T_i=\mathbf{X}_i^T\boldsymbol{\beta}+\epsilon_i$$
+$$T_i=\exp(\mathbf{X}_i^T\boldsymbol{\beta})\cdot T_{0i}$$
+where $\epsilon_i\sim$ parametric distribution (Weibull, Exponential, Log-normal, etc.).
+
+**Interpretation:**
+
+*   $\boldsymbol{\beta}$: effects directly on the **survival time** scale.
+*   $\exp(\beta_j)$: **time accelerator/decelerator**. Per unit $\uparrow x_j$, expected event time becomes $\exp(\beta_j)$ times the original.
+    *   $\beta_j>0$: time **lengthened** (longer survival).
+    *   $\beta_j<0$: time **shortened** (faster failure).
+*   $T_{0i}$: baseline lifetime distribution.
+
+# 18. Cox Proportional Hazards (PH) Model (L23)
+
+**Model (semi-parametric):**
+$$h_i(t)=h_0(t)\exp(\mathbf{X}_i^T\boldsymbol{\beta})$$
+
+**Interpretation:**
+
+*   $h_0(t)$: **baseline hazard** function (nonparametric, unspecified).
+*   $\boldsymbol{\beta}$: log hazard ratio.
+*   $\exp(\beta_j)$: **hazard ratio (HR)** for unit $\uparrow x_j$, holding others fixed.
+    *   $\beta_j>0$: higher hazard $\Rightarrow$ **shorter** survival.
+    *   $\beta_j<0$: lower hazard $\Rightarrow$ longer survival.
+*   **No intercept** (absorbed into $h_0$).
+*   HR is **constant over time** (key PH assumption).
+*   $\frac{h_i(t)}{h_k(t)}=\exp((\mathbf{X}_i-\mathbf{X}_k)^T\boldsymbol{\beta})$ — does not depend on $t$.
+
+**Estimation:** Partial likelihood
+$$L(\boldsymbol{\beta})=\prod_{i'=1}^k\frac{\exp(\mathbf{x}_{(i')}^T\boldsymbol{\beta})}{\sum_{j\in R_{(i')}}\exp(\mathbf{x}_j^T\boldsymbol{\beta})}$$
+
+# 19. Cox PH with Time-Dependent Covariates (L23)
+
+**Model:**
+$$h_i(t)=h_0(t)\exp(\mathbf{x}_i(t)^T\boldsymbol{\beta})$$
+
+**Interpretation:**
+
+*   $\mathbf{x}_i(t)$: covariates that change over time (e.g., age, biomarker, treatment dose).
+*   $\beta_j$: log HR per unit change in $x_j$ **at any given time point**.
+*   Estimation via partial likelihood with $\mathbf{x}_j(t_{(i')})$ used in risk set at each event time $t_{(i')}$.
+
+# 20. Stratified Cox PH Model (L23)
+
+**Model:** When PH fails for stratifier $S$ but holds within each stratum:
+$$h_{is}(t)=h_{0s}(t)\exp(\mathbf{x}_i^T\boldsymbol{\beta})$$
+
+**Interpretation:**
+
+*   $h_{0s}(t)$: **stratum-specific baseline hazard** (different per stratum).
+*   $\boldsymbol{\beta}$: **same across strata** — common HR for $\mathbf{x}_i$ within each stratum.
+*   $\exp(\beta_j)$: log HR per unit $\uparrow x_j$ (constant within stratum, but baseline varies).
+*   **Cannot estimate effect of $S$ itself** (no HR for stratifier).
+*   PH only required **within** strata.
+
+# 21. Comparison of $\boldsymbol{\beta}$ Interpretations
+
+(scope of effect; meaning of $\exp(\beta_j)$)
+
+*   **Poisson reg:** population; rate ratio.
+*   **Quasi-Poisson:** population; rate ratio (same $\hat\beta$ as Poisson, different SE).
+*   **NB regression:** population; rate ratio.
+*   **ZIP (count part):** among non-structural-zeros; rate ratio.
+*   **ZIP (zero part):** log-odds of being structural zero.
+*   **Marginal LM (GLS):** population mean; depends on link.
+*   **LMM (linear):** population = subject-specific (coincide for identity link).
+*   **GEE:** **population-averaged**; OR/RR (link-dependent).
+*   **GLMM:** **subject-specific**; OR/RR conditional on $\mathbf{b}_i$.
+*   **AFT:** on **survival time** scale; time accelerator $\exp(\beta_j)$.
+*   **Cox PH:** on **hazard** scale; hazard ratio $\exp(\beta_j)$.
+
+# 22. Summary: Choose Your Model
+
+**Counts:**
+
+*   $E\approx Var$ $\to$ **Poisson**.
+*   Exposure varies $\to$ **Poisson + offset**.
+*   $Var>E$ (overdispersion) $\to$ **Quasi-Poisson** or **NB**.
+*   Excess zeros $\to$ **ZIP / ZINB**.
+
+**Cross-classified counts:** $\to$ Poisson / multinomial / product multinomial GLM (independence test).
+
+**Longitudinal continuous:**
+
+*   Population avg only $\to$ **GLS marginal** (covariance pattern).
+*   Subject-specific trajectories $\to$ **LMM** (random int / int+slope).
+
+**Longitudinal binary/count:**
+
+*   Population avg, robust SE $\to$ **GEE**.
+*   Subject-specific $\to$ **GLMM**.
+
+**Survival:**
+
+*   $S(t)$ with censoring, no covariates $\to$ **Kaplan-Meier**.
+*   Compare 2 groups overall $\to$ **log-rank** test.
+*   Effect on survival **time** (parametric) $\to$ **AFT**.
+*   Effect on **hazard** (semi-parametric) $\to$ **Cox PH**.
+*   Time-varying covariate $\to$ Cox with $\mathbf{x}(t)$.
+*   One covariate violates PH $\to$ **Stratified Cox**.

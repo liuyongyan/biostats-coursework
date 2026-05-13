@@ -1,0 +1,296 @@
+---
+output:
+  pdf_document:
+    latex_engine: pdflatex
+geometry: margin=0.4in
+classoption: twocolumn
+header-includes:
+  - \usepackage{amsmath}
+  - \usepackage{amssymb}
+  - \usepackage{bm}
+  - \usepackage{enumitem}
+  - \setlist[itemize]{leftmargin=*, noitemsep, topsep=2pt, parsep=2pt}
+  - \setlist[enumerate]{leftmargin=*, noitemsep, topsep=2pt, parsep=2pt}
+  - \setlength{\parindent}{0pt}
+  - \setlength{\parskip}{4pt}
+  - \usepackage{titlesec}
+  - \titlespacing*{\section}{0pt}{6pt}{3pt}
+  - \titlespacing*{\subsection}{0pt}{4pt}{2pt}
+  - \titlespacing*{\subsubsection}{0pt}{3pt}{1pt}
+  - \sloppy
+fontsize: 9pt
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# I. Poisson Regression (Lecture 12)
+
+**Poisson Log-Linear Model (canonical log link):**
+$$\log\mu_i = \mathbf{x}_i^T\boldsymbol{\beta}, \quad \mu_i = \exp(\mathbf{x}_i^T\boldsymbol{\beta})$$
+
+-   $\beta_j$: change in **log mean count** per unit of $x_j$.
+-   $\exp(\beta_j)$: **rate ratio** (multiplicative effect on mean
+    count).
+
+**Goodness of Fit (**$\chi^2_{n-p}$ when $\mu_i$ large):
+
+-   **Deviance:** $D=2\sum\{y_i\log(y_i/\hat\mu_i)-(y_i-\hat\mu_i)\}$
+-   **Pearson** $\chi^2$: $G=X^2=\sum(y_i-\hat\mu_i)^2/\hat\mu_i$
+
+**Poisson Rate & Offset:** When events occur over exposure $n_i$ at rate
+$\lambda_i$:
+$$E(Y_i)=\mu_i=n_i\lambda_i \;\Rightarrow\; \log\mu_i=\log n_i+\mathbf{x}_i^T\boldsymbol{\beta}$$
+
+-   Offset is **fixed** (coefficient = 1, not estimated).
+
+# II. Overdispersion (Lecture 13)
+
+**Definition:** $\text{Var}(Y)>E(Y)$, i.e., $\text{Var}(Y)=\phi\mu$ with
+$\phi>1$.
+
+**Diagnostics:**
+
+-   **Half-normal plot:** Order $|r_{(i)}|$, plot vs
+    $\Phi^{-1}(\frac{n+i+0.5}{2n+1.125})$. Reference $y=x$. Slope
+    $\approx\sqrt\phi$. Constant overdispersion $\Rightarrow$ linear
+    deviation.
+
+**Method 1: Quasi-Poisson (Dispersion Parameter):**
+$$\hat\phi=\frac{G}{n-p}=\frac{1}{n-p}\sum\frac{(y_i-\hat\mu_i)^2}{\hat\mu_i}$$$$\hat{\boldsymbol{\beta}}_Q=\hat{\boldsymbol{\beta}}_{MLE},\quad\text{cov}(\hat{\boldsymbol{\beta}}_Q)=\hat\phi\cdot\text{cov}(\hat{\boldsymbol{\beta}}_{MLE})$$
+
+**Deviance Analysis (F-test) with overdispersion** for nested
+$M_0\subset M_1$ :
+$$F=\frac{(D_0-D_1)/(p_1-p_0)}{\hat\phi}\sim F_{p_1-p_0,\,n-p_1},\;\hat\phi=G_{M_1}/(n-p_1)$$
+
+**Method 2: Negative Binomial Regression:**
+$$E(Y)=\mu,\quad\text{Var}(Y)=\mu+\mu^2/\phi$$
+
+-   $\phi\to\infty\Rightarrow$ Poisson.
+
+## Zero-Inflated Poisson (ZIP)
+
+When data have **excessive zeros**:
+
+-   Latent $Z_i$ (binary): $P(Z_i=0)=\pi_i$ (always zero).
+-   $Y_i|Z_i=0\equiv0$; $Y_i|Z_i=1\sim\text{Poisson}(\lambda_i)$.
+-   Model: $\log(\lambda_i)=\mathbf{x}_i\boldsymbol{\beta}$ and
+    $\text{logit}(\pi_i)=\mathbf{z}_i\boldsymbol{\gamma}$
+    (different/same predictors).
+-   $P(Y=0)=\pi+(1-\pi)e^{-\lambda}$.
+
+# III. LDA: Overview (Lectures 15-20)
+
+**Three Modeling Approaches:**
+
+-   **Marginal:** $E(Y_{ij})=\mathbf{X}_{ij}^T\boldsymbol{\beta}$,
+    $\text{Var}(\mathbf{Y}_i)=\boldsymbol{\Sigma}_i$.
+-   **Mixed effects:**
+    $E(Y_{ij}|\boldsymbol{\beta}_i)=\mathbf{X}_{ij}^T\boldsymbol{\beta}_i$,
+    $\boldsymbol{\beta}_i=\boldsymbol{\beta}+\mathbf{U}_i$.
+-   **Transition:** $E(Y_{ij}|Y_{i,j-1},...,Y_{i1},\mathbf{X}_{ij})$.
+
+## Covariance Pattern Models - GLS (Lecture 16)
+
+**(a) Compound Symmetry / Exchangeable:** $\text{Var}=\sigma^2$,
+$\text{corr}=\rho$ (any pair). 2 params. Strong assumption.
+
+**(b) Toeplitz:** $\text{corr}(Y_{ij},Y_{i,j+k})=\rho_k$. $n$ params.
+Equal time intervals only.
+
+**(c) Autoregressive AR(1):** Special Toeplitz: $\rho_k=\rho^k$. **2
+params** total. Equal intervals.
+
+**(d) Banded:** corr=0 beyond an interval.
+
+**(e) Exponential:** $\text{corr}(Y_{ij},Y_{ik})=\rho^{|t_j-t_k|}$.
+AR(1) generalization for **uneven** times.
+
+**(f) Unstructured:** All variances/covariances free. Most flexible,
+most params.
+
+## Linear Mixed Effects - LMM (Lecture 17)
+
+**General LMM:**
+$\mathbf{Y}_i=\mathbf{X}_i\boldsymbol{\beta}+\mathbf{Z}_i\mathbf{b}_i+\boldsymbol{\epsilon}_i$,
+$i=1,\dots,m$.
+
+-   $\boldsymbol{\beta}$: fixed effects ($p\times1$). $\mathbf{b}_i$:
+    random effects ($q\times1$).
+-   $\mathbf{b}_i\sim N(\mathbf{0},\mathbf{G})$,
+    $\boldsymbol{\epsilon}_i\sim N(\mathbf{0},\sigma^2\mathbf{I})$,
+    indep.
+-   **Conditional mean:**
+    $E(\mathbf{Y}_i|\mathbf{b}_i)=\mathbf{X}_i\boldsymbol{\beta}+\mathbf{Z}_i\mathbf{b}_i$.
+-   **Marginal mean:** $E(\mathbf{Y}_i)=\mathbf{X}_i\boldsymbol{\beta}$
+    (population).
+-   **Marginal Var:**
+    $\text{Var}(\mathbf{Y}_i)=\mathbf{Z}_i\mathbf{G}\mathbf{Z}_i^T+\sigma^2\mathbf{I}$.
+
+### Random Intercept Model
+
+$Y_{ij}=\beta_0+\mathbf{X}_{ij}^T\boldsymbol{\beta}+b_i+\epsilon_{ij}$,
+$b_i\sim N(0,\sigma_b^2)$.
+
+-   $\text{Var}(Y_{ij})=\sigma_b^2+\sigma^2$.
+-   $\text{Cov}(Y_{ij},Y_{ik})=\sigma_b^2$ (induces **compound
+    symmetry**).
+-   **ICC:** $\rho=\sigma_b^2/(\sigma_b^2+\sigma^2)$.
+
+### Random Intercept and Slope Model
+
+$$Y_{ij}=\beta_1+\beta_2 t_{ij}+b_{1i}+b_{2i}t_{ij}+\epsilon_{ij}$$
+$\mathbf{b}_i=(b_{1i},b_{2i})^T\sim N(\mathbf{0},\mathbf{G})$,
+$\mathbf{G}=\begin{pmatrix}g_{11}&g_{12}\\g_{12}&g_{22}\end{pmatrix}$.
+
+-   $\text{Var}(Y_{ij})=g_{11}+2t_{ij}g_{12}+t_{ij}^2g_{22}+\sigma^2$
+    (varies w/ time).
+-   $\text{Cov}(Y_{ij},Y_{ik})=g_{11}+(t_{ij}+t_{ik})g_{12}+t_{ij}t_{ik}g_{22}$.
+
+## GEE (Lecture 19)
+
+**Marginal Model for non-Gaussian longitudinal:**
+$$g(\mu_{ij})=\mathbf{X}_{ij}^T\boldsymbol{\beta},\;\;\text{Var}(Y_{ij})=\phi V(\mu_{ij}),\;\;\text{corr}(Y_{ij},Y_{ik})=\alpha_{jk}$$
+
+**Interpretation:** $\boldsymbol{\beta}$ has **population-averaged**
+meaning. e.g., logistic GEE: $\beta_j$ = log OR comparing **subgroups**
+of population differing in $X_j$.
+
+## GLMM (Lecture 20)
+
+**Generalized Linear Mixed Model:** Conditional on $\mathbf{b}_i$:
+$$Y_{ij}|\mathbf{b}_i\sim\text{EF},\quad g(E(Y_{ij}|\mathbf{b}_i))=\mathbf{X}_{ij}^T\boldsymbol{\beta}+\mathbf{Z}_{ij}^T\mathbf{b}_i$$
+$\mathbf{b}_i\sim N(\mathbf{0},\mathbf{G})$.
+
+**Examples:**
+
+-   **Logistic GLMM (random intercept):**
+    $$\text{logit}(E(Y_{ij}|b_i))=b_i+\beta_1+X_{ij}\beta_2,\;\; b_i\sim N(0,\sigma_b^2)$$
+-   **Poisson GLMM (random int+slope):**
+    $$\log E(Y_{ij}|\mathbf{b}_i)=(b_{1i}+\beta_1)+(b_{2i}+\beta_2)t_{ij}$$
+
+### Marginal vs GLMM (KEY DIFFERENCE!)
+
+$$E(\mathbf{Y}_i)=\int g^{-1}(\mathbf{X}_i\boldsymbol{\beta}+\mathbf{Z}_i\mathbf{b}_i)f(\mathbf{b}_i)d\mathbf{b}_i\neq g^{-1}(\mathbf{X}_i\boldsymbol{\beta}_*)$$
+
+-   For **nonlinear** $g$ (logit/log), GLMM $\boldsymbol{\beta}\neq$
+    Marginal $\boldsymbol{\beta}_*$.
+-   For **linear** $g$ (Gaussian), they coincide.
+-   **Marginal** $\beta$: population-averaged effect.
+-   **GLMM** $\beta$: subject-specific (conditional on $\mathbf{b}_i$)
+    effect — for **same subject**, log-OR per unit $X$ change.
+-   $|\beta_{GLMM}|>|\beta_{Marginal}|$ usually for binary outcomes.
+
+# IV. Survival Analysis (Lecture 21)
+
+-   **CDF:** $F(t)=P(T\leq t)$.
+-   **Survival:** $S(t)=P(T>t)=1-F(t)$. $S(0)=1$, $S(\infty)=0$,
+    decreasing.
+-   **Hazard rate:** $h(t)=\frac{f(t)}{S(t)}=-\frac{d\log S(t)}{dt}$
+-   **Cumulative hazard:** $H(t)=\int_0^t h(\tau)d\tau$.
+
+**Key relations:** $S(t)=\exp\{-H(t)\}$, $f(t)=h(t)S(t)$.
+
+**Parametric distributions:**
+
+-   **Exponential:** $f(t)=\lambda e^{-\lambda t}$,
+    $S(t)=e^{-\lambda t}$, $h(t)=\lambda$ (constant!).
+-   **Weibull:** $S(t)=e^{-\lambda t^\alpha}$,
+    $h(t)=\lambda\alpha t^{\alpha-1}$,
+    $f(t)=\lambda\alpha t^{\alpha-1}e^{-\lambda t^\alpha}$.
+    -   $\alpha>1$: increasing hazard; $\alpha<1$: decreasing;
+        $\alpha=1$: exponential.
+
+## Kaplan-Meier Estimator (Nonparametric)
+
+For ordered times $t_1<\dots<t_m$:
+$$\hat{S}(t)=\prod_{i:t_i\leq t}\left(1-\frac{d_i}{n_i}\right)$$
+
+-   $n_i$: \# at risk just **before** $t_i$. $d_i$: \# events at $t_i$.
+    Censored at $t_i$ counted in $n_i$ but not $d_i$.
+-   $\hat\lambda_i=d_i/n_i$ = conditional prob of death at $t_i$.
+
+**Greenwood Formula (variance of KM):**
+$$\widehat{\text{Var}}(\hat S(t))=\hat S(t)^2\sum_{i:t_i\leq t}\frac{d_i}{(n_i-d_i)n_i}$$
+95% CI: $\hat S(t)\pm1.96\widehat{SE}$ (truncate to [0,1]). Better:
+build CI for $\log S$ or $\log(-\log S)$ then transform.
+
+**Cumulative hazard:**
+
+-   KM-based: $\hat H(t)=-\log\hat S(t)$.
+-   **Nelson-Aalen** (better): $\tilde H(t)=\sum_{t_i\leq t}d_i/n_i$
+    with $\widehat{\text{Var}}(\tilde H)=\sum d_i/n_i^2$.
+-   **Fleming-Harrington:** $\hat S(t)=\exp(-\tilde H(t))$.
+
+# V. Survival Curves (Lecture 22)
+
+**Complete data, fixed time:** $\chi^2$ or Fisher exact on 2×2 (failed
+before $t$).
+
+**Censored data, fixed time** $t$ (use KM at $t$):
+$$T=\frac{\hat S_A(t)-\hat S_B(t)}{\widehat{SD}\{\hat S_A(t)-\hat S_B(t)\}}\sim N(0,1)$$
+$$\widehat{Var}\{\hat S_A-\hat S_B\}=\widehat{Var}\hat S_A+\widehat{Var}\hat S_B$$
+
+## Log-Rank Test (Overall Difference)
+
+$H_0:S_A(t)=S_B(t)\;\forall t$ (equivalently $h_A=h_B$).
+
+At each **uncensored** time $t_i$ (pooled): build 2×2 (A vs B, event vs
+no event).
+
+-   $d_{A,i}\sim\text{Hypergeometric}(n_i,m_{D,i},n_{A,i})$ under $H_0$.
+-   $E(d_{A,i})=m_{D,i}n_{A,i}/n_i$.
+-   $\text{Var}(d_{A,i})=\dfrac{n_{A,i}n_{B,i}m_{D,i}m_{\bar D,i}}{n_i^2(n_i-1)}$.
+
+**Test Statistic:**
+$$Z=\frac{\sum_i\{d_{A,i}-E(d_{A,i})\}}{\sqrt{\sum_i\text{Var}(d_{A,i})}}\sim N(0,1),\;\; Z^2\sim\chi^2_1$$
+
+**Weighted Log-Rank:** $T=\sum w_i\{d_{A,i}-E(d_{A,i})\}$.
+
+-   $w_i=1$: log-rank (most powerful when HR proportional/late).
+-   $w_i=n_i$: **Gehan**. $w_i=\sqrt{n_i}$: **Tarone-Ware**.
+    $w_i=\hat S(t_i)^\rho\{1-\hat S(t_i)\}^\gamma$:
+    **Fleming-Harrington**.
+
+# VI. Survival Regression (Lecture 23)
+
+## (a) Accelerated Failure Time (AFT) — Parametric
+
+$$\log T_i=\mathbf{X}_i^T\boldsymbol{\beta}+\epsilon_i,\;\; T_i=\exp(\mathbf{X}_i^T\boldsymbol{\beta})T_{0i}$$
+
+-   $\epsilon_i$ has parametric distribution
+    (Weibull/Exponential/Log-normal).
+-   $\exp(\beta_j)$: **time accelerator**. With unit $\uparrow x_j$,
+    expected event time is $\exp(\beta_j)\times$ original.
+
+## (b) Cox Proportional Hazards (PH) — Semiparametric
+
+$$h_i(t)=h_0(t)\exp(\mathbf{X}_i^T\boldsymbol{\beta})$$
+
+-   $h_0(t)$: **baseline hazard**, unspecified (nonparametric).
+-   $\exp(\boldsymbol{\beta})$: **hazard ratio** (parametric).
+-   **NO intercept** in $\mathbf{X}^T\boldsymbol{\beta}$ (absorbed in
+    $h_0$).
+-   Hazard **ratio**
+    $h_i(t)/h_k(t)=\exp((\mathbf{X}_i-\mathbf{X}_k)^T\boldsymbol{\beta})$
+    — **constant over** $t$.
+-   $\beta_j$: log HR per unit $\uparrow x_j$.
+
+## (c) Time-Dependent Covariates
+
+$h_i(t)=h_0(t)\exp(\mathbf{x}_i(t)^T\boldsymbol{\beta})$. Use partial
+likelihood with $\mathbf{x}_j$ replaced by $\mathbf{x}_j(t_{(i')})$ in
+risk set. $\beta_j$: log HR per unit change at a given time.
+
+## (d) Stratified PH Model
+
+PH may not hold across all covariates. If a stratification covariate $S$
+violates PH:
+$$h_{is}(t)=h_{0s}(t)\exp(\mathbf{x}_i^T\boldsymbol{\beta})$$
+
+-   Different baseline hazard per stratum, **same** $\boldsymbol{\beta}$
+    (HR constant **within** strata).

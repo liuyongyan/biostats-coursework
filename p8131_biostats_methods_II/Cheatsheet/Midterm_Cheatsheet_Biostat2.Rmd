@@ -1,0 +1,181 @@
+---
+title: "Biostatistical Methods II Midterm Cheatsheet (Lectures 1-11)"
+output:
+  pdf_document:
+    latex_engine: pdflatex
+geometry: margin=0.4in
+classoption: twocolumn
+header-includes:
+  - \usepackage{amsmath}
+  - \usepackage{amssymb}
+  - \usepackage{bm}
+  - \usepackage{enumitem}
+  - \setlist[itemize]{leftmargin=*, noitemsep, topsep=2pt, parsep=2pt}
+  - \setlist[enumerate]{leftmargin=*, noitemsep, topsep=2pt, parsep=2pt}
+  - \setlength{\parindent}{0pt}
+  - \setlength{\parskip}{6pt}
+fontsize: 9pt
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# II. Exponential Family (Lecture 2)
+
+**Standard Form:**
+$$f(y; \theta, \phi) = \exp \left\{ \frac{y\theta - b(\theta)}{a(\phi)} + c(y, \phi) \right\}$$
+
+*   $\theta$: Canonical parameter. $\phi$: Dispersion parameter.
+*   **Mean:** $E(Y) = \mu = b'(\theta)$.
+*   **Variance:** $\text{Var}(Y) = a(\phi)b''(\theta) = a(\phi)V(\mu)$.
+*   **Variance Function:** $V(\mu) = b''( (b')^{-1}(\mu) )$.
+
+**Common Distributions:**
+
+1.  **Normal:** $f(y) = \frac{1}{\sqrt{2\pi\sigma^2}} \exp [-\frac{(y-\mu)^2}{2\sigma^2}]$
+    *   $\theta=\mu, b(\theta)=\theta^2/2, a(\phi)=\sigma^2$.
+    *   $E(Y)=\mu, \text{Var}(Y)=\sigma^2$.
+2.  **Poisson:** $f(y) = \frac{e^{-\lambda}\lambda^y}{y!}$
+    *   $\theta=\log\lambda, b(\theta)=e^\theta=\lambda, a(\phi)=1$.
+    *   $E(Y)=\lambda, \text{Var}(Y)=\lambda, V(\mu)=\mu$.
+3.  **Binomial ($n=1$):** $f(y) = \pi^y(1-\pi)^{1-y}$
+    *   $\theta=\log\frac{\pi}{1-\pi}, b(\theta)=\log(1+e^\theta), a(\phi)=1$.
+    *   $E(Y)=\pi, \text{Var}(Y)=\pi(1-\pi), V(\mu)=\mu(1-\mu)$.
+4.  **Gamma:** $f(y) = \frac{\beta^\alpha}{\Gamma(\alpha)} y^{\alpha-1} \exp(-\beta y)$
+    *   $\theta = -1/\mu = -\beta/\alpha, b(\theta) = \log\mu = \log(\alpha/\beta), a(\phi) = 1/\alpha$.
+    *   $E(Y) = \alpha/\beta = \mu, \text{Var}(Y) = \alpha/\beta^2 = \mu^2/\alpha, V(\mu) = \mu^2$.
+
+**Proving a distribution is EF:**
+Take the log of the density, use $\exp(\log(\cdot))$, and try to isolate $y \cdot (\text{function of } \theta)$ as the first term. If $y$ is multiplied by something that depends on $\theta$, that "something" is your $\theta$ (if canonical link used).
+
+# III. GLM Framework (Lecture 3)
+
+**Three Components:**
+
+1.  **Random:** $Y_i \sim \text{EF}$ (Independent).
+2.  **Systematic:** $\eta_i = \mathbf{x}_i^T\boldsymbol{\beta} = \beta_0 + \beta_1 x_{i1} + \dots$.
+3.  **Link Function:** $g(\mu_i) = \eta_i$. (Canonical link: $g(\mu) = (b')^{-1}(\mu) = \theta$).
+
+**Estimation (Fisher's Scoring):**
+
+*   **Score Function:** $U(\boldsymbol{\beta}) = \frac{\partial \ell}{\partial \boldsymbol{\beta}}$, $E[U]=0$.
+*   **Fisher Information:** $\mathcal{I}(\boldsymbol{\beta}) = E[-\frac{\partial^2 \ell}{\partial \boldsymbol{\beta} \partial \boldsymbol{\beta}^T}] = \text{Var}(U)$.
+*   **Update Rule:** $\boldsymbol{\beta}^{(m)} = \boldsymbol{\beta}^{(m-1)} + \mathcal{I}^{-1}(\boldsymbol{\beta}^{(m-1)}) U(\boldsymbol{\beta}^{(m-1)})$.
+*   **Asymptotic Normality:** $\hat{\boldsymbol{\beta}} \sim N(\boldsymbol{\beta}, \mathcal{I}^{-1}(\hat{\boldsymbol{\beta}}))$.
+
+# IV. Inference (Lecture 4)
+
+**Deviance ($D$):** Measure of discrepancy between fitted and saturated model.
+$$D = 2\{\ell(\text{saturated}) - \ell(\text{fitted})\}$$
+
+*   **Model Comparison:** For nested models $M_0 \subset M_1$, $D_0 - D_1 \sim \chi^2_{p_1 - p_0}$.
+
+**Residuals:**
+
+1.  **Pearson:** $r_{P_i} = \frac{y_i - \hat{\mu}_i}{\sqrt{V(\hat{\mu}_i)}}$. $\sum r_{P_i}^2 = X^2$ (Pearson $\chi^2$).
+2.  **Deviance:** $r_{D_i} = \text{sign}(y_i - \hat{\mu}_i)\sqrt{d_i}$, where $\sum d_i = D$.
+
+**Three Hypothesis Tests ($H_0: \boldsymbol{\beta} = \boldsymbol{\beta}_0$ where $\boldsymbol{\beta}$ has $q$ constraints):**
+
+*   **Wald:** Uses MLE and its curvature. $TS = (\hat{\boldsymbol{\beta}} - \boldsymbol{\beta}_0)^T \hat{\mathcal{I}}(\hat{\boldsymbol{\beta}}) (\hat{\boldsymbol{\beta}} - \boldsymbol{\beta}_0) \sim \chi^2_q$.
+*   **Score:** Uses the slope of the likelihood at $H_0$. $TS = U(\boldsymbol{\beta}_0)^T \mathcal{I}^{-1}(\boldsymbol{\beta}_0) U(\boldsymbol{\beta}_0) \sim \chi^2_q$.
+*   **LRT:** Uses the difference in log-likelihood heights. $2\{\ell(\hat{\boldsymbol{\beta}}) - \ell(\boldsymbol{\beta}_0)\} \sim \chi^2_q$.
+    *   *Note:* For a single parameter $H_0: \beta_j = \beta_{j0}$, $df = 1$. Use $z = \frac{\hat{\beta}_j - \beta_{j0}}{SE(\hat{\beta}_j)} \sim N(0,1)$ (which is $\sqrt{\chi^2_1}$).
+
+# V. Binary Outcomes (Lectures 5-6)
+
+**Link Functions:**
+
+*   **Logit (Canonical):** $\log\frac{\pi}{1-\pi} = \eta$.
+*   **Probit:** $\Phi^{-1}(\pi) = \eta$.
+*   **Complementary Log-Log:** $\log(-\log(1-\pi)) = \eta$ (Asymmetric, for extreme values).
+
+**Interpretation of Logistic Regression:**
+
+*   $\beta_j$ is the **change in log-odds** for a 1-unit increase in $x_j$.
+*   $OR = \exp(\beta_j)$ is the **Odds Ratio**.
+*   Probability $\pi = \frac{e^\eta}{1+e^\eta}$.
+
+**Confidence Intervals (CI):**
+
+*   **For $\beta$:** $\hat{\beta} \pm z_{\alpha/2} SE(\hat{\beta})$.
+*   **For $\pi$:** Get CI for $\eta = \mathbf{x}^T\boldsymbol{\beta}$ first! $[L, U] = \hat{\eta} \pm z \sqrt{\mathbf{x}^T \text{Cov}(\hat{\boldsymbol{\beta}}) \mathbf{x}}$.
+*   Then transform: $[\frac{e^L}{1+e^L}, \frac{e^U}{1+e^U}]$.
+
+**Goodness of Fit (GOF):**
+
+*   **Grouped Data ($m_i$ large):** Use $D$ or $X^2 \sim \chi^2_{n-p}$.
+    *   **Pearson $\chi^2$:** $X^2 = \sum_{i=1}^{n} \frac{(y_i - m_i \hat{\pi}_i)^2}{m_i \hat{\pi}_i (1 - \hat{\pi}_i)}$
+    *   **Deviance:** $D = 2 \sum_{i=1}^{n} \left\{ y_i \log \frac{y_i}{m_i \hat{\pi}_i} + (m_i - y_i) \log \frac{m_i - y_i}{m_i (1 - \hat{\pi}_i)} \right\}$
+    *   *Note:* If $y_i=0$ or $y_i=m_i$, the deviance is still well-defined.
+*   **Ungrouped Data ($m_i=1$):** $D$ and $X^2$ are unreliable. Use **Hosmer-Lemeshow** test.
+    *   Group into $g \approx 10$ categories. $\chi^2_{HL} = \sum_{j=1}^g \frac{(O_j - n_j \bar{\pi}_j)^2}{n_j \bar{\pi}_j(1-\bar{\pi}_j)} \sim \chi^2_{g-2}$
+    *   $O_j$: observed 1's in $j$-th group (size $n_j$), $\bar{\pi}_j$: avg estimated prob in $j$-th group. Large value $\Rightarrow$ lack of fit.
+
+# VI. Overdispersion (Lecture 7)
+
+**Definition:** $\text{Var}(Y) = \phi \cdot \text{Var}_{nominal}(Y)$ where $\phi > 1$.
+
+*   **Note:** Overdispersion **cannot** occur in ungrouped binary data ($n_i=1$).
+
+**Diagnostics:**
+
+*   **Estimation:**
+    *   Pearson-based: $\hat{\phi} = \frac{X^2}{n-p} = \frac{1}{n-p} \sum_{i=1}^{n} \frac{(y_i - m_i\hat{\pi}_i)^2}{m_i\hat{\pi}_i(1-\hat{\pi}_i)}$ (Generally preferred).
+    *   Deviance-based: $\hat{\phi} = \frac{D}{n-p}$.
+*   **Half-normal plot:** If points fall outside the envelope or the slope is $> 1$, overdispersion is likely. Empirical slope $\approx \sqrt{\phi}$.
+
+**Corrective Actions:**
+
+*   **Estimates:** $\hat{\beta}_Q = \hat{\beta}_{MLE}$, but $\text{Var}(\hat{\beta}_Q) = \hat{\phi} \text{Var}(\hat{\beta}_{MLE})$.
+*   **Hypothesis Testing ($H_0: \beta = \beta_0$):**
+    *   **Wald/Score Test:** $TS_{adj} = TS / \hat{\phi} \sim \chi^2_q$.
+    *   **Deviance Analysis (F-test):** For nested models $M_0 \subset M_1$, use:
+    $$F = \frac{(D_{0} - D_{1}) / (p_1 - p_0)}{\hat{\phi}} = \frac{(D_0 - D_1)/q}{X^2 / (n-p_1)} \sim F_{q, n-p_1}$$
+    where $X^2$ is from the larger model ($M_1$).
+
+# VII. Binary Topics (Lectures 8-9)
+
+**LD50 (Median Lethal Dose):** Dose $x$ such that $\pi(x) = 0.5 \Rightarrow \eta = 0$.
+
+*   For $\eta = \beta_0 + \beta_1 x$, $\hat{x}_{LD50} = -\hat{\beta}_0 / \hat{\beta}_1$.
+
+**Delta Method (Variance of LD50):**
+$$\text{Var}(\hat{x}_{LD50}) \approx \frac{1}{\beta_1^2} \text{Var}(\beta_0) + \frac{\beta_0^2}{\beta_1^4} \text{Var}(\beta_1) - \frac{2\beta_0}{\beta_1^3} \text{Cov}(\beta_0, \beta_1)$$
+
+# VIII. Categorical Y (Lectures 10-11)
+
+## 1. Nominal (Multinomial) Response
+
+*   No natural ordering (e.g., transport mode: Bus, Car, Train).
+*   **Baseline Category Logit Model:** Choose category 1 as baseline.
+$$\log\frac{\pi_j}{\pi_1} = \beta_{0j} + \boldsymbol{\beta}_j^T \mathbf{x}, \quad j = 2, \dots, J$$
+*   **Probability:** $\pi_1 = \frac{1}{1 + \sum e^{\eta_k}}$, $\pi_j = \frac{e^{\eta_j}}{1 + \sum e^{\eta_k}}$.
+*   **Goodness of Fit (Grouped):**
+    *   Deviance: $D = 2 \sum_i \sum_j y_{ij} \log(y_{ij} / (n_i \hat{\pi}_{ij}))$
+    *   Pearson: $X^2 = \sum_i \sum_j \frac{(y_{ij} - n_i \hat{\pi}_{ij})^2}{n_i \hat{\pi}_{ij}}$
+    *   $df = (N-p)(J-1)$ ($N$: groups, $p$: params per cat, $J$: categories).
+
+## 2. Ordinal Response (Proportional Model)
+
+*   Natural ordering exists (e.g., Low, Medium, High).
+*   **Model Cumulative Probabilities:** $\gamma_j = P(Y \leq j)$.
+$$\text{logit}(P(Y \leq j)) = \alpha_j - \boldsymbol{\beta}^T \mathbf{x}$$
+*   **Key Property:** The slope $\beta$ is the same for all $j$. Only intercepts $\alpha_j$ differ.
+*   **Interpretation in R (`polr`):** $\beta > 0 \Rightarrow$ higher $x$ **increases** the probability of higher categories (because $P(Y \le j)$ decreases).
+
+# IX. Exam Strategy & R Cheat Sheet
+
+**1. Interpreting `vcov(fit)`:**
+
+*   Diagonal elements are $\text{Var}(\hat{\beta}_j)$.
+*   Off-diagonal are $\text{Cov}(\hat{\beta}_j, \hat{\beta}_k)$.
+*   $\text{Var}(A \pm B) = \text{Var}(A) + \text{Var}(B) \pm 2\text{Cov}(A,B)$.
+
+**2. Calculating Odds Ratios for Interactions:**
+
+*   If model is $\eta = \beta_0 + \beta_{age}X_1 + \beta_{sex}X_2 + \beta_{int}X_1 X_2$.
+*   Effect of age for males ($X_2=1$): $\exp(\beta_{age} + \beta_{int})$.
+
+
