@@ -258,6 +258,14 @@ summary(resamp)$statistics$ROC
 bwplot(resamp, metric = "ROC")
 ```
 
+Pairwise Bonferroni-corrected paired tests on the shared CV folds —
+used in the report to back the "no" answer to the boosting/SVM question.
+
+```{r resamp-diff}
+diff_resamp <- diff(resamp, metric = "ROC")
+summary(diff_resamp)
+```
+
 ## 4.2 Test-set metrics
 
 ```{r test-metrics}
@@ -286,8 +294,11 @@ test_perf %>% arrange(desc(AUC))
 ```{r best}
 ## Test AUCs are bunched within ~0.013 and bootstrap CIs overlap completely
 ## (see Section 4.2). We rank by 10-fold CV ROC, where MARS and GLMNET tie
-## at the top; we pick MARS for the closed-form, additive risk-score
-## expression that GLMNET (a coefficient list) cannot match.
+## at the top. We pick MARS over GLMNET because (i) MARS is more parsimonious
+## (4 predictors vs GLMNET's 7 non-zero linear terms at alpha=1, lambda=0.0125)
+## and (ii) MARS hinge breakpoints read directly as clinical thresholds
+## (effect is zero below the breakpoint, rises linearly above), whereas
+## GLMNET keeps a linear effect over each variable's full range.
 best_name <- "MARS"
 best_fit  <- fits[[best_name]]
 best_name

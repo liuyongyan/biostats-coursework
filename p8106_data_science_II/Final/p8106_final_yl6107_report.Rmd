@@ -31,6 +31,15 @@ load("results.RData")
 cv_means  <- summary(resamp)$statistics$ROC[, "Mean"]
 get_auc   <- function(m) test_perf$AUC[test_perf$Model == m]
 get_cv    <- function(m) cv_means[m]
+
+## Bonferroni-adjusted pairwise paired tests on the 10 shared CV folds.
+## diff() operates on the saved resamples object — no refitting.
+diff_pmat        <- summary(diff(resamp, metric = "ROC"))$table$ROC
+flex             <- c("AdaBoost", "SVM_lin", "SVM_rbf")
+simple           <- c("GLM", "GLMNET", "GAM", "MARS", "LDA")
+flex_vs_simple_p <- as.numeric(diff_pmat[flex, simple])
+all_p_lower      <- suppressWarnings(as.numeric(diff_pmat[lower.tri(diff_pmat)]))
+min_p_val        <- min(all_p_lower, na.rm = TRUE)
 ```
 
 # 1. Introduction
@@ -48,9 +57,9 @@ six categorical, including the multi-level factors `race` and
 # 2. Exploratory analysis
 
 Severe outcomes occur in `r round(mean(train_d$severity == "Severe") * 100)`\%
-of the training sample. There is no missingness and no obvious outliers.
-Summary statistics by outcome are in **Table 1** and the marginal
-patterns in **Figure 1**. Three observations drive the modelling choices
+of the training sample, with no missingness and tight, well-behaved
+distributions on the continuous predictors. Summary statistics by
+outcome are in **Table 1** and the marginal patterns in **Figure 1**. Three observations drive the modelling choices
 that follow. **First**, severe patients are older (median age
 `r round(median(train_d$age[train_d$severity == "Severe"]))` vs
 `r round(median(train_d$age[train_d$severity == "NotSev"]))`) and have
@@ -118,7 +127,11 @@ AdaBoost is essentially tied
 SVM linear (`r sprintf("%.3f", get_cv("SVM_lin"))`),
 SVM radial, GLM, LDA, and GAM all sit within $\le 0.01$ of the top;
 **random forest is the only model meaningfully weaker on CV**
-(`r sprintf("%.3f", get_cv("RF"))`).
+(`r sprintf("%.3f", get_cv("RF"))`). Bonferroni-corrected paired tests
+on the shared folds (`caret::diff`) corroborate this: every
+boosting/SVM-vs-simple-method pair returns adjusted $p = 1.00$, and
+the smallest p across all 36 pairs is
+`r sprintf("%.2f", min_p_val)` (RF vs AdaBoost).
 On the test set every AUC falls in the narrow band
 [`r sprintf("%.3f", min(test_perf$AUC))`,
 `r sprintf("%.3f", max(test_perf$AUC))`], a spread of only
@@ -127,8 +140,7 @@ bootstrap CIs (Table 3) overlap completely and are each ~0.09 wide.
 **The test-AUC ranking is therefore essentially within sampling noise
 at $n_{\text{test}}=200$**: RF rises from worst on CV to nominal first
 on test, while MARS slips from tied-first to last, with neither move
-exceeding ~1\%. The CV ranking is the more reliable summary because
-it averages over ten folds rather than a single 200-patient draw.
+exceeding ~1\%.
 
 Why don't the flexible methods help? With the four dominant predictors
 entering the response in nearly additive, threshold-linear form
@@ -136,18 +148,23 @@ entering the response in nearly additive, threshold-linear form
 the radial SVM to exploit; the extra flexibility chases noise. RF is
 penalised more — `mtry`=1 with `min.node.size`=10 is the most
 regularised configuration on its CV curve, and even that loses ~0.02
-to the simple methods. Boosting's lower test sensitivity at the 0.5
-cutoff (Sens = `r sprintf("%.2f", test_perf$Sens[test_perf$Model=="AdaBoost"])`)
-reflects miscalibrated probabilities under the exponential loss, not a
-shortfall in discrimination — its test AUC is in the same band as the
-others.
+to the simple methods. RF and boosting also show the lowest test
+sensitivities at the default 0.5 cutoff
+(Sens = `r sprintf("%.2f", test_perf$Sens[test_perf$Model=="RF"])` and
+`r sprintf("%.2f", test_perf$Sens[test_perf$Model=="AdaBoost"])`) despite
+their nominally top-ranked AUCs — a probability-calibration issue,
+not a discrimination gap, since both AUCs sit in the same narrow band
+as the simpler methods'.
 
 ## 4.2 Predictive risk score
 
-MARS and GLMNET are tied at the top of CV ROC, but only MARS yields a
-closed-form, additive risk-score expression that a clinician can read
-off; we therefore use MARS to define $\hat{p}(\text{Severe}\mid x)$.
-After CV the model reduces to **five terms in four predictors**:
+MARS and GLMNET tie at the top of CV ROC. The CV-selected GLMNET fit
+($\alpha=1$, $\lambda=0.0125$) is also closed-form but keeps seven
+non-zero linear predictors that act over each variable's entire range;
+MARS instead reduces to **five terms in four predictors** with hinge
+breakpoints that read directly as clinical thresholds — the effect is
+exactly zero below the breakpoint and rises linearly above it — so we
+use MARS to define $\hat{p}(\text{Severe}\mid x)$:
 \begin{equation*}
 \text{logit}\bigl(\hat{p}_{\text{Severe}}\bigr) =
 -0.96 + 0.171\,h(\text{age}-60) + 0.353\,h(\text{bmi}-28.7)
@@ -163,10 +180,11 @@ and specificity
 `r sprintf("%.2f", test_perf$Spec[test_perf$Model=="MARS"])`
 (test Brier `r sprintf("%.3f", test_perf$Brier[test_perf$Model=="MARS"])`);
 clinicians can re-thresh along the ROC curve to trade the two off.
-Calibration on the held-out test set (**Figure 4**) tracks the diagonal
-in the low- and mid-risk range; the highest two deciles deviate by
-about 0.10, but each contains only 20 patients, so the apparent
-miscalibration is comparable to the per-bin Monte Carlo noise.
+Calibration on the test set (**Figure 4**) is tight in the bottom
+five and top two deciles; deciles 6--7 (predicted 0.25--0.40)
+over-predict observed severity by 0.10--0.15 and decile 9
+under-predicts by 0.15. With only 20 patients per bin these
+deviations are comparable to per-bin Monte Carlo noise.
 
 ## 4.3 Key predictors and their effects
 
@@ -180,8 +198,10 @@ smoking, LDL, and depression each contribute below 1% to AdaBoost and
 are never selected by MARS.
 
 The partial dependence plots (**Figure 5b**) show *how predicted
-risk varies with* each predictor in the AdaBoost model (model-implied
-associations in this observational sample, not causal effects):
+risk varies with* each predictor under AdaBoost, used here as an
+independent check on the MARS hinges — boosting and MARS share no
+inductive bias, so agreement is informative. Effects are model-implied
+associations, not causal:
 
 - **Vaccination:** by far the strongest single signal. The PDP gap
   between unvaccinated and vaccinated is
@@ -189,14 +209,14 @@ associations in this observational sample, not causal effects):
   in $\hat{p}(\text{Severe})$ (0.56 vs 0.13), echoing the empirical-rate
   gap (62\% vs 10\%) and the $-3.32$ MARS vaccine coefficient.
 - **Age:** flat below ~58, rising sharply between 58 and 65 to a
-  plateau near 0.40 (consistent with the MARS hinge at 60).
-- **BMI:** flat below ~28, then rising steeply between 28 and 33
-  (PDP climbing from ~0.25 to ~0.40), aligning with the MARS hinge
+  plateau near 0.36 (consistent with the MARS hinge at 60).
+- **BMI:** flat below ~27, then rising steeply between 27 and 33
+  (PDP climbing from ~0.29 to ~0.35), aligning with the MARS hinge
   at 28.7.
 - **SBP:** rising monotonically from ~120 mmHg, with the steepest
-  segment between 125 and 140. This captures the same signal as
-  binary `hypertension`, which is why hypertension drops out of MARS
-  once SBP is in the model.
+  segment between 125 and 140 (PDP rising from ~0.25 to ~0.38).
+  This captures the same signal as binary `hypertension`, which is
+  why hypertension drops out of MARS once SBP is in the model.
 
 These directions are biologically plausible and consistent across MARS
 hinge coefficients, AdaBoost PDPs, and the GAM smooths (not shown).
@@ -207,28 +227,21 @@ effect of vaccination.
 
 # 5. Conclusion
 
-For this 1,000-patient sample, **boosting and SVM provide no advantage
-over simpler models** — the answer to the researchers' first question.
-On 10-fold CV, MARS and GLMNET tie at the top (mean ROC 0.877), with
-AdaBoost, the two SVMs, GLM, LDA, and GAM all within $\le 0.01$ of
-them; only random forest is meaningfully weaker. Test AUCs all sit in
+**Q1.** Boosting and SVM provide **no advantage** over simpler models
+on this sample: CV ROCs cluster in 0.87--0.88 with non-significant
+Bonferroni differences, and test AUCs all sit in
 [`r sprintf("%.3f", min(test_perf$AUC))`,
-`r sprintf("%.3f", max(test_perf$AUC))`] with completely overlapping
-95\% bootstrap CIs, so the test ranking is dominated by the noise of a
-200-patient draw. We select **MARS** as the final model: tied for best
-on CV and uniquely yielding a five-term, four-predictor closed-form
-risk-score formula clinicians can compute at the bedside.
-**The dominant predictors of severe COVID-19 are vaccination status
+`r sprintf("%.3f", max(test_perf$AUC))`] with overlapping bootstrap
+CIs. **Q2.** We adopt **MARS** for parsimony (4 predictors vs
+GLMNET's 7) and hinge breakpoints aligned to clinical thresholds;
+the five-term closed-form risk score (§4.2) is computable at the
+bedside. **Q3.** The dominant predictors — **vaccination status
 (strongly inversely associated), age, BMI, and systolic blood
-pressure**, entering the response in a nearly additive, threshold-linear
-form — which is precisely why the simple methods suffice. The risk
-score is well-calibrated below the median and re-thresholdable along the
-ROC curve for any sensitivity/specificity target. **Limitations.**
-The estimates rest on a single 1,000-patient observational sample
-without external validation, so the coefficients are predictive
-associations rather than causal effects; calibration in the top two
-deciles (Figure 4) is uncertain at $n_{\text{bin}}=20$ and would need
-re-checking on a larger or higher-risk validation cohort.
+pressure** — enter additively in threshold-linear form, which is why
+simple methods suffice. **Limitations.** Single 1,000-patient
+observational sample, no external validation; coefficients are
+predictive associations, not causal effects; mid-risk and decile-9
+calibration are uncertain at $n_{\text{bin}}=20$.
 
 \newpage
 
@@ -479,7 +492,7 @@ ggplot(calib_df, aes(p_mean, obs)) +
   theme_bw()
 ```
 
-```{r fig5, fig.cap="Boosting interpretation. (a) Variable importance (relative influence, \\%) from the AdaBoost final model — vaccine, SBP, age, and BMI together account for $\\sim$98\\% of the predictive signal. (b) Partial dependence of the predicted P(Severe) on the four dominant predictors (vaccine, age, BMI, SBP), holding all other predictors at their training distribution.", fig.width=8.5, fig.height=8, out.width="92%", fig.align='center'}
+```{r fig5, fig.cap="Boosting-based evidence on the four dominant predictors, used as an independent check on the MARS hinge structure. (a) Relative-influence variable importance from the AdaBoost final model — vaccine, SBP, age, and BMI together account for $\\sim$98\\% of the signal. (b) Partial dependence of $\\hat{p}(\\text{Severe})$ on each, holding the others at their training distribution; the elbow locations ($\\sim$60 for age, $\\sim$28 for BMI, $\\sim$120 for SBP) match the MARS hinge breakpoints in \\S4.2.", fig.width=8.5, fig.height=8, out.width="92%", fig.align='center'}
 vi_df <- as_tibble(vi_tab) |>
   arrange(rel.inf) |>
   mutate(var = factor(var, levels = var))
